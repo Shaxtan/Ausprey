@@ -175,28 +175,20 @@ const MockTripData = [
 ];
 // --- End Mock Data ---
 
-// Helper components (unchanged)
-
-const AccountDetails = ({ name, number }) => (
-  <MDBox lineHeight={1} textAlign="left">
-    <MDTypography display="block" variant="button" fontWeight="medium">
-      {name}
-    </MDTypography>
-    <MDTypography variant="caption" color="text">
-      {number}
-    </MDTypography>
-  </MDBox>
+// Helper component for simple text output
+const DataCell = ({ text, color = "text", fontWeight = "regular" }) => (
+  <MDTypography variant="caption" color={color} fontWeight={fontWeight}>
+    {text}
+  </MDTypography>
 );
 
-const RouteDetails = ({ tripId, routeId, material }) => (
+// Helper components (re-purposed)
+const RouteMaterial = ({ routeId, material }) => (
   <MDBox lineHeight={1} textAlign="left">
-    <MDTypography display="block" variant="caption" color="text" fontWeight="medium">
-      Trip: {tripId}
+    <MDTypography display="block" variant="caption" color="dark" fontWeight="medium">
+      {routeId}
     </MDTypography>
     <MDTypography variant="caption" color="text">
-      Route: {routeId}
-    </MDTypography>
-    <MDTypography variant="caption" color="text" sx={{ mt: 0.5 }}>
       Load: <MDBadge badgeContent={material} color="info" variant="gradient" size="xs" />
     </MDTypography>
   </MDBox>
@@ -205,24 +197,21 @@ const RouteDetails = ({ tripId, routeId, material }) => (
 const PermitInfo = ({ permitNumber, start, end }) => (
   <MDBox lineHeight={1} textAlign="center">
     <MDTypography display="block" variant="caption" color="text" fontWeight="medium">
-      Permit: {permitNumber}
+      {permitNumber}
     </MDTypography>
     <MDTypography variant="caption" color="text">
-      Start: {start}
-    </MDTypography>
-    <MDTypography variant="caption" color="text">
-      End: {end}
+      {start} to {end}
     </MDTypography>
   </MDBox>
 );
 
-const TripGeography = ({ source, destination, via }) => (
+const TripGeography = ({ source, destination }) => (
   <MDBox lineHeight={1} textAlign="left">
     <MDTypography display="block" variant="caption" color="dark" fontWeight="medium">
-      {source} to {destination}
+      {source}
     </MDTypography>
     <MDTypography variant="caption" color="text">
-      Via: {via}
+      {destination}
     </MDTypography>
   </MDBox>
 );
@@ -233,8 +222,7 @@ const ActionButtons = ({ tripId, onOpenModal }) => (
     {/* 1. Trip Report Button (Opens Modal) */}
     <MDTypography
       component="a"
-      // Calls the passed-in handler with the tripId. Since we add a fallback
-      // in the data() function below, this is safe.
+      // Calls the passed-in handler with the tripId.
       onClick={() => onOpenModal(tripId)}
       variant="caption"
       color="dark"
@@ -282,11 +270,8 @@ ActionButtons.propTypes = {
 };
 
 // --- CORRECTED data EXPORT FUNCTION ---
-// Includes a safe fallback for onOpenModal to prevent the TypeError
 export default function data(onOpenModal) {
   // 💡 FIX: Provide a safe, non-crashing function if onOpenModal is undefined.
-  // This resolves the "onOpenModal is not a function" error when the parent
-  // component calls data() without arguments.
   const safeOnOpenModal =
     onOpenModal ||
     (() => {
@@ -294,51 +279,42 @@ export default function data(onOpenModal) {
     });
 
   return {
+    // 1. Columns restructured to match your exact request
     columns: [
       { Header: "No", accessor: "no", width: "3%", align: "center" },
-      { Header: "Account Details", accessor: "accountDetails", width: "15%", align: "left" },
-      { Header: "Driver/IMEI", accessor: "driverImei", width: "10%", align: "left" },
-      { Header: "Route & Load", accessor: "routeLoad", width: "15%", align: "left" },
-      { Header: "Source/Destination", accessor: "tripGeography", width: "20%", align: "left" },
-      { Header: "Permit Info", accessor: "permitInfo", width: "20%", align: "center" },
+      { Header: "Account Name", accessor: "accountName", width: "15%", align: "left" },
+      { Header: "Account Number", accessor: "accountNumber", width: "10%", align: "left" },
+      { Header: "Trip ID", accessor: "tripId", width: "8%", align: "center" },
+      { Header: "Route ID", accessor: "routeId", width: "8%", align: "center" },
+      { Header: "Source", accessor: "source", width: "10%", align: "left" },
+      { Header: "Destination", accessor: "destination", width: "10%", align: "left" },
+      { Header: "Via", accessor: "via", width: "12%", align: "left" },
+      { Header: "Driver Name", accessor: "driverName", width: "10%", align: "left" },
+      { Header: "IMEI", accessor: "imei", width: "10%", align: "center" },
+      { Header: "Permit Number", accessor: "permitNumber", width: "10%", align: "center" },
+      { Header: "Load Material", accessor: "loadMaterial", width: "10%", align: "left" },
+      { Header: "Permit Start Date", accessor: "permitStartDate", width: "10%", align: "center" },
+      { Header: "Permit End Date", accessor: "permitEndDate", width: "10%", align: "center" },
       { Header: "Action", accessor: "action", width: "7%", align: "center" },
     ],
 
+    // 2. Rows mapped to the new column structure
     rows: MockTripData.map((report) => ({
-      no: (
-        <MDTypography variant="caption" color="text" fontWeight="medium">
-          {report.no}
-        </MDTypography>
-      ),
-      accountDetails: <AccountDetails name={report.accountName} number={report.accountNumber} />,
-      driverImei: (
-        <MDBox lineHeight={1} textAlign="left">
-          <MDTypography display="block" variant="button" fontWeight="medium">
-            {report.driverName}
-          </MDTypography>
-          <MDTypography variant="caption" color="text">
-            IMEI: {report.imei}
-          </MDTypography>
-        </MDBox>
-      ),
-      routeLoad: (
-        <RouteDetails
-          tripId={report.tripId}
-          routeId={report.routeId}
-          material={report.loadMaterial}
-        />
-      ),
-      tripGeography: (
-        <TripGeography source={report.source} destination={report.destination} via={report.via} />
-      ),
-      permitInfo: (
-        <PermitInfo
-          permitNumber={report.permitNumber}
-          start={report.permitStartDate}
-          end={report.permitEndDate}
-        />
-      ),
-      // Pass the safe handler down
+      no: <DataCell text={report.no} fontWeight="medium" />,
+      accountName: <DataCell text={report.accountName} fontWeight="medium" />,
+      accountNumber: <DataCell text={report.accountNumber} />,
+      tripId: <DataCell text={report.tripId} color="info" fontWeight="bold" />,
+      routeId: <DataCell text={report.routeId} />,
+      source: <DataCell text={report.source} fontWeight="medium" />,
+      destination: <DataCell text={report.destination} fontWeight="medium" />,
+      via: <DataCell text={report.via} />,
+      driverName: <DataCell text={report.driverName} fontWeight="medium" />,
+      imei: <DataCell text={report.imei} />,
+      permitNumber: <DataCell text={report.permitNumber} fontWeight="medium" />,
+      loadMaterial: <DataCell text={report.loadMaterial} />,
+      permitStartDate: <DataCell text={report.permitStartDate} />,
+      permitEndDate: <DataCell text={report.permitEndDate} />,
+      // Action column still uses the component for the buttons
       action: <ActionButtons tripId={report.tripId} onOpenModal={safeOnOpenModal} />,
     })),
   };

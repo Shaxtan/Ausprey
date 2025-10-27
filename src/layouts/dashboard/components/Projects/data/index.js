@@ -22,281 +22,180 @@ import MDTypography from "components/MDTypography";
 import MDAvatar from "components/MDAvatar";
 import MDProgress from "components/MDProgress";
 
-// Images (These are no longer relevant to your new data, but kept for function structure)
-import logoXD from "assets/images/small-logos/logo-xd.svg";
-import logoAtlassian from "assets/images/small-logos/logo-atlassian.svg";
-import logoSlack from "assets/images/small-logos/logo-slack.svg";
-import logoSpotify from "assets/images/small-logos/logo-spotify.svg";
-import logoJira from "assets/images/small-logos/logo-jira.svg";
-import logoInvesion from "assets/images/small-logos/logo-invision.svg";
-import team1 from "assets/images/team-1.jpg";
-import team2 from "assets/images/team-2.jpg";
-import team3 from "assets/images/team-3.jpg";
-import team4 from "assets/images/team-4.jpg";
+// Helper component for simple text output
+const DataCell = ({ text, color = "text", fontWeight = "medium" }) => (
+  <MDTypography variant="caption" color={color} fontWeight={fontWeight}>
+    {text}
+  </MDTypography>
+);
 
-export default function data() {
-  const avatars = (members) =>
-    members.map(([image, name]) => (
-      <Tooltip key={name} title={name} placeholder="bottom">
-        <MDAvatar
-          src={image}
-          alt="name"
-          size="xs"
-          sx={{
-            border: ({ borders: { borderWidth }, palette: { white } }) =>
-              `${borderWidth[2]} solid ${white.main}`,
-            cursor: "pointer",
-            position: "relative",
+// Helper component for GPS Status
+const Status = ({ status }) => {
+  let color;
+  if (status === "Online") {
+    color = "success";
+  } else if (status === "Offline") {
+    color = "error";
+  } else {
+    color = "warning"; // Other states like Moving/Idle
+  }
 
-            "&:not(:first-of-type)": {
-              ml: -1.25,
-            },
-
-            "&:hover, &:focus": {
-              zIndex: "10",
-            },
-          }}
-        />
-      </Tooltip>
-    ));
-
-  const Company = ({ image, name }) => (
-    <MDBox display="flex" alignItems="center" lineHeight={1}>
-      <MDAvatar src={image} name={name} size="sm" />
-      <MDTypography variant="button" fontWeight="medium" ml={1} lineHeight={1}>
-        {name}
+  return (
+    <MDBox lineHeight={1}>
+      <MDTypography variant="caption" color={color} fontWeight="bold">
+        {status}
       </MDTypography>
     </MDBox>
   );
+};
 
+// Helper component for Ignition Status
+const Ignition = ({ status }) => {
+  let color = status === "On" ? "success" : "error";
+  return (
+    <MDTypography variant="caption" color={color} fontWeight="bold">
+      {status}
+    </MDTypography>
+  );
+};
+
+export default function data() {
   return {
+    // 1. Updated Columns to 10 distinct fields
     columns: [
-      { Header: "IMEI NUMBER", accessor: "imeiNumber", width: "30%", align: "left" },
-      { Header: "ACCOUNT NUMBER", accessor: "accountNumber", width: "30%", align: "left" },
-      { Header: "VIA", accessor: "via", align: "center" },
-      { Header: "ROUTE", accessor: "route", align: "center" },
+      { Header: "No", accessor: "no", width: "5%", align: "left" },
+      { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
+      { Header: "VEHICLE NAME", accessor: "vehicleName", width: "12%", align: "left" },
+      { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
+      { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" }, // NEW FIELD
+      { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
+      { Header: "LAST DATA TIME", accessor: "lastDataTime", width: "12%", align: "center" }, // NEW FIELD
+      { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
+      { Header: "AVG. SPEED", accessor: "avgSpeed", width: "7%", align: "center" },
+      { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
     ],
 
+    // 2. Updated Rows with 10 rows and 10 fields
     rows: [
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            913280183713
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001034
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            New York -&gt; Miami
-          </MDTypography>
-        ),
+        no: <DataCell text="1" />,
+        vehicleNo: <DataCell text="HR55K1234" fontWeight="bold" />,
+        vehicleName: <DataCell text="Truck Alpha" />,
+        gpsStatus: <Status status="Online" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="913280183713" />,
+        lastDataTime: <DataCell text="2025-10-27 10:01:00" />,
+        address: <DataCell text="123 Main St, New Delhi, India" />,
+        avgSpeed: <DataCell text="45 km/h" />,
+        currentSpeed: <DataCell text="62 km/h" color="success" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            883018277209
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001035
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="dark" fontWeight="medium">
-            Manual Upload
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Chicago -&gt; Dallas
-          </MDTypography>
-        ),
+        no: <DataCell text="2" />,
+        vehicleNo: <DataCell text="DL05F5678" fontWeight="bold" />,
+        vehicleName: <DataCell text="Van Beta" />,
+        gpsStatus: <Status status="Offline" />,
+        ignitionStatus: <Ignition status="Off" />,
+        imei: <DataCell text="883018277209" />,
+        lastDataTime: <DataCell text="2025-10-27 09:30:00" />,
+        address: <DataCell text="Near Gateway, Mumbai, India" />,
+        avgSpeed: <DataCell text="10 km/h" />,
+        currentSpeed: <DataCell text="0 km/h" color="error" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            771123456789
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001036
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Denver -&gt; Phoenix
-          </MDTypography>
-        ),
+        no: <DataCell text="3" />,
+        vehicleNo: <DataCell text="UP16T9012" fontWeight="bold" />,
+        vehicleName: <DataCell text="Bus Gamma" />,
+        gpsStatus: <Status status="Moving" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="771123456789" />,
+        lastDataTime: <DataCell text="2025-10-27 10:03:00" />,
+        address: <DataCell text="Hollywood Blvd, Los Angeles, USA" />,
+        avgSpeed: <DataCell text="70 km/h" />,
+        currentSpeed: <DataCell text="95 km/h" color="info" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            664590123456
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001037
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Houston -&gt; Atlanta
-          </MDTypography>
-        ),
+        no: <DataCell text="4" />,
+        vehicleNo: <DataCell text="RJ14A3321" fontWeight="bold" />,
+        vehicleName: <DataCell text="Sedan Delta" />,
+        gpsStatus: <Status status="Online" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="664590123456" />,
+        lastDataTime: <DataCell text="2025-10-27 10:00:00" />,
+        address: <DataCell text="Jaipur Highway, Rajasthan" />,
+        avgSpeed: <DataCell text="55 km/h" />,
+        currentSpeed: <DataCell text="80 km/h" color="info" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            550019283746
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001038
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="dark" fontWeight="medium">
-            Manual Upload
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Seattle -&gt; Portland
-          </MDTypography>
-        ),
+        no: <DataCell text="5" />,
+        vehicleNo: <DataCell text="KA01Z0099" fontWeight="bold" />,
+        vehicleName: <DataCell text="Bike Epsilon" />,
+        gpsStatus: <Status status="Idle" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="550019283746" />,
+        lastDataTime: <DataCell text="2025-10-27 09:55:00" />,
+        address: <DataCell text="Tech Park, Bangalore, India" />,
+        avgSpeed: <DataCell text="20 km/h" />,
+        currentSpeed: <DataCell text="5 km/h" color="warning" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            447890123456
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001039
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Boston -&gt; Philadelphia
-          </MDTypography>
-        ),
+        no: <DataCell text="6" />,
+        vehicleNo: <DataCell text="TS09B7777" fontWeight="bold" />,
+        vehicleName: <DataCell text="Trailer Zeta" />,
+        gpsStatus: <Status status="Offline" />,
+        ignitionStatus: <Ignition status="Off" />,
+        imei: <DataCell text="447890123456" />,
+        lastDataTime: <DataCell text="2025-10-26 18:00:00" />,
+        address: <DataCell text="Industrial Area, Hyderabad" />,
+        avgSpeed: <DataCell text="30 km/h" />,
+        currentSpeed: <DataCell text="0 km/h" color="error" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            331234509876
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001040
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            San Diego -&gt; LA
-          </MDTypography>
-        ),
+        no: <DataCell text="7" />,
+        vehicleNo: <DataCell text="PB11G5432" fontWeight="bold" />,
+        vehicleName: <DataCell text="Lorry Eta" />,
+        gpsStatus: <Status status="Moving" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="331234509876" />,
+        lastDataTime: <DataCell text="2025-10-27 10:02:00" />,
+        address: <DataCell text="National Highway 44, Punjab" />,
+        avgSpeed: <DataCell text="65 km/h" />,
+        currentSpeed: <DataCell text="75 km/h" color="info" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            229876543210
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001041
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="dark" fontWeight="medium">
-            Manual Upload
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Miami -&gt; Orlando
-          </MDTypography>
-        ),
+        no: <DataCell text="8" />,
+        vehicleNo: <DataCell text="MH12D0011" fontWeight="bold" />,
+        vehicleName: <DataCell text="Car Theta" />,
+        gpsStatus: <Status status="Online" />,
+        ignitionStatus: <Ignition status="Off" />,
+        imei: <DataCell text="229876543210" />,
+        lastDataTime: <DataCell text="2025-10-27 09:45:00" />,
+        address: <DataCell text="Pune City Center, Maharashtra" />,
+        avgSpeed: <DataCell text="15 km/h" />,
+        currentSpeed: <DataCell text="0 km/h" color="success" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            110055447788
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001042
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="info" fontWeight="medium">
-            API Gateway
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Dallas -&gt; Austin
-          </MDTypography>
-        ),
+        no: <DataCell text="9" />,
+        vehicleNo: <DataCell text="TN39P6006" fontWeight="bold" />,
+        vehicleName: <DataCell text="Scooter Iota" />,
+        gpsStatus: <Status status="Moving" />,
+        ignitionStatus: <Ignition status="On" />,
+        imei: <DataCell text="110055447788" />,
+        lastDataTime: <DataCell text="2025-10-27 10:04:00" />,
+        address: <DataCell text="Chennai Beach Road, Tamil Nadu" />,
+        avgSpeed: <DataCell text="40 km/h" />,
+        currentSpeed: <DataCell text="55 km/h" color="success" fontWeight="bold" />,
       },
       {
-        imeiNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            006789123456
-          </MDTypography>
-        ),
-        accountNumber: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            ACC-001043
-          </MDTypography>
-        ),
-        via: (
-          <MDTypography variant="caption" color="dark" fontWeight="medium">
-            Manual Upload
-          </MDTypography>
-        ),
-        route: (
-          <MDTypography variant="caption" color="text" fontWeight="medium">
-            Las Vegas -&gt; Reno
-          </MDTypography>
-        ),
+        no: <DataCell text="10" />,
+        vehicleNo: <DataCell text="GJ06L1010" fontWeight="bold" />,
+        vehicleName: <DataCell text="Tanker Kappa" />,
+        gpsStatus: <Status status="Online" />,
+        ignitionStatus: <Ignition status="Off" />,
+        imei: <DataCell text="006789123456" />,
+        lastDataTime: <DataCell text="2025-10-27 08:30:00" />,
+        address: <DataCell text="Port Area, Gujarat" />,
+        avgSpeed: <DataCell text="5 km/h" />,
+        currentSpeed: <DataCell text="0 km/h" color="success" fontWeight="bold" />,
       },
     ],
   };

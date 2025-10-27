@@ -54,7 +54,7 @@ const routes = [
 
   {
     type: "collapse",
-    name: "Distance Report",
+    name: "Trip Dashboard",
     key: "tables",
     icon: <Icon fontSize="small">table_view</Icon>,
     route: "/tables",
@@ -84,7 +84,7 @@ const routes = [
   // ** CORRECTED LOAD CELL REPORT ROUTE **
   {
     type: "collapse",
-    name: "Load Cell Report",
+    name: "Load Sensor",
     key: "load-cell-report", // CRUCIAL: Changed key from 'profile' to 'load-cell-report'
     icon: <Icon fontSize="small">scale</Icon>, // Changed icon to a more fitting one (scale)
     route: "/load-cell-report", // CRUCIAL: Changed route from '/profile' to '/load-cell-report'

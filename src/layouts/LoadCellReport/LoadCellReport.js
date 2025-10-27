@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+// Import the custom hook containing API logic
+import useLoadCellReportLogic from "./useLoadCellReportLogic"; // 🚨 ADJUST PATH AS NEEDED 🚨
+
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
+import MDInput from "components/MDInput";
 
 // Material Dashboard 2 React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
@@ -18,8 +22,10 @@ import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Icon from "@mui/material/Icon";
+import SendIcon from "@mui/icons-material/Send";
 
-// Recharts for the Graph (Assuming you have Recharts installed)
+// Recharts for the Graph
 import {
   AreaChart,
   Area,
@@ -31,15 +37,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// --- Mock Data and Export Functions (for demonstration) ---
-
-const initialChartData = [
-  // Example structure for chart data
-  { time: "10:00:00", V1: 40, V2: 35, V3: 50, V4: 45, Average: 42.5 },
-  { time: "10:00:05", V1: 42, V2: 37, V3: 52, V4: 47, Average: 44.5 },
-  { time: "10:00:10", V1: 45, V2: 40, V3: 55, V4: 50, Average: 47.5 },
-];
-
+// --- Mock Export Functions (Keep these, as they're external utilities) ---
 const exportCSV = (data, filename) => {
   console.log(`Exporting ${data.length} records to ${filename} (CSV)`);
   alert(`Downloading ${filename}`);
@@ -58,32 +56,194 @@ const exportPDF = (data, filename) => {
   // Actual PDF generation logic would go here
 };
 
+// Placeholder for a Chatbot Icon URL
+const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
+
 // --- Main Component ---
 
 function LoadCellReport() {
-  // Form State
-  const [imei, setImei] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [showAverage, setShowAverage] = useState(true);
-  const [showData, setShowData] = useState(true);
-  const [exportFormat, setExportFormat] = useState("");
+  // ⭐️ USE CUSTOM HOOK FOR ALL REPORT LOGIC AND STATE ⭐️
+  const {
+    imei,
+    setImei,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    showAverage,
+    setShowAverage,
+    showData,
+    setShowData,
+    exportFormat,
+    setExportFormat,
+    chartData,
+    dateRange,
+    showDownloadOptions,
+    handleSubmit, // Now contains the API call logic
+  } = useLoadCellReportLogic(); // 🚨 Hook replaces the manual state and mock submit
 
-  // Report State
-  const [chartData, setChartData] = useState(initialChartData);
-  const [dateRange, setDateRange] = useState("");
-  const [showDownloadOptions, setShowDownloadOptions] = useState(true); // Control visibility of download section
+  // ⭐️ START CHATBOT STATE & LOGIC (KEEP AS IS) ⭐️
+  const CHAT_STEP = useMemo(
+    () => ({
+      ASK_IMEI: "ask_imei",
+      SHOW_OPTIONS: "show_options",
+      COMPLETE: "complete",
+    }),
+    []
+  );
 
-  // Form Submission Handler
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Searching Load Cell Data:", { imei, fromDate, toDate });
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      type: "bot",
+      text: "Hello! I'm your virtual assistant. To begin, please provide the **IMEI** number of the device you want to manage.",
+    },
+  ]);
+  const [imeiInput, setImeiInput] = useState("");
+  const [chatStep, setChatStep] = useState(CHAT_STEP.ASK_IMEI);
 
-    // Simulate API call and setting results
-    setDateRange(`Data from ${fromDate || "N/A"} to ${toDate || "N/A"}`);
-    setChartData(initialChartData); // Load fetched data here
-    setShowDownloadOptions(true);
+  const toggleChatbot = () => {
+    setIsChatbotOpen(!isChatbotOpen);
   };
+
+  const handleImeiSubmit = () => {
+    if (imeiInput.trim() === "") return;
+
+    // 1. Add user message
+    const newUserMessage = { type: "user", text: imeiInput.trim() };
+    setMessages((prev) => [...prev, newUserMessage]);
+
+    // 2. Clear input
+    setImeiInput("");
+
+    // 3. Simulate API call/processing delay and show bot response
+    setTimeout(() => {
+      const botResponse = {
+        type: "bot",
+        text: `Thank you. The IMEI **${newUserMessage.text}** has been successfully identified. What would you like to do next?`,
+      };
+      setMessages((prev) => [...prev, botResponse]);
+      setChatStep(CHAT_STEP.SHOW_OPTIONS); // Move to the next step
+      // Scroll to bottom (simulated)
+      const body = document.getElementById("chatbot-body-content");
+      if (body) body.scrollTop = body.scrollHeight;
+    }, 1000);
+  };
+
+  const handleOptionSelect = (option) => {
+    // 1. Add user message
+    const newUserMessage = { type: "user", text: option };
+    setMessages((prev) => [...prev, newUserMessage]);
+
+    // 2. Simulate action and close conversation
+    setTimeout(() => {
+      let botResponseText = "";
+      if (option === "Alert Logs") {
+        botResponseText =
+          "You selected **Alert Logs**. I can navigate you to the appropriate section or provide a direct link to the log data.";
+      } else {
+        botResponseText = `You selected **${option}**. I will now open the corresponding dashboard view for this device.`;
+      }
+
+      const botResponse = {
+        type: "bot",
+        text: `${botResponseText} This conversation is now complete. You can close the widget.`,
+      };
+      setMessages((prev) => [...prev, botResponse]);
+      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
+      // Scroll to bottom (simulated)
+      const body = document.getElementById("chatbot-body-content");
+      if (body) body.scrollTop = body.scrollHeight;
+    }, 1000);
+  };
+
+  // --- INLINE STYLE OBJECTS FOR CHATBOT (KEEP AS IS) ---
+  const iconStyle = {
+    position: "fixed",
+    bottom: "30px",
+    right: "30px",
+    width: "60px",
+    height: "60px",
+    borderRadius: "50%",
+    cursor: "pointer",
+    zIndex: 10000,
+    backgroundColor: "#1A73E8", // MD Info color
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  };
+
+  const widgetStyle = {
+    position: "fixed",
+    bottom: "100px",
+    right: "30px",
+    width: "350px",
+    height: "450px",
+    backgroundColor: "#fff",
+    borderRadius: "8px",
+    boxShadow: "0 8px 30px rgba(0, 0, 0, 0.3)",
+    zIndex: 9999,
+    display: "flex",
+    flexDirection: "column",
+    opacity: isChatbotOpen ? 1 : 0,
+    visibility: isChatbotOpen ? "visible" : "hidden",
+    transform: isChatbotOpen ? "translateY(0)" : "translateY(20px)",
+    transition: "opacity 0.3s ease, transform 0.3s ease, visibility 0.3s",
+  };
+
+  const headerStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px 15px",
+    backgroundColor: "#1A73E8",
+    color: "white",
+    borderTopLeftRadius: "8px",
+    borderTopRightRadius: "8px",
+  };
+
+  const closeBtnStyle = {
+    background: "none",
+    border: "none",
+    color: "white",
+    fontSize: "1.5rem",
+    cursor: "pointer",
+    lineHeight: 1,
+  };
+
+  const bodyStyle = {
+    flexGrow: 1,
+    padding: "15px",
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  };
+
+  const footerStyle = {
+    padding: "10px 15px",
+    borderTop: "1px solid #eee",
+    display: "flex",
+    gap: "8px",
+  };
+
+  // Helper function to apply message styles based on type
+  const getMessageStyle = (type) => ({
+    maxWidth: "80%",
+    padding: "8px 12px",
+    borderRadius: "18px",
+    wordWrap: "break-word",
+    margin: "0",
+    fontSize: "0.9rem",
+    alignSelf: type === "user" ? "flex-end" : "flex-start",
+    backgroundColor: type === "user" ? "#1A73E8" : "#e9e9e9",
+    color: type === "user" ? "white" : "#333",
+    // Tapered edges for a more modern chat look
+    borderBottomLeftRadius: type === "user" ? "18px" : "2px",
+    borderBottomRightRadius: type === "user" ? "2px" : "18px",
+  });
+  // ⭐️ END CHATBOT STATE & LOGIC ⭐️
 
   return (
     <DashboardLayout>
@@ -99,10 +259,10 @@ function LoadCellReport() {
                 </MDTypography>
               </MDBox>
               <MDBox p={3}>
+                {/* ⭐️ Use the handleSubmit from the hook ⭐️ */}
                 <form onSubmit={handleSubmit}>
-                  {/* The grid structure mirrors the row g-3 and col-md-3 layout */}
                   <Grid container spacing={3} alignItems="flex-end">
-                    {/* IMEI Input */}
+                    {/* IMEI Input (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         IMEI
@@ -120,7 +280,7 @@ function LoadCellReport() {
                       />
                     </Grid>
 
-                    {/* From Date-Time */}
+                    {/* From Date-Time (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         From Date-Time
@@ -138,7 +298,7 @@ function LoadCellReport() {
                       />
                     </Grid>
 
-                    {/* To Date-Time */}
+                    {/* To Date-Time (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         To Date-Time
@@ -156,7 +316,7 @@ function LoadCellReport() {
                       />
                     </Grid>
 
-                    {/* Checkboxes and Search Button */}
+                    {/* Checkboxes and Search Button (Bound to hook state) */}
                     <Grid item xs={12} md={3} sx={{ display: "flex", alignItems: "center" }}>
                       {/* Average Checkbox */}
                       <FormControlLabel
@@ -197,7 +357,7 @@ function LoadCellReport() {
                     </Grid>
                   </Grid>
 
-                  {/* --- Download Options --- */}
+                  {/* --- Download Options (Bound to hook state) --- */}
                   {showDownloadOptions && chartData.length > 0 && (
                     <MDBox mt={4} display="flex" justifyContent="flex-end" alignItems="center">
                       <MDTypography variant="button" fontWeight="bold" mr={1.5}>
@@ -243,7 +403,7 @@ function LoadCellReport() {
           </Grid>
         </Grid>
 
-        {/* --- Graph Card --- */}
+        {/* --- Graph Card (Bound to hook state) --- */}
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
@@ -253,6 +413,7 @@ function LoadCellReport() {
                 </MDTypography>
               </MDBox>
               <MDBox p={3}>
+                {/* ⭐️ Use the dateRange from the hook ⭐️ */}
                 {dateRange && (
                   <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
                     {dateRange}
@@ -266,7 +427,6 @@ function LoadCellReport() {
                       margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      {/* Assuming your 'time' data needs to be formatted for a proper chart */}
                       <XAxis dataKey="time" />
                       <YAxis yAxisId="left" />
                       <Tooltip />
@@ -332,6 +492,112 @@ function LoadCellReport() {
           </Grid>
         </Grid>
       </MDBox>
+
+      {/* ⭐️ CHATBOT INTEGRATION SECTION (Remains the same) ⭐️ */}
+
+      <div style={iconStyle} onClick={toggleChatbot}>
+        <img
+          src={CHATBOT_ICON_PLACEHOLDER}
+          alt="Chatbot Icon"
+          style={{ width: 30, height: 30, filter: "invert(1)" }}
+        />
+      </div>
+
+      <div style={widgetStyle}>
+        <div style={headerStyle}>
+          <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
+            Virtual Assistant
+          </MDTypography>
+          <button style={closeBtnStyle} onClick={toggleChatbot}>
+            &times;
+          </button>
+        </div>
+
+        <div id="chatbot-body-content" style={bodyStyle}>
+          {messages.map((msg, index) => (
+            <div key={index} style={getMessageStyle(msg.type)}>
+              <MDTypography
+                variant="button"
+                fontWeight="regular"
+                color={msg.type === "user" ? "white" : "dark"}
+                dangerouslySetInnerHTML={{
+                  __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+                }}
+              />
+            </div>
+          ))}
+
+          {chatStep === CHAT_STEP.SHOW_OPTIONS && (
+            <MDBox mt={1}>
+              <MDButton
+                variant="outlined"
+                color="info"
+                fullWidth
+                sx={{ mb: 1.5 }}
+                onClick={() => handleOptionSelect("Track/Play")}
+              >
+                Track/Play
+              </MDButton>
+              <MDButton
+                variant="outlined"
+                color="info"
+                fullWidth
+                sx={{ mb: 1.5 }}
+                onClick={() => handleOptionSelect("Alert Logs")}
+              >
+                Alert Logs
+              </MDButton>
+              <MDButton
+                variant="outlined"
+                color="info"
+                fullWidth
+                onClick={() => handleOptionSelect("Trip Report")}
+              >
+                Trip Report
+              </MDButton>
+            </MDBox>
+          )}
+        </div>
+
+        <div style={footerStyle}>
+          {chatStep === CHAT_STEP.ASK_IMEI ? (
+            <>
+              <MDInput
+                type="text"
+                placeholder="Enter IMEI (e.g., 123456)"
+                value={imeiInput}
+                onChange={(e) => setImeiInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleImeiSubmit()}
+                size="small"
+                fullWidth
+              />
+              <MDButton
+                variant="gradient"
+                color="info"
+                iconOnly
+                onClick={handleImeiSubmit}
+                sx={{ minWidth: "40px", height: "36px" }}
+              >
+                <Icon>
+                  <SendIcon />
+                </Icon>
+              </MDButton>
+            </>
+          ) : (
+            <MDInput
+              type="text"
+              placeholder={
+                chatStep === CHAT_STEP.COMPLETE
+                  ? "Conversation is complete"
+                  : "Select an option above"
+              }
+              disabled
+              size="small"
+              fullWidth
+            />
+          )}
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
