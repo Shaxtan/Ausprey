@@ -11,14 +11,16 @@ const SERVICES = {
 class ApiService {
   getRequest(url, callback = null, header = true, base = SERVICES.main) {
     const headers = header ? { headers: authHeader() } : {};
-    axios
+    return axios
       .get(base + url, headers)
       .then((res) => {
         if (callback) callback(res);
+        return res; // Return the response for promise chaining
       })
       .catch((error) => {
-        callback({ message: error?.message });
+        if (callback) callback({ message: error?.message });
         callAlert("Error", error?.message);
+        throw error; // Re-throw to allow catch in caller
       });
   }
 
@@ -89,6 +91,50 @@ class ApiService {
       .catch((error) => {
         if (callback) callback({ message: error?.message });
         callAlert("Error", error?.message);
+      });
+  }
+  getTrackPlayHistory(data = {}, header = true) {
+    return this.postRequest("/reports/trackPlayHistory", data, header, SERVICES.dashboard)
+      .then((res) => {
+        // Normalize the response to match MapView's expected structure
+        const normalizedData = (res?.data?.data || []).map((item) => ({
+          name: item.vehicleNumber || item.imei,
+          lat: item.latitude,
+          lng: item.longitude,
+          ts: item.deviceTime,
+          speed: item.speed,
+          status: item.ign === "Y" ? "MOTION" : item.speed > 0 ? "MOTION" : "STOP", // Infer status
+        }));
+        return {
+          ...res,
+          data: {
+            response: {
+              report: normalizedData,
+            },
+          },
+        };
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch track play history");
+        throw error;
+      });
+  }
+  getVehicleImeis(accid = 1, header = true) {
+    return this.getRequest(`/reports/report/imeis?accid=${accid}`, null, header, SERVICES.dashboard)
+      .then((res) => {
+        const imeis = res?.data?.data?.imeis || [];
+        return {
+          ...res,
+          data: {
+            response: {
+              vehicles: imeis.map((imei) => ({ id: imei })),
+            },
+          },
+        };
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch vehicle IMEIs");
+        throw error;
       });
   }
 }

@@ -32,6 +32,7 @@ import TripReport from "layouts/tables/data/TripReport";
 
 // @mui icons
 import Icon from "@mui/material/Icon";
+import MapView from "layouts/LoadCellReport/MapView";
 
 const routes = [
   {
@@ -78,6 +79,14 @@ const routes = [
     icon: <Icon fontSize="small">notifications</Icon>,
     route: "/notifications",
     component: <Notifications />,
+  },
+  {
+    type: "collapse",
+    name: "Map View",
+    key: "notifications",
+    icon: <Icon fontSize="small">notifications</Icon>,
+    route: "/mapview",
+    component: <MapView />,
   },
 
   // ----------------------------------------------------------------------
