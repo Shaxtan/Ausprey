@@ -28,9 +28,8 @@ import Footer from "examples/Footer";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// ⭐ NEW: Import the custom map component
+// ⭐ NEW: Import the custom map component (now containing API logic)
 import LeafletControlsMap from "../notifications/LeafletControlsMap"; // Assuming this path is correct
-
 // ------------------------------------------------------------------
 // 🚀 LEAFLET ICON FIX (CRUCIAL): Imports and Configuration
 // ------------------------------------------------------------------
@@ -55,9 +54,8 @@ function Notifications() {
   const [successSB, setSuccessSB] = useState(false);
   const [infoSB, setInfoSB] = useState(false);
   const [warningSB, setWarningSB] = useState(false);
-  const [errorSB, setErrorSB] = useState(false);
+  const [errorSB, setErrorSB] = useState(false); // --- SNACKBAR HANDLERS (Omitted for brevity, assumed correct) ---
 
-  // --- SNACKBAR HANDLERS (Omitted for brevity, assumed correct) ---
   const openSuccessSB = () => setSuccessSB(true);
   const closeSuccessSB = () => setSuccessSB(false);
   const openInfoSB = () => setInfoSB(true);
@@ -67,15 +65,13 @@ function Notifications() {
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
 
-  // (Rest of the alertContent and renderSB definitions omitted for brevity)
-
   const alertContent = (name) => (
     <MDTypography variant="body2" color="white">
-      A simple {name} alert with{" "}
+            A simple {name} alert with      {" "}
       <MDTypography component="a" href="#" variant="body2" fontWeight="medium" color="white">
-        an example link
+                an example link      {" "}
       </MDTypography>
-      . Give it a click if you like.
+            . Give it a click if you like.    {" "}
     </MDTypography>
   );
 
@@ -131,16 +127,9 @@ function Notifications() {
       close={closeErrorSB}
       bgWhite
     />
-  );
+  ); // ------------------------------------------------------------------ // Map component replacement // ------------------------------------------------------------------
 
-  // ------------------------------------------------------------------
-  // 💡 Map component replacement
-  // We replace the SimpleMap with the complex LeafletControlsMap component.
-  // ------------------------------------------------------------------
-  const ComplexMap = <LeafletControlsMap />;
-  // ------------------------------------------------------------------
-
-  // ⭐️ START CHATBOT STATE & LOGIC ⭐️ (Omitted for brevity, assumed correct)
+  const ComplexMap = <LeafletControlsMap />; // ------------------------------------------------------------------ // ⭐️ START CHATBOT STATE & LOGIC ⭐️ (Omitted for brevity, assumed correct)
   const CHAT_STEP = useMemo(
     () => ({
       ASK_IMEI: "ask_imei",
@@ -165,24 +154,20 @@ function Notifications() {
   };
 
   const handleImeiSubmit = () => {
-    if (imeiInput.trim() === "") return;
+    if (imeiInput.trim() === "") return; // 1. Add user message
 
-    // 1. Add user message
     const newUserMessage = { type: "user", text: imeiInput.trim() };
-    setMessages((prev) => [...prev, newUserMessage]);
+    setMessages((prev) => [...prev, newUserMessage]); // 2. Clear input
 
-    // 2. Clear input
-    setImeiInput("");
+    setImeiInput(""); // 3. Simulate API call/processing delay and show bot response
 
-    // 3. Simulate API call/processing delay and show bot response
     setTimeout(() => {
       const botResponse = {
         type: "bot",
         text: `Thank you. The IMEI **${newUserMessage.text}** has been successfully identified. What would you like to do next?`,
       };
       setMessages((prev) => [...prev, botResponse]);
-      setChatStep(CHAT_STEP.SHOW_OPTIONS); // Move to the next step
-      // Scroll to bottom (simulated)
+      setChatStep(CHAT_STEP.SHOW_OPTIONS); // Move to the next step // Scroll to bottom (simulated)
       const body = document.getElementById("chatbot-body-content");
       if (body) body.scrollTop = body.scrollHeight;
     }, 1000);
@@ -191,9 +176,8 @@ function Notifications() {
   const handleOptionSelect = (option) => {
     // 1. Add user message
     const newUserMessage = { type: "user", text: option };
-    setMessages((prev) => [...prev, newUserMessage]);
+    setMessages((prev) => [...prev, newUserMessage]); // 2. Simulate action and close conversation
 
-    // 2. Simulate action and close conversation
     setTimeout(() => {
       let botResponseText = "";
       if (option === "Alert Logs") {
@@ -208,14 +192,11 @@ function Notifications() {
         text: `${botResponseText} This conversation is now complete. You can close the widget.`,
       };
       setMessages((prev) => [...prev, botResponse]);
-      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
-      // Scroll to bottom (simulated)
+      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete // Scroll to bottom (simulated)
       const body = document.getElementById("chatbot-body-content");
       if (body) body.scrollTop = body.scrollHeight;
     }, 1000);
-  };
-
-  // --- INLINE STYLE OBJECTS FOR CHATBOT ---
+  }; // --- INLINE STYLE OBJECTS FOR CHATBOT --- // ... (omitted for brevity)
 
   const iconStyle = {
     position: "fixed",
@@ -226,7 +207,7 @@ function Notifications() {
     borderRadius: "50%",
     cursor: "pointer",
     zIndex: 10000,
-    backgroundColor: "#1A73E8", // MD Info color
+    backgroundColor: "#1A73E8",
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
     display: "flex",
     justifyContent: "center",
@@ -285,9 +266,8 @@ function Notifications() {
     borderTop: "1px solid #eee",
     display: "flex",
     gap: "8px",
-  };
+  }; // Helper function to apply message styles based on type
 
-  // Helper function to apply message styles based on type
   const getMessageStyle = (type) => ({
     maxWidth: "80%",
     padding: "8px 12px",
@@ -298,71 +278,75 @@ function Notifications() {
     alignSelf: type === "user" ? "flex-end" : "flex-start",
     backgroundColor: type === "user" ? "#1A73E8" : "#e9e9e9",
     color: type === "user" ? "white" : "#333",
-    // Tapered edges for a more modern chat look
     borderBottomLeftRadius: type === "user" ? "18px" : "2px",
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
-  });
-  // ⭐️ END CHATBOT STATE & LOGIC ⭐️
-
+  }); // ⭐️ END CHATBOT STATE & LOGIC ⭐️
   return (
     <DashboardLayout>
-      <DashboardNavbar />
-
-      <MDBox pt={6} pb={3}>
-        {/* Alerts Section (Optional to keep) */}
-        <Grid container spacing={6}>
+            <DashboardNavbar /> {/* Navbar is here */}     {" "}
+      {/* The negative margin and pt/pb fixes make the map fill the vertical space */}     {" "}
+      <MDBox pt={0} pb={0} sx={{ marginTop: 0 }}>
+                {/* Alerts Section (Kept for completeness) */}       {" "}
+        <Grid container spacing={6} sx={{ display: "none" }}>
+          {" "}
+          {/* Hiding the alerts section to give max map space */}         {" "}
           <Grid item xs={12} lg={7}>
-            {/* Alerts implementation ... */}
+                        {/* Alerts implementation ... */}         {" "}
           </Grid>
+                   {" "}
           <Grid item xs={12} lg={5}>
-            {/* Snackbar buttons ... */}
+                        {/* Snackbar buttons ... */}         {" "}
           </Grid>
+                 {" "}
         </Grid>
-
-        {/* Map Section */}
-        <Grid container spacing={6} mt={3}>
+                {/* Map Section */}       {" "}
+        <Grid container spacing={6} mt={0}>
+                   {" "}
           <Grid item xs={12}>
-            <Card>
-              <MDBox p={3}>{ComplexMap}</MDBox>
+                       {" "}
+            <Card sx={{ minHeight: "calc(100vh - 120px)" }}>
+              {" "}
+              {/* Adjusted minHeight for better full-page experience */}             {" "}
+              <MDBox p={0}>{ComplexMap}</MDBox>           {" "}
             </Card>
+                     {" "}
           </Grid>
+                 {" "}
         </Grid>
+             {" "}
       </MDBox>
-
-      {/* Render the snackbar components */}
-      {renderSuccessSB}
-      {renderInfoSB}
-      {renderWarningSB}
-      {renderErrorSB}
-
-      <Footer />
-
-      {/* ⭐️ START CHATBOT INTEGRATION SECTION ⭐️ */}
-
-      {/* ⭐️ CHATBOT ICON BUTTON */}
+            {/* Render the snackbar components */}      {renderSuccessSB}      {renderInfoSB}     {" "}
+      {renderWarningSB}      {renderErrorSB}      {/* ⭐️ START CHATBOT INTEGRATION SECTION ⭐️ */} 
+          {/* ⭐️ CHATBOT ICON BUTTON */}     {" "}
       <div style={iconStyle} onClick={toggleChatbot}>
+               {" "}
         <img
           src={CHATBOT_ICON_PLACEHOLDER}
           alt="Chatbot Icon"
           style={{ width: 30, height: 30, filter: "invert(1)" }}
         />
+             {" "}
       </div>
-
-      {/* ⭐️ CHATBOT WIDGET PANEL */}
+            {/* ⭐️ CHATBOT WIDGET PANEL */}     {" "}
       <div style={widgetStyle}>
+               {" "}
         <div style={headerStyle}>
+                   {" "}
           <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
-            Virtual Assistant
+                        Virtual Assistant          {" "}
           </MDTypography>
+                   {" "}
           <button style={closeBtnStyle} onClick={toggleChatbot}>
-            &times;
+                        &times;          {" "}
           </button>
+                 {" "}
         </div>
-
-        {/* Chat Body */}
+                {/* Chat Body */}       {" "}
         <div id="chatbot-body-content" style={bodyStyle}>
+                   {" "}
           {messages.map((msg, index) => (
             <div key={index} style={getMessageStyle(msg.type)}>
+                           {" "}
               <MDTypography
                 variant="button"
                 fontWeight="regular"
@@ -371,12 +355,13 @@ function Notifications() {
                   __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
                 }}
               />
+                         {" "}
             </div>
           ))}
-
-          {/* Quick Links / Options */}
+                    {/* Quick Links / Options */}         {" "}
           {chatStep === CHAT_STEP.SHOW_OPTIONS && (
             <MDBox mt={1}>
+                           {" "}
               <MDButton
                 variant="outlined"
                 color="info"
@@ -384,8 +369,9 @@ function Notifications() {
                 sx={{ mb: 1.5 }}
                 onClick={() => handleOptionSelect("Track/Play")}
               >
-                Track/Play
+                                Track/Play              {" "}
               </MDButton>
+                           {" "}
               <MDButton
                 variant="outlined"
                 color="info"
@@ -393,24 +379,28 @@ function Notifications() {
                 sx={{ mb: 1.5 }}
                 onClick={() => handleOptionSelect("Alert Logs")}
               >
-                Alert Logs
+                                Alert Logs              {" "}
               </MDButton>
+                           {" "}
               <MDButton
                 variant="outlined"
                 color="info"
                 fullWidth
                 onClick={() => handleOptionSelect("Trip Report")}
               >
-                Trip Report
+                                Trip Report              {" "}
               </MDButton>
+                         {" "}
             </MDBox>
           )}
+                 {" "}
         </div>
-
-        {/* Chat Input/Footer */}
+                {/* Chat Input/Footer */}       {" "}
         <div style={footerStyle}>
+                   {" "}
           {chatStep === CHAT_STEP.ASK_IMEI ? (
             <>
+                           {" "}
               <MDInput
                 type="text"
                 placeholder="Enter IMEI (e.g., 123456)"
@@ -420,6 +410,7 @@ function Notifications() {
                 size="small"
                 fullWidth
               />
+                           {" "}
               <MDButton
                 variant="gradient"
                 color="info"
@@ -427,10 +418,13 @@ function Notifications() {
                 onClick={handleImeiSubmit}
                 sx={{ minWidth: "40px", height: "36px" }}
               >
+                               {" "}
                 <Icon>
-                  <SendIcon />
+                                    <SendIcon />               {" "}
                 </Icon>
+                             {" "}
               </MDButton>
+                         {" "}
             </>
           ) : (
             <MDInput
@@ -445,9 +439,11 @@ function Notifications() {
               fullWidth
             />
           )}
+                 {" "}
         </div>
+             {" "}
       </div>
-      {/* ⭐️ END CHATBOT INTEGRATION SECTION ⭐️ */}
+            {/* ⭐️ END CHATBOT INTEGRATION SECTION ⭐️ */}   {" "}
     </DashboardLayout>
   );
 }
