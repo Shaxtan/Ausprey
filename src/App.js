@@ -45,17 +45,15 @@ export default function App() {
     layout,
     openConfigurator,
     sidenavColor,
+    // eslint-disable-next-line no-unused-vars
     transparentSidenav,
+    // eslint-disable-next-line no-unused-vars
     whiteSidenav,
     darkMode,
   } = controller;
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
-
-  // ----------------------------------------------------
-  // ❌ REMOVED: The custom StyledLogo definition is removed
-  // ----------------------------------------------------
 
   // Cache for the rtl
   useMemo(() => {
@@ -79,7 +77,7 @@ export default function App() {
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
-      setOnMouseEnter(false);
+      setOnMouseLeave(false);
     }
   };
 
@@ -97,9 +95,6 @@ export default function App() {
     document.scrollingElement.scrollTop = 0;
   }, [pathname]);
 
-  /**
-   * 💡 CORRECTED ROUTE FUNCTION 💡
-   */
   const getRoutes = (allRoutes) =>
     allRoutes.reduce((routesArray, route) => {
       if (route.collapse) {
@@ -115,7 +110,6 @@ export default function App() {
 
       return routesArray;
     }, []);
-  // ----------------------------------------------------
 
   const configsButton = (
     <MDBox
@@ -149,13 +143,21 @@ export default function App() {
           <>
             <Sidenav
               color={sidenavColor}
-              // ✅ Reverted to passing the image variable
               brand={mainLogo}
-              // ❌ Removed text
               brandName=""
               routes={routes}
               onMouseEnter={handleOnMouseEnter}
               onMouseLeave={handleOnMouseLeave}
+              sx={{
+                "& .MuiBox-root img": {
+                  width: "186px !important",
+                  height: "auto !important",
+                  // ⭐ NEW: Add borderRadius for a rounded border
+                  borderRadius: "8px !important", // Adjust value as needed (e.g., '50%' for circular)
+                  // Optionally, add a subtle border if desired
+                  // border: '1px solid #ddd !important',
+                },
+              }}
             />
             <Configurator />
             {configsButton}
@@ -175,13 +177,20 @@ export default function App() {
         <>
           <Sidenav
             color={sidenavColor}
-            // ✅ Reverted to passing the image variable
             brand={mainLogo}
-            // ❌ Removed text
             brandName=""
             routes={routes}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
+            sx={{
+              "& .MuiBox-root img": {
+                width: "186px !important",
+                height: "auto !important",
+                // ⭐ NEW: Add borderRadius for a rounded border
+                borderRadius: "8px !important", // Adjust value as needed
+                // border: '1px solid #ddd !important',
+              },
+            }}
           />
           <Configurator />
           {configsButton}
