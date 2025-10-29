@@ -1160,27 +1160,34 @@ const LeafletControlsMap = () => {
    * The Map is a full-width Grid item. The Panel is an 
    * absolute-positioned MDBox that slides over the map.
    ---------------------------------------------------- */
+  // LeafletControlsMap.js (The map component)
+
+  // ... (imports and component function definition omitted for brevity)
   return (
-    // Outer container for the full screen area
+    // Outer container for the full screen area - No major change here, just cleaning up comments
     <MDBox
       width="100%"
       sx={{
-        position: "relative", // Needed for absolute positioning of the sidebar
+        position: "relative",
         borderRadius: "0.75rem",
         overflow: "hidden",
         border: "1px solid #ddd",
         boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-        marginTop: `-184px !important`,
-        height: `calc(100vh - 90px)`,
+        backgroundColor: `#EFF1F4 !important`,
+        height: `100% !important`,
+        marginTop: `0px !important`,
         marginBottom: "0px",
+        // Adding flex container properties for full-height children, though absolute positioning handles layout here.
+        // Keeping current relative layout since sidebar is absolute.
       }}
     >
       {/* ⭐ 1. Floating Toggle Button (Controls Sidebar Visibility) */}
+      {/* CRITICAL FIX: The button's transition is what moves it with the sidebar. Its position is relative to the MDBox container. */}
       <MDBox
         sx={{
           position: "absolute",
           top: "10px",
-          // Dynamically adjust button position: either 10px from left (closed) or SIDEBAR_WIDTH (open)
+          // Button moves from 10px from the left (closed) to the SIDEBAR_WIDTH (open)
           left: isPanelVisible ? SIDEBAR_WIDTH : "10px",
           zIndex: 1000,
           transition: "left 0.3s ease-in-out",
@@ -1198,13 +1205,21 @@ const LeafletControlsMap = () => {
         </MDButton>
       </MDBox>
 
-      {/* Grid container holds ONLY the full-width map */}
-      <Grid container spacing={0} sx={{ height: "100%" }}>
-        {/* ⭐ 2. Map Container (Always Full Width Grid Item) */}
-        <Grid item xs={12} sm={12} md={12} lg={12} xl={12}>
-          <div id="mapCanvas" style={{ height: "100%", width: "100%", zIndex: 0 }}></div>
-        </Grid>
-      </Grid>
+      {/* ⭐ 2. Map Container (NEW LAYOUT) */}
+      {/* CRITICAL FIX: Use conditional margin-left on the map container to clear the space when the sidebar is visible. */}
+      <MDBox
+        sx={{
+          height: "100%",
+          width: "100%",
+          zIndex: 0,
+          transition: "margin-left 0.3s ease-in-out, width 0.3s ease-in-out",
+          // If panel is visible, push the map to the right by SIDEBAR_WIDTH and reduce its effective width.
+          marginLeft: isPanelVisible ? SIDEBAR_WIDTH : "0px",
+          width: isPanelVisible ? `calc(100% - ${SIDEBAR_WIDTH})` : "100%", // Also adjust width to prevent scrollbar
+        }}
+      >
+        <div id="mapCanvas" style={{ height: "100%", width: "100%", zIndex: 0 }}></div>
+      </MDBox>
 
       {/* ⭐ 3. Control Panel (Sidebar) - ABSOLUTE POSITIONED MDBox */}
       <MDBox
@@ -1217,14 +1232,13 @@ const LeafletControlsMap = () => {
           left: 0,
           width: SIDEBAR_WIDTH, // Fixed width
           height: "100%",
-          zIndex: 900, // Below the button, above the map
+          zIndex: 900,
           overflowY: "auto",
           borderRight: "1px solid #eee",
           // Smooth Slide Effect: Use transform to move it off-screen
           transform: isPanelVisible ? "translateX(0)" : `translateX(-${SIDEBAR_WIDTH})`,
           transition: "transform 0.3s ease-in-out",
           boxShadow: "4px 0 6px rgba(0,0,0,0.1)",
-
           // Retain original form control styles
           "& .react-datepicker-wrapper, & .react-datepicker__input-container, & .form-control": {
             width: "100%",
@@ -1248,7 +1262,6 @@ const LeafletControlsMap = () => {
         <MDTypography variant="h6" mb={2} color="info">
           Track Play Controls
         </MDTypography>
-
         {/* Select Vehicle */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
           Select Vehicle
@@ -1265,6 +1278,9 @@ const LeafletControlsMap = () => {
             size="small"
             inputProps={{ native: true }}
           >
+            <option value="" disabled>
+              -- Select Vehicle --
+            </option>
             {vehicleList.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.id}
@@ -1272,7 +1288,6 @@ const LeafletControlsMap = () => {
             ))}
           </MDInput>
         </MDBox>
-
         {/* Date/Time Range */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
           📅 Select Date/Time Range
@@ -1303,7 +1318,6 @@ const LeafletControlsMap = () => {
             className="form-control"
           />
         </MDBox>
-
         {/* Submit Button with API Call */}
         <MDButton
           variant="gradient"
@@ -1321,7 +1335,6 @@ const LeafletControlsMap = () => {
             </>
           )}
         </MDButton>
-
         {/* Status Filter and Playback Controls (Conditional) */}
         {showHistory && filteredData.length > 0 && (
           <>
@@ -1379,7 +1392,6 @@ const LeafletControlsMap = () => {
                 );
               })}
             </MDBox>
-
             {/* Playback Buttons */}
             <MDBox display="flex" gap={1} mb={3}>
               <MDButton
@@ -1401,7 +1413,6 @@ const LeafletControlsMap = () => {
                 <Icon sx={{ mr: 0.5 }}>stop</Icon> Stop
               </MDButton>
             </MDBox>
-
             {/* History and Download Toggles */}
             <MDTypography
               variant="button"
@@ -1415,7 +1426,6 @@ const LeafletControlsMap = () => {
               </Icon>{" "}
               View History ({filteredData.length})
             </MDTypography>
-
             {/* Vehicle History List */}
             {showVehicleHistory && (
               <MDBox
@@ -1456,14 +1466,13 @@ const LeafletControlsMap = () => {
                       >
                         access_time
                       </Icon>
-                      {formatTimestamp(parseCustomDateTime(rec.ts))} — {rec.status} @{" "}
+                      {formatTimestamp(parseCustomDateTime(rec.ts))} — {rec.status} @
                       <strong>{rec.speed ?? "N/A"} km/h</strong>
                     </MDTypography>
                   </MDBox>
                 ))}
               </MDBox>
             )}
-
             {/* Download Report Section */}
             <MDTypography
               variant="button"
@@ -1477,7 +1486,6 @@ const LeafletControlsMap = () => {
               </Icon>{" "}
               Download Report
             </MDTypography>
-
             {showDownload && (
               <MDBox p={1} borderRadius="md" sx={{ border: "1px dashed #ddd" }}>
                 <MDInput
@@ -1495,7 +1503,6 @@ const LeafletControlsMap = () => {
                   <option value="excel">Excel</option>
                   <option value="pdf">PDF</option>
                 </MDInput>
-
                 <MDButton
                   variant="gradient"
                   color="secondary"
@@ -1520,7 +1527,6 @@ const LeafletControlsMap = () => {
         )}
         {/* ---------------------------------------------------- */}
         {/* 🛑 END OF SIDEBAR CONTENT (Absolute MDBox) 🛑 */}
-        {/* ---------------------------------------------------- */}
       </MDBox>
     </MDBox>
   );

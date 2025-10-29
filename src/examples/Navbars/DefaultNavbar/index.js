@@ -8,7 +8,7 @@
 
 Coded by www.creative-tim.com
 
- =========================================================
+ =========================================================
 
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
@@ -60,23 +60,20 @@ function DefaultNavbar({ transparent, light, action }) {
         setMobileView(false);
         setMobileNavbar(false);
       }
-    }
+    } /**      The event listener that's calling the displayMobileNavbar function when 
+     resizing the window.
+    */
 
-    /** 
-     The event listener that's calling the displayMobileNavbar function when 
-     resizing the window.
-    */
-    window.addEventListener("resize", displayMobileNavbar);
+    window.addEventListener("resize", displayMobileNavbar); // Call the displayMobileNavbar function to set the state with the initial value.
 
-    // Call the displayMobileNavbar function to set the state with the initial value.
-    displayMobileNavbar();
+    displayMobileNavbar(); // Remove event listener on cleanup
 
-    // Remove event listener on cleanup
     return () => window.removeEventListener("resize", displayMobileNavbar);
   }, []);
 
   return (
     <Container>
+           {" "}
       <MDBox
         py={1}
         px={{ xs: 4, sm: transparent ? 2 : 3, lg: transparent ? 0 : 2 }}
@@ -102,6 +99,7 @@ function DefaultNavbar({ transparent, light, action }) {
           backdropFilter: transparent ? "none" : `saturate(200%) blur(30px)`,
         })}
       >
+               {" "}
         <MDBox
           component={Link}
           to="/"
@@ -109,29 +107,45 @@ function DefaultNavbar({ transparent, light, action }) {
           lineHeight={1}
           pl={{ xs: 0, lg: 1 }}
         >
+                   {" "}
           <MDTypography variant="button" fontWeight="bold" color={light ? "white" : "dark"}>
-            Ausprey
+                        Ausprey          {" "}
           </MDTypography>
+                 {" "}
         </MDBox>
+               {" "}
         <MDBox color="inherit" display={{ xs: "none", lg: "flex" }} m={0} p={0}>
+                   {" "}
           <DefaultNavbarLink icon="donut_large" name="dashboard" route="/dashboard" light={light} />
+                   {" "}
           <DefaultNavbarLink icon="person" name="profile" route="/profile" light={light} />
+          {/* // ----------------------------------------------------
+            // MODIFIED CODE: Replaced "sign up" with "sign out"
+            // Ensure the route matches the one you set up for logout logic
+            // (e.g., in the previous step: /authentication/sign-out)
+            // ----------------------------------------------------
+          */}
+                   {" "}
           <DefaultNavbarLink
-            icon="account_circle"
-            name="sign up"
-            route="/authentication/sign-up"
+            icon="logout"
+            name="sign out"
+            route="/authentication/sign-out"
             light={light}
           />
+                   {" "}
           <DefaultNavbarLink
             icon="key"
             name="sign in"
             route="/authentication/sign-in"
             light={light}
           />
+                 {" "}
         </MDBox>
+               {" "}
         {action &&
           (action.type === "internal" ? (
             <MDBox display={{ xs: "none", lg: "inline-block" }}>
+                           {" "}
               <MDButton
                 component={Link}
                 to={action.route}
@@ -139,11 +153,13 @@ function DefaultNavbar({ transparent, light, action }) {
                 color={action.color ? action.color : "info"}
                 size="small"
               >
-                {action.label}
+                                {action.label}             {" "}
               </MDButton>
+                         {" "}
             </MDBox>
           ) : (
             <MDBox display={{ xs: "none", lg: "inline-block" }}>
+                           {" "}
               <MDButton
                 component="a"
                 href={action.route}
@@ -154,10 +170,12 @@ function DefaultNavbar({ transparent, light, action }) {
                 size="small"
                 sx={{ mt: -0.3 }}
               >
-                {action.label}
+                                {action.label}             {" "}
               </MDButton>
+                         {" "}
             </MDBox>
           ))}
+               {" "}
         <MDBox
           display={{ xs: "inline-block", lg: "none" }}
           lineHeight={0}
@@ -167,10 +185,11 @@ function DefaultNavbar({ transparent, light, action }) {
           sx={{ cursor: "pointer" }}
           onClick={openMobileNavbar}
         >
-          <Icon fontSize="default">{mobileNavbar ? "close" : "menu"}</Icon>
+                    <Icon fontSize="default">{mobileNavbar ? "close" : "menu"}</Icon>       {" "}
         </MDBox>
+             {" "}
       </MDBox>
-      {mobileView && <DefaultNavbarMobile open={mobileNavbar} close={closeMobileNavbar} />}
+            {mobileView && <DefaultNavbarMobile open={mobileNavbar} close={closeMobileNavbar} />}   {" "}
     </Container>
   );
 }
