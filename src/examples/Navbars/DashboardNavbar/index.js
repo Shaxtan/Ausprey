@@ -149,7 +149,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
       {/* Redirection to Sign Up. Uses `component={Link}` and `to` from react-router-dom */}
       <MenuItem onClick={handleCloseAuthMenu} component={Link} to="/authentication/sign-up">
         <MDTypography variant="button" fontWeight="regular" color="dark">
-          Sign Up
+          Sign Out
         </MDTypography>
       </MenuItem>
     </Menu>
