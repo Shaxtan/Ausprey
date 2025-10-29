@@ -13,7 +13,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { AlertSuccess, callAlert } from "../../services/CommonService";
 
-// Material Dashboard 2 React components (Assuming these imports are handled correctly)
+// Material Dashboard 2 React components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
@@ -79,6 +79,9 @@ const LeafletControlsMap = () => {
   const zoomDivRef = useRef(null);
   const animatedMarkerRef = useRef(null);
   const animationTimeoutRef = useRef(null);
+
+  // State for panel visibility, kept for potential future use,
+  // but the auto-hide logic is removed.
   const [isPanelVisible, setIsPanelVisible] = useState(true);
 
   const [vehicleList, setVehicleList] = useState([]);
@@ -165,10 +168,11 @@ const LeafletControlsMap = () => {
   // Other logic (Panel, Map Setup, Draw Markers, etc.)
   ---------------------------------------------------- */
 
+  // ❌ FIX 1: Removed logic that hides the panel after inactivity
   useEffect(() => {
-    // ... Inactivity timer logic (omitted for brevity)
-    if (!isPanelVisible) return;
-
+    // if (!isPanelVisible) return; // Keep this line if you re-introduce visibility logic elsewhere
+    /*
+    // ❌ OLD LOGIC COMMENTED OUT TO PREVENT AUTO-HIDE
     const resetTimer = () => {
       if (inactivityTimerRef.current) {
         clearTimeout(inactivityTimerRef.current);
@@ -195,10 +199,11 @@ const LeafletControlsMap = () => {
       }
       clearTimeout(inactivityTimerRef.current);
     };
-  }, [isPanelVisible]);
+    */
+  }, [isPanelVisible]); // Dependency remains, but effect is now empty of auto-hide logic
 
   const simulateMovement = () => {
-    // ... (original simulateMovement logic, omitted for brevity)
+    // ... (simulateMovement logic, unchanged)
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
 
@@ -292,7 +297,7 @@ const LeafletControlsMap = () => {
   };
 
   const indiaCenter = { lat: 22.5589409, lng: 75.6089374 };
-  const baseMaps = CreateTileLayers();
+  const baseMaps = createTileLayers();
 
   /* ---------- marker icons ---------- */
   const redIcon = new L.Icon({
@@ -623,8 +628,10 @@ const LeafletControlsMap = () => {
                 transition: "border-color 0.3s",
                 "&:focus": { borderColor: "#1A73E8", outline: "none" },
               },
-              transition: "transform 0.3s ease-in-out",
-              transform: isPanelVisible ? "translateX(0)" : "translateX(-100%)",
+
+              // ❌ FIX 2: Removed transform and transition responsible for sliding the panel out
+              // transition: "transform 0.3s ease-in-out",
+              // transform: isPanelVisible ? "translateX(0)" : "translateX(-100%)",
             }}
           >
             <MDTypography variant="h6" mb={2} color="info">
@@ -920,12 +927,12 @@ const LeafletControlsMap = () => {
           <div
             id="mapCanvas"
             style={{ height: "100%", width: "100%", zIndex: 0 }}
-            onClick={() => setIsPanelVisible(true)}
+            // ❌ FIX 3: Removed onClick handler that would override any attempt to manually hide the panel.
+            // onClick={() => setIsPanelVisible(true)}
           ></div>
         </Grid>
       </Grid>
     </MDBox>
   );
 };
-
 export default LeafletControlsMap;
