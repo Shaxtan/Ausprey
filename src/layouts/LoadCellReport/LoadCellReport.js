@@ -66,6 +66,7 @@ function LoadCellReport() {
   const {
     imei,
     setImei,
+    imeis, // ADD THIS LINE
     fromDate,
     setFromDate,
     toDate,
@@ -79,9 +80,8 @@ function LoadCellReport() {
     chartData,
     dateRange,
     showDownloadOptions,
-    handleSubmit, // Now contains the API call logic
-  } = useLoadCellReportLogic(); // 🚨 Hook replaces the manual state and mock submit
-
+    handleSubmit,
+  } = useLoadCellReportLogic();
   // ⭐️ START CHATBOT STATE & LOGIC (KEEP AS IS) ⭐️
   const CHAT_STEP = useMemo(
     () => ({
@@ -267,19 +267,27 @@ function LoadCellReport() {
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         IMEI
                       </MDTypography>
-                      <TextField
-                        type="text"
-                        fullWidth
-                        id="imeiInput"
-                        value={imei}
-                        onChange={(e) => setImei(e.target.value)}
-                        placeholder="Enter IMEI"
-                        required
-                        variant="outlined"
-                        size="small"
-                      />
+                      <FormControl fullWidth size="small" variant="outlined">
+                        <InputLabel id="imei-select-label">Select IMEI</InputLabel>
+                        <Select
+                          labelId="imei-select-label"
+                          id="imeiSelect"
+                          value={imei}
+                          label="Select IMEI"
+                          onChange={(e) => setImei(e.target.value)}
+                          required
+                        >
+                          <MenuItem value="" disabled>
+                            -- Select IMEI --
+                          </MenuItem>
+                          {imeis.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </Grid>
-
                     {/* From Date-Time (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
