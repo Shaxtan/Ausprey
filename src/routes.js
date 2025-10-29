@@ -80,14 +80,14 @@ const routes = [
     route: "/notifications",
     component: <Notifications />,
   },
-  {
-    type: "collapse",
-    name: "Map View",
-    key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
-    route: "/mapview",
-    component: <MapView />,
-  },
+  // {
+  //   type: "collapse",
+  //   name: "Map View",
+  //   key: "notifications",
+  //   icon: <Icon fontSize="small">notifications</Icon>,
+  //   route: "/mapview",
+  //   component: <MapView />,
+  // },
 
   // ----------------------------------------------------------------------
   // ** CORRECTED LOAD CELL REPORT ROUTE **
