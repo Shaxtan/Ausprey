@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // 🚀 IMPORTED useEffect
 // react-router-dom components
 import { Link, useNavigate } from "react-router-dom";
 // @mui material components
@@ -6,21 +6,19 @@ import Card from "@mui/material/Card";
 import Switch from "@mui/material/Switch";
 import Grid from "@mui/material/Grid";
 import MuiLink from "@mui/material/Link";
+import Box from "@mui/material/Box";
+
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 
-// Authentication layout components
-import BasicLayout from "layouts/authentication/components/BasicLayout";
-
 // Images
 import bgImage from "assets/images/bg-sign-in-basic.jpeg";
 
 // =================================================================
-// CORRECTED IMPORTS: Resolved "Module not found" errors
-// Using '../../../' to navigate from 'src/layouts/authentication/sign-in' to 'src/services'
+// CORRECTED IMPORTS
 import apiService from "../../../services/ApiService";
 import { saveTokenInLocalStorage } from "../../../services/AuthService";
 import { callAlertConfirm } from "../../../services/CommonService";
@@ -31,14 +29,26 @@ const PROJECT_NAME = process.env.REACT_APP_PROJECT_NAME;
 
 function Basic() {
   const [rememberMe, setRememberMe] = useState(false);
-
-  // State from the original Login component
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  // 🚀 GUARANTEED NO-SCROLL FIX: Use useEffect to target the global body style
+  useEffect(() => {
+    // Save the original body overflow style
+    const originalStyle = document.body.style.overflow;
+
+    // Set overflow to hidden when the component mounts
+    document.body.style.overflow = "hidden";
+
+    // Restore the original body overflow style when the component unmounts
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []); // Run only once on mount and cleanup on unmount
 
   const handleSetRememberMe = () => setRememberMe(!rememberMe);
 
@@ -57,7 +67,6 @@ function Basic() {
       .then((response) => {
         setIsLoading(false);
         if (response?.data.resultCode === 208) {
-          // Logic for concurrent login prevention or similar
           callAlertConfirm(
             "",
             response?.data.message,
@@ -69,21 +78,17 @@ function Basic() {
         } else if (response?.data.data) {
           saveTokenInLocalStorage(response?.data?.data);
 
-          // Navigation logic based on PROJECT_NAME
           if (PROJECT_NAME === "ALOK") {
             navigate("/load-cell-report");
           } else {
             navigate("/dashboard");
           }
-          // The original component reloads the page after navigation
           setTimeout(() => window.location.reload(), 0);
         } else {
-          // Handle other unsuccessful login responses
           setError(response?.data?.message || "Login failed.");
         }
       })
       .catch((err) => {
-        // console.error("Login API Error:", err);
         alert("Login failed.");
         setIsLoading(false);
         setError("Login failed. Please check your credentials.");
@@ -96,36 +101,98 @@ function Basic() {
   };
 
   return (
-    <BasicLayout image={bgImage}>
-      <Card>
+    // ROOT CONTAINER: Enforces full viewport and centers content
+    <Box
+      sx={{
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden", // Local overflow hidden (backup)
+        padding: 0,
+        marginTop: "-33px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        // Background Image Styling
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <Card
+        sx={{
+          maxWidth: 400,
+          width: "90%",
+          borderRadius: "16px",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+          zIndex: 10,
+          backgroundColor: "rgba(255, 255, 255, 0.95)",
+        }}
+      >
         <MDBox
           variant="gradient"
           bgColor="info"
-          borderRadius="lg"
+          borderRadius="12px"
           coloredShadow="info"
-          mx={2}
-          mt={-3}
-          p={2}
-          mb={1}
+          mx={3}
+          mt={-4}
+          p={3}
+          mb={4}
           textAlign="center"
+          sx={{
+            boxShadow: "0 8px 15px rgba(50, 50, 93, 0.2), 0 3px 6px rgba(0, 0, 0, 0.2)",
+          }}
         >
-          <MDTypography variant="h4" fontWeight="medium" color="white" mt={1}>
-            Sign in
+          <MDTypography
+            variant="h3"
+            fontWeight="900"
+            color="white"
+            mt={1}
+            sx={{
+              letterSpacing: "1.5px",
+            }}
+          >
+            LOGIN
           </MDTypography>
         </MDBox>
-        <MDBox pt={4} pb={3} px={3}>
+        <MDBox pt={1} pb={3} px={4}>
           <MDBox component="form" role="form" onSubmit={handleSubmit}>
-            <MDBox mb={2}>
+            <MDBox mb={3}>
               <MDInput
                 type="text"
-                label="Username/E-mail"
+                label="Username / E-mail"
                 fullWidth
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={isLoading}
+                variant="outlined"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: "#bdbdbd",
+                      borderWidth: "1px",
+                      transition: "all 0.3s ease",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#1976d2",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
+                    },
+                    borderRadius: "8px",
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#616161",
+                    fontWeight: "500",
+                    "&.Mui-focused": {
+                      color: "#1976d2",
+                    },
+                  },
+                }}
               />
             </MDBox>
-            <MDBox mb={2}>
+            <MDBox mb={3}>
               <MDInput
                 type="password"
                 label="Password"
@@ -133,20 +200,53 @@ function Basic() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
+                variant="outlined"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: "#bdbdbd",
+                      borderWidth: "1px",
+                      transition: "all 0.3s ease",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#1976d2",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
+                    },
+                    borderRadius: "8px",
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#616161",
+                    fontWeight: "500",
+                    "&.Mui-focused": {
+                      color: "#1976d2",
+                    },
+                  },
+                }}
               />
             </MDBox>
 
             {/* Display error message */}
             {error && (
               <MDBox mb={2} textAlign="center">
-                <MDTypography variant="caption" color="error">
+                <MDTypography
+                  variant="caption"
+                  color="error"
+                  sx={{
+                    fontSize: "0.9rem",
+                    fontWeight: "bold",
+                    color: "#e53935 !important",
+                  }}
+                >
                   {error}
                 </MDTypography>
               </MDBox>
             )}
 
-            <MDBox display="flex" alignItems="center" ml={-1}>
-              <Switch checked={rememberMe} onChange={handleSetRememberMe} />
+            <MDBox display="flex" alignItems="center" ml={-1} mb={3}>
+              <Switch checked={rememberMe} onChange={handleSetRememberMe} color="info" />
               <MDTypography
                 variant="button"
                 fontWeight="regular"
@@ -157,15 +257,23 @@ function Basic() {
                 &nbsp;&nbsp;Remember me
               </MDTypography>
             </MDBox>
-            <MDBox mt={4} mb={1}>
+            <MDBox mt={2} mb={1}>
               <MDButton
-                variant="gradient"
+                variant="contained"
                 color="info"
                 fullWidth
                 type="submit"
                 disabled={isLoading}
+                sx={{
+                  fontWeight: "900",
+                  padding: "12px 0",
+                  fontSize: "1rem",
+                  letterSpacing: "1px",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                }}
               >
-                {isLoading ? "Logging in..." : "sign in"}
+                {isLoading ? "AUTHENTICATING..." : "SIGN IN"}
               </MDButton>
             </MDBox>
 
@@ -175,7 +283,11 @@ function Basic() {
                 variant="button"
                 component={Link}
                 onClick={handleForgotPassword}
-                sx={{ cursor: "pointer" }}
+                sx={{
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontSize: "0.85rem",
+                }}
                 color="info"
                 fontWeight="medium"
                 textGradient
@@ -183,26 +295,10 @@ function Basic() {
                 Forgot your password?
               </MDTypography>
             </MDBox>
-
-            {/* <MDBox mt={3} mb={1} textAlign="center">
-              <MDTypography variant="button" color="text">
-                Don&apos;t have an account?{" "}
-                <MDTypography
-                  component={Link}
-                  to="/authentication/sign-up"
-                  variant="button"
-                  color="info"
-                  fontWeight="medium"
-                  textGradient
-                >
-                  Sign up
-                </MDTypography>
-              </MDTypography>
-            </MDBox> */}
           </MDBox>
         </MDBox>
       </Card>
-    </BasicLayout>
+    </Box>
   );
 }
 export default Basic;
