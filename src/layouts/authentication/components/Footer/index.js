@@ -78,17 +78,7 @@ function Footer({ light }) {
                 ></MDTypography>
               </Link>
             </MDBox>
-            <MDBox component="li" px={2} lineHeight={1}>
-              <Link href="https://www.creative-tim.com/presentation" target="_blank">
-                <MDTypography
-                  variant="button"
-                  fontWeight="regular"
-                  color={light ? "white" : "dark"}
-                >
-                  About Us
-                </MDTypography>
-              </Link>
-            </MDBox>
+
             <MDBox component="li" px={2} lineHeight={1}>
               <Link href="https://www.creative-tim.com/blog" target="_blank">
                 <MDTypography
