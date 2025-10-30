@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // 🚀 IMPORTED useEffect
+import { useState, useEffect } from "react";
 // react-router-dom components
 import { Link, useNavigate } from "react-router-dom";
 // @mui material components
@@ -182,9 +182,10 @@ function Basic() {
                     },
                     borderRadius: "8px",
                   },
+                  // ⭐ REMOVED CONFLICTING STYLES FOR LABEL BASE STATE
                   "& .MuiInputLabel-root": {
-                    color: "#616161",
-                    fontWeight: "500",
+                    // color: "#616161", <--- REMOVED
+                    // fontWeight: "500", <--- REMOVED
                     "&.Mui-focused": {
                       color: "#1976d2",
                     },
@@ -217,9 +218,10 @@ function Basic() {
                     },
                     borderRadius: "8px",
                   },
+                  // ⭐ REMOVED CONFLICTING STYLES FOR LABEL BASE STATE
                   "& .MuiInputLabel-root": {
-                    color: "#616161",
-                    fontWeight: "500",
+                    // color: "#616161", <--- REMOVED
+                    // fontWeight: "500", <--- REMOVED
                     "&.Mui-focused": {
                       color: "#1976d2",
                     },
@@ -278,7 +280,7 @@ function Basic() {
             </MDBox>
 
             {/* Forgot Password Link */}
-            <MDBox mt={2} textAlign="center">
+            {/* <MDBox mt={2} textAlign="center">
               <MDTypography
                 variant="button"
                 component={Link}
@@ -294,11 +296,12 @@ function Basic() {
               >
                 Forgot your password?
               </MDTypography>
-            </MDBox>
+            </MDBox> */}
           </MDBox>
         </MDBox>
       </Card>
     </Box>
   );
 }
+
 export default Basic;

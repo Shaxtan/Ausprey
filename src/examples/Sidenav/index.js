@@ -8,7 +8,7 @@
 
 Coded by www.creative-tim.com
 
- =========================================================
+ =========================================================
 
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
@@ -71,9 +71,8 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
       setWhiteSidenav(dispatch, window.innerWidth < 1200 ? false : whiteSidenav);
     }
 
-    /** 
-     The event listener that's calling the handleMiniSidenav function when resizing the window.
-    */
+    /** The event listener that's calling the handleMiniSidenav function when resizing the window.
+     */
     window.addEventListener("resize", handleMiniSidenav);
 
     // Call the handleMiniSidenav function to set the state with the initial value.
@@ -81,7 +80,7 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
 
     // Remove event listener on cleanup
     return () => window.removeEventListener("resize", handleMiniSidenav);
-  }, [dispatch, location]);
+  }, [dispatch, location, transparentSidenav, whiteSidenav]); // Added dependencies to satisfy ESLint
 
   // Render all the routes from the routes.js (All the visible items on the Sidenav)
   const renderRoutes = routes.map(({ type, name, icon, title, noCollapse, key, href, route }) => {
@@ -179,18 +178,25 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
         }
       />
       <List>{renderRoutes}</List>
+
+      {/* ⭐️ START: ADJUSTED CODE FOR VERSION TEXT ⭐️ */}
       <MDBox p={2} mt="auto">
-        <MDButton
-          component="a"
-          target="_blank"
-          rel="noreferrer"
-          variant="gradient"
-          color={sidenavColor}
-          fullWidth
+        <MDTypography
+          variant="button"
+          fontWeight="bold"
+          color="white"
+          textAlign="center"
+          // Conditional styling based on miniSidenav
+          sx={{
+            display: "block",
+            // If miniSidenav is true, do not stretch the width, just center it
+            width: miniSidenav ? "auto" : "100%",
+          }}
         >
-          Version
-        </MDButton>
+          {miniSidenav ? "1.0" : "Ausprey 1.0.0"}
+        </MDTypography>
       </MDBox>
+      {/* ⭐️ END: ADJUSTED CODE FOR VERSION TEXT ⭐️ */}
     </SidenavRoot>
   );
 }
@@ -208,5 +214,4 @@ Sidenav.propTypes = {
   brandName: PropTypes.string.isRequired,
   routes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
-
 export default Sidenav;

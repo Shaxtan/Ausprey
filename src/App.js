@@ -10,6 +10,8 @@ import Icon from "@mui/material/Icon";
 
 // 💡 CORRECTED IMPORT PATH: Assuming App.js is in the 'src' directory.
 import mainLogo from "./assets/images/mainlogo.jpeg";
+// ⭐ NEW IMPORT: Import the small icon
+import smallIcon from "./assets/images/small-icon.jpeg";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
@@ -35,7 +37,8 @@ import createCache from "@emotion/cache";
 import routes from "routes";
 
 // Material Dashboard 2 React contexts
-import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "context";
+// ⭐ FIX: Added 'setLayout' to control when the sidebar appears
+import { useMaterialUIController, setMiniSidenav, setOpenConfigurator, setLayout } from "context";
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();
@@ -77,7 +80,8 @@ export default function App() {
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
-      setOnMouseLeave(false);
+      // ⭐ CORRECTED: Use setOnMouseEnter to close, not setOnMouseLeave
+      setOnMouseEnter(false);
     }
   };
 
@@ -94,6 +98,17 @@ export default function App() {
     document.documentElement.scrollTop = 0;
     document.scrollingElement.scrollTop = 0;
   }, [pathname]);
+
+  // ⭐ CRUCIAL FIX: Set the layout type based on the current route
+  useEffect(() => {
+    // Check if the current path starts with the authentication path
+    if (pathname.startsWith("/authentication")) {
+      setLayout(dispatch, "authentication"); // Set layout to hide Sidenav
+    } else {
+      setLayout(dispatch, "dashboard"); // Default to dashboard layout
+    }
+  }, [pathname, dispatch]);
+  // -------------------------------------------------------------
 
   const getRoutes = (allRoutes) =>
     allRoutes.reduce((routesArray, route) => {
@@ -135,29 +150,43 @@ export default function App() {
     </MDBox>
   );
 
+  // ⭐ NEW LOGIC: Determine which logo to use based on miniSidenav state
+  const logo = miniSidenav ? smallIcon : mainLogo;
+  // ⭐ NEW LOGIC: Adjust logo styling based on miniSidenav state
+  const logoStyles = miniSidenav
+    ? {
+        "& .MuiBox-root img": {
+          width: "32px !important", // Smaller width for the mini icon
+          height: "32px !important", // Smaller height
+          borderRadius: "50% !important", // Make it circular or adjust as needed
+          // Optionally, add a subtle border if desired
+          // border: '1px solid #ddd !important',
+        },
+      }
+    : {
+        "& .MuiBox-root img": {
+          width: "186px !important",
+          height: "auto !important",
+          borderRadius: "8px !important",
+          // border: '1px solid #ddd !important',
+        },
+      };
+
   return direction === "rtl" ? (
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={darkMode ? themeDarkRTL : themeRTL}>
         <CssBaseline />
+        {/* The sidebar and configurator are only rendered when layout is "dashboard" */}
         {layout === "dashboard" && (
           <>
             <Sidenav
               color={sidenavColor}
-              brand={mainLogo}
+              brand={logo}
               brandName=""
               routes={routes}
               onMouseEnter={handleOnMouseEnter}
               onMouseLeave={handleOnMouseLeave}
-              sx={{
-                "& .MuiBox-root img": {
-                  width: "186px !important",
-                  height: "auto !important",
-                  // ⭐ NEW: Add borderRadius for a rounded border
-                  borderRadius: "8px !important", // Adjust value as needed (e.g., '50%' for circular)
-                  // Optionally, add a subtle border if desired
-                  // border: '1px solid #ddd !important',
-                },
-              }}
+              sx={logoStyles}
             />
             <Configurator />
             {configsButton}
@@ -173,24 +202,17 @@ export default function App() {
   ) : (
     <ThemeProvider theme={darkMode ? themeDark : theme}>
       <CssBaseline />
+      {/* The sidebar and configurator are only rendered when layout is "dashboard" */}
       {layout === "dashboard" && (
         <>
           <Sidenav
             color={sidenavColor}
-            brand={mainLogo}
+            brand={logo}
             brandName=""
             routes={routes}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
-            sx={{
-              "& .MuiBox-root img": {
-                width: "186px !important",
-                height: "auto !important",
-                // ⭐ NEW: Add borderRadius for a rounded border
-                borderRadius: "8px !important", // Adjust value as needed
-                // border: '1px solid #ddd !important',
-              },
-            }}
+            sx={logoStyles}
           />
           <Configurator />
           {configsButton}

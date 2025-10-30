@@ -264,9 +264,9 @@ function LoadCellReport() {
                   <Grid container spacing={3} alignItems="flex-end">
                     {/* IMEI Input (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
-                      <MDTypography variant="caption" display="block" mb={0.5}>
-                        IMEI
-                      </MDTypography>
+                      {/* Using MDTypography for consistent label style */}
+                      <MDTypography variant="caption" display="block" mb={0.5}></MDTypography>
+                      {/* 🚀 FIX: Applied size="small" and variant="outlined" to FormControl/Select */}
                       <FormControl fullWidth size="small" variant="outlined">
                         <InputLabel id="imei-select-label">Select IMEI</InputLabel>
                         <Select
@@ -276,6 +276,9 @@ function LoadCellReport() {
                           label="Select IMEI"
                           onChange={(e) => setImei(e.target.value)}
                           required
+                          // Apply size="small" here to ensure proper height
+                          size="small"
+                          sx={{ height: 40 }} // Optional: Enforce height to match TextField's default height when size="small"
                         >
                           <MenuItem value="" disabled>
                             -- Select IMEI --
@@ -288,6 +291,7 @@ function LoadCellReport() {
                         </Select>
                       </FormControl>
                     </Grid>
+
                     {/* From Date-Time (Bound to hook state) */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
@@ -380,6 +384,8 @@ function LoadCellReport() {
                           value={exportFormat}
                           label="Select Format"
                           onChange={(e) => setExportFormat(e.target.value)}
+                          size="small" // 🚀 FIX: Apply size="small" here as well
+                          sx={{ height: 40 }} // Optional: Ensure consistent height
                         >
                           <MenuItem value="">-- Select Format --</MenuItem>
                           <MenuItem value="csv">CSV</MenuItem>
