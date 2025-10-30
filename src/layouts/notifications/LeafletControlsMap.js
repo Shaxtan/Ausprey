@@ -593,6 +593,10 @@
 //   /* ----------------------------------------------------
 //   // JSX RENDER
 //   ---------------------------------------------------- */
+
+// import Grid from "@mui/material/Grid";
+// import Icon from "@mui/material/Icon"; // for the calendar icon
+import TextField from "@mui/material/TextField"; // The replacement input
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -1290,33 +1294,68 @@ const LeafletControlsMap = () => {
         </MDBox>
         {/* Date/Time Range */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
-          📅 Select Date/Time Range
+          Select Date/Time Range
         </MDTypography>
-        <MDBox mb={2}>
-          <DatePicker
-            selected={fromDate}
-            onChange={(date) => {
-              setFromDate(date);
-              setShowHistory(false);
-            }}
-            showTimeSelect
-            dateFormat="dd-MM-yyyy HH:mm:ss"
-            placeholderText="From Date/Time"
-            className="form-control"
-          />
-        </MDBox>
-        <MDBox mb={2}>
-          <DatePicker
-            selected={toDate}
-            onChange={(date) => {
-              setToDate(date);
-              setShowHistory(false);
-            }}
-            showTimeSelect
-            dateFormat="dd-MM-yyyy HH:mm:ss"
-            placeholderText="To Date/Time"
-            className="form-control"
-          />
+        <MDBox mt={3} mb={3}>
+          {/* Optional: You can put the main title here or keep it outside the MDBox if preferred */}
+          {/* <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
+    📅 Select Date/Time Range
+  </MDTypography> */}
+
+          <Grid container spacing={2}>
+            {/* ----------------- FROM DATE/TIME PICKER ----------------- */}
+            <Grid item xs={12} sm={6}>
+              <MDBox>
+                <MDTypography variant="caption" display="block" mb={0.5}>
+                  From Date/Time
+                </MDTypography>
+                <TextField
+                  // Use datetime-local for native browser picker
+                  type="datetime-local"
+                  fullWidth
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    // setShowHistory(false); // Uncomment if needed
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
+                    ),
+                  }}
+                  inputProps={
+                    {
+                      // For setting a default value, ensure your state is correctly formatted.
+                    }
+                  }
+                />
+              </MDBox>
+            </Grid>
+
+            {/* ----------------- TO DATE/TIME PICKER ----------------- */}
+            <Grid item xs={12} sm={6}>
+              <MDBox>
+                <MDTypography variant="caption" display="block" mb={0.5}>
+                  To Date/Time
+                </MDTypography>
+                <TextField
+                  // Use datetime-local for native browser picker
+                  type="datetime-local"
+                  fullWidth
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    // setShowHistory(false); // Uncomment if needed
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
+                    ),
+                  }}
+                />
+              </MDBox>
+            </Grid>
+          </Grid>
         </MDBox>
         {/* Submit Button with API Call */}
         <MDButton
