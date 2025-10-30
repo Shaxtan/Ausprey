@@ -185,7 +185,21 @@ const LeafletControlsMap = () => {
       animationTimeoutRef.current = null;
     }
 
-    const pts = filteredData.map((r) => [+r.lat, +r.lng]).filter((p) => p[0] && p[1]);
+    const pts = filteredData
+      .map((r) => [+r.lat, +r.lng])
+      .filter((p) => {
+        const [lat, lng] = p;
+        return (
+          typeof lat === "number" &&
+          typeof lng === "number" &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180 &&
+          lat !== 0 &&
+          lng !== 0 // optional: remove [0,0] if it's invalid
+        );
+      });
 
     if (pts.length < 2) {
       callAlert("Not enough points for animation.", "warning");
@@ -270,6 +284,13 @@ const LeafletControlsMap = () => {
   const yellowIcon = new L.Icon({
     iconUrl:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+  });
+  const blueIcon = new L.Icon({
+    iconUrl:
+      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
     shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
@@ -403,24 +424,28 @@ const LeafletControlsMap = () => {
 
     if (!showHistory || !selectedVehicle) return;
 
-    const pts = [];
+    const pts = filteredData
+      .map((r) => [+r.lat, +r.lng])
+      .filter((p) => {
+        const [lat, lng] = p;
+        return (
+          typeof lat === "number" &&
+          typeof lng === "number" &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180
+        );
+      });
+
     filteredData.forEach((rec, idx) => {
       const { lat, lng, ts, speed, status } = rec;
       if (!lat || !lng) return;
-      pts.push([+lat, +lng]);
 
       if (!showOnlyPath && statusFilter.includes(status)) {
         let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
 
-        if (idx === highlightedIndex) {
-          icon = new L.Icon({
-            iconUrl:
-              "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-            shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-            iconSize: [30, 50],
-            iconAnchor: [15, 50],
-          });
-        }
+        if (idx === highlightedIndex) icon = blueIcon;
 
         L.marker([+lat, +lng], { icon })
           .bindTooltip(
@@ -433,11 +458,7 @@ const LeafletControlsMap = () => {
     });
 
     if (pts.length > 1 && highlightedIndex == null) {
-      const line = L.polyline(pts, {
-        color: "#00f",
-        weight: 5,
-        opacity: 0.7,
-      }).addTo(layer);
+      const line = L.polyline(pts, { color: "#00f", weight: 5, opacity: 0.7 }).addTo(layer);
       L.polylineDecorator(line, {
         patterns: [
           {
@@ -451,11 +472,26 @@ const LeafletControlsMap = () => {
           },
         ],
       }).addTo(layer);
-      map.fitBounds(line.getBounds(), { padding: [20, 20] });
+
+      const bounds = line.getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+      }
     } else if (pts.length === 1) {
       map.setView(pts[0], 14);
     }
-  }, [filteredData, highlightedIndex, showHistory, showOnlyPath, statusFilter, selectedVehicle]);
+  }, [
+    filteredData,
+    highlightedIndex,
+    showHistory,
+    showOnlyPath,
+    statusFilter,
+    selectedVehicle,
+    greenIcon,
+    redIcon,
+    yellowIcon,
+    blueIcon,
+  ]);
 
   /* ---------- render ---------- */
   return (
