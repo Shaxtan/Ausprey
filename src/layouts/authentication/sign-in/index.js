@@ -280,7 +280,7 @@ function Basic() {
             </MDBox>
 
             {/* Forgot Password Link */}
-            <MDBox mt={2} textAlign="center">
+            {/* <MDBox mt={2} textAlign="center">
               <MDTypography
                 variant="button"
                 component={Link}
@@ -296,7 +296,7 @@ function Basic() {
               >
                 Forgot your password?
               </MDTypography>
-            </MDBox>
+            </MDBox> */}
           </MDBox>
         </MDBox>
       </Card>
