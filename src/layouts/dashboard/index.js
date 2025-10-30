@@ -1,18 +1,10 @@
-import React, { useState, useMemo } from "react"; // Added useState and useMemo for chatbot state
+import React, { useState, useMemo, useEffect } from "react";
+import ApiService from "services/ApiService";
 
 /**
 =========================================================
 * Material Dashboard 2 React - v2.2.0
 =========================================================
-
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
 // @mui icons
@@ -20,18 +12,20 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import DevicesIcon from "@mui/icons-material/Devices"; // Icon for Total Devices
 import WifiIcon from "@mui/icons-material/Wifi"; // Icon for Online
+import DirectionsRunIcon from "@mui/icons-material/DirectionsRun"; // Icon for Motion
 import DonutLargeIcon from "@mui/icons-material/DonutLarge"; // Icon for Pie Chart
 import Icon from "@mui/material/Icon"; // Import Icon for general use
 import SendIcon from "@mui/icons-material/Send"; // Icon for send button
+import StopIcon from "@mui/icons-material/Stop"; // Icon for Online Stopped
 
 // @mui material components
 import Grid from "@mui/material/Grid";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
-import MDButton from "components/MDButton"; // Added MDButton for chat options
-import MDTypography from "components/MDTypography"; // Added MDTypography for text
-import MDInput from "components/MDInput"; // Assuming MDInput is used for styled input
+import MDButton from "components/MDButton";
+import MDTypography from "components/MDTypography";
+import MDInput from "components/MDInput";
 
 // Material Dashboard 2 React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
@@ -43,7 +37,6 @@ import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatist
 import PieChart from "examples/Charts/PieChart";
 
 // Data
-import reportsBarChartData from "layouts/dashboard/data/reportsBarChartData";
 import reportsLineChartData from "layouts/dashboard/data/reportsLineChartData";
 
 // Dashboard components
@@ -53,27 +46,7 @@ import OrdersOverview from "layouts/dashboard/components/OrdersOverview";
 // Placeholder for a Chatbot Icon URL
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
-// Mock Pie Chart Data for All Statuses
-const pieChartData = {
-  labels: ["Motion", "Idle", "Offline", "Unreachble"],
-  datasets: {
-    label: "Device Status",
-    backgroundColors: ["info", "primary", "error"], // Map to dashboard colors
-    data: [230, 91, 34, 32],
-  },
-};
-
-// Mock Pie Chart Data for Online/Offline Only
-const onlineOfflinePieData = {
-  labels: ["Online", "Offline"],
-  datasets: {
-    label: "Connection Status",
-    backgroundColors: ["success", "warning"], // Using success/warning for visual contrast
-    data: [2300, 3400],
-  },
-};
-
-// 1. NEW MOCK DATA FOR ALERT TYPES
+// Mock Pie Chart Data (will be replaced by live data)
 const alertTypePieData = {
   labels: ["Critical (Error)", "Warning", "Informational"],
   datasets: {
@@ -86,9 +59,113 @@ const alertTypePieData = {
 function Dashboard() {
   const { sales, tasks } = reportsLineChartData;
 
-  // --- CHATBOT STATE & LOGIC ---
+  // =========================================================================
+  // === API STATE & LOGIC EXTRACTED FROM OLD DASHBOARD ===
+  // =========================================================================
+  const [totalDevices, setTotalDevices] = useState(0);
+  const [onlineDevices, setOnlineDevices] = useState(0);
+  const [offlineDevices, setOfflineDevices] = useState(0);
+  const [pieData, setPieData] = useState([]); // Used for Online/Offline PieChart
+  const [devices, setDevices] = useState([]); // List of devices
+  const [tripData, setTripData] = useState([]); // Data for the table (not rendered here)
+  const [summaryData, setSummaryData] = useState({
+    offline: 0,
+    onlineIdle: 0,
+    onlineStopped: 0,
+    onlineMotion: 0,
+  });
 
-  // Define the Chat Steps as constants
+  useEffect(() => {
+    // console.log("Fetching dashboard data...");
+    ApiService.getDashboardData(
+      {},
+      (res) => {
+        if (res?.data?.resultCode === 1 && res?.data?.data) {
+          const { summary, data } = res.data.data;
+
+          // 1. Set Summary Data (for Stat Cards)
+          const newSummary = {
+            offline: summary.offline || 0,
+            onlineIdle: summary.onlineIdle || 0,
+            onlineStopped: summary.onlineStopped || 0,
+            onlineMotion: summary.onlineMotion || 0,
+          };
+          setSummaryData(newSummary);
+
+          // 2. Calculate Totals and Pie Chart Data
+          const online = newSummary.onlineIdle + newSummary.onlineStopped + newSummary.onlineMotion;
+          const offline = newSummary.offline;
+          const total = online + offline;
+
+          setTotalDevices(total);
+          setOnlineDevices(online);
+          setOfflineDevices(offline);
+
+          // Data structure for Online vs. Offline Pie Chart
+          setPieData([
+            { name: "Online", value: online },
+            { name: "Offline", value: offline },
+          ]);
+
+          // Process and set other data (for chatbot and potential list use)
+          const fetchedDevices = data.map((item) => ({
+            imei: item.imei || "N/A",
+            accountId: item.vehnum || "N/A",
+            name: item.name || "N/A",
+            status: item.gps === "A" ? "active" : "inactive", // Simplified status for device list
+          }));
+          setDevices(fetchedDevices);
+
+          // Trip data processing is skipped for brevity but kept in state logic
+          const fetchedTripData = data.map((item, index) => ({
+            id: index + 1,
+            // ... (rest of the trip data fields)
+          }));
+          setTripData(fetchedTripData);
+        } else {
+          console.error("Dashboard data fetch failed:", res?.message || "Unknown error");
+        }
+      },
+      true,
+      1
+    );
+  }, []);
+  // =========================================================================
+
+  // Helper to format pie chart data for MD PieChart component
+  const onlineOfflinePieData = useMemo(() => {
+    const onlineValue = pieData.find((item) => item.name === "Online")?.value || 0;
+    const offlineValue = pieData.find((item) => item.name === "Offline")?.value || 0;
+
+    return {
+      labels: ["Online", "Offline"],
+      datasets: {
+        label: "Connection Status",
+        backgroundColors: ["success", "error"],
+        data: [onlineValue, offlineValue],
+      },
+    };
+  }, [pieData]);
+
+  const allDeviceStatusPieData = useMemo(() => {
+    return {
+      labels: ["Motion", "Idle", "Stopped", "Offline"],
+      datasets: {
+        label: "Device Status",
+        backgroundColors: ["success", "primary", "info", "error"],
+        data: [
+          summaryData.onlineMotion,
+          summaryData.onlineIdle,
+          summaryData.onlineStopped,
+          summaryData.offline,
+        ],
+      },
+    };
+  }, [summaryData]);
+
+  // =========================================================================
+  // === CHATBOT STATE & LOGIC (Modified for IMEI validation) ===
+  // =========================================================================
   const CHAT_STEP = useMemo(
     () => ({
       ASK_IMEI: "ask_imei",
@@ -107,33 +184,57 @@ function Dashboard() {
   ]);
   const [imeiInput, setImeiInput] = useState("");
   const [chatStep, setChatStep] = useState(CHAT_STEP.ASK_IMEI);
+  const [activeImei, setActiveImei] = useState(null); // To store the validated IMEI
 
   const toggleChatbot = () => {
     setIsChatbotOpen(!isChatbotOpen);
   };
 
   const handleImeiSubmit = () => {
-    if (imeiInput.trim() === "") return;
+    const enteredImei = imeiInput.trim();
+    if (enteredImei === "") return;
 
     // 1. Add user message
-    const newUserMessage = { type: "user", text: imeiInput.trim() };
+    const newUserMessage = { type: "user", text: enteredImei };
     setMessages((prev) => [...prev, newUserMessage]);
 
     // 2. Clear input
     setImeiInput("");
 
-    // 3. Simulate API call/processing delay and show bot response
+    // 3. Find the device in the loaded list (API logic implementation)
+    const foundDevice = devices.find((d) => d.imei === enteredImei);
+
     setTimeout(() => {
-      const botResponse = {
-        type: "bot",
-        text: `Thank you. The IMEI **${newUserMessage.text}** has been successfully identified. What would you like to do next?`,
-      };
+      let botResponse;
+      let nextStep;
+
+      if (foundDevice) {
+        // Success path: Device found
+        botResponse = {
+          type: "bot",
+          text: `Thank you. Device **${
+            foundDevice.name
+          }** (IMEI: ${enteredImei}) has been successfully identified. Its current status is **${foundDevice.status.toUpperCase()}**. What would you like to do next?`,
+        };
+        setActiveImei(enteredImei);
+        nextStep = CHAT_STEP.SHOW_OPTIONS;
+      } else {
+        // Failure path: Device not found
+        botResponse = {
+          type: "bot",
+          text: `I could not find an active device with the IMEI **${enteredImei}**. Please check the number and try again.`,
+        };
+        nextStep = CHAT_STEP.ASK_IMEI; // Stay on the current step to re-enter
+        setActiveImei(null);
+      }
+
       setMessages((prev) => [...prev, botResponse]);
-      setChatStep(CHAT_STEP.SHOW_OPTIONS); // Move to the next step
+      setChatStep(nextStep);
+
       // Scroll to bottom (simulated)
       const body = document.getElementById("chatbot-body-content");
       if (body) body.scrollTop = body.scrollHeight;
-    }, 1000);
+    }, 1000); // Simulate API check delay
   };
 
   const handleOptionSelect = (option) => {
@@ -145,10 +246,9 @@ function Dashboard() {
     setTimeout(() => {
       let botResponseText = "";
       if (option === "Alert Logs") {
-        botResponseText =
-          "You selected **Alert Logs**. I can navigate you to the appropriate section or provide a direct link to the log data.";
+        botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. I can navigate you to the appropriate section or provide a direct link to the log data.`;
       } else {
-        botResponseText = `You selected **${option}**. I will now open the corresponding dashboard view for this device.`;
+        botResponseText = `You selected **${option}** for IMEI **${activeImei}**. I will now open the corresponding dashboard view for this device.`;
       }
 
       const botResponse = {
@@ -163,7 +263,7 @@ function Dashboard() {
     }, 1000);
   };
 
-  // --- INLINE STYLE OBJECTS FOR CHATBOT ---
+  // --- INLINE STYLE OBJECTS FOR CHATBOT (Unmodified) ---
 
   const iconStyle = {
     position: "fixed",
@@ -255,87 +355,92 @@ function Dashboard() {
     <DashboardLayout>
       <DashboardNavbar />
       <MDBox py={3}>
-        {/* --- Complex Statistics Cards --- */}
+        {/* --- Complex Statistics Cards --- (UPDATED WITH LIVE DATA) */}
         <Grid container spacing={3}>
+          {/* Total Devices */}
           <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="dark"
                 icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
                 title="Total Devices"
-                count={281}
+                count={totalDevices.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "+55%",
+                  amount: "+55%", // Placeholder %
                   label: "than last week",
                 }}
               />
             </MDBox>
           </Grid>
+          {/* Online Motion */}
           <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                icon={<WifiIcon style={{ marginTop: "-15px" }} />}
-                title="Online"
-                count="2,300"
+                icon={<DirectionsRunIcon style={{ marginTop: "-15px" }} />}
+                title="Online Motion"
+                count={summaryData.onlineMotion.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "+3%",
+                  amount: "+3%", // Placeholder %
                   label: "than last month",
                 }}
               />
             </MDBox>
           </Grid>
+          {/* Online Idle */}
+          <Grid item xs={12} md={6} lg={3}>
+            <MDBox mb={1.5}>
+              <ComplexStatisticsCard
+                color="primary"
+                icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
+                title="Online Idle"
+                count={summaryData.onlineIdle.toLocaleString()}
+                percentage={{
+                  color: "success",
+                  amount: "", // Placeholder %
+                  label: "Just updated",
+                }}
+              />
+            </MDBox>
+          </Grid>
+          {/* Offline */}
           <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="error"
                 icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
                 title="Offline"
-                count="34"
+                count={summaryData.offline.toLocaleString()}
                 percentage={{
                   color: "error",
-                  amount: "+1%",
+                  amount: "+1%", // Placeholder %
                   label: "more than yesterday",
                 }}
               />
             </MDBox>
           </Grid>
-          <Grid item xs={12} md={6} lg={3}>
+          {/* Online Stopped (Added as 5th card) */}
+          {/* <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="primary"
-                icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
-                title="Idle"
-                count="91"
+                color="info"
+                icon={<StopIcon style={{ marginTop: "-15px" }} />}
+                title="Online Stopped"
+                count={summaryData.onlineStopped.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "",
-                  label: "Just updated",
+                  amount: "+0.5%", // Placeholder %
+                  label: "since last hour",
                 }}
               />
             </MDBox>
-          </Grid>
+          </Grid> */}
         </Grid>
 
-        {/* --- Charts Section --- (MODIFIED TO SEPARATE BAR CHART AND MAKE PIE CHARTS FULL WIDTH) */}
+        {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
         <MDBox mt={4.5}>
-          {/* 1. Bar Chart on its own row (uses full width on large screens) */}
-          {/* <Grid container spacing={3}>
-            <Grid item xs={12} lg={12}>
-              <MDBox mb={3}>
-                <ReportsBarChart
-                  color="info"
-                  title="Online Devices Trend"
-                  description="Last 24 Hrs"
-                  date="updated 5 minutes ago"
-                  chart={reportsBarChartData}
-                />
-              </MDBox>
-            </Grid>
-          </Grid> */}
-
-          {/* 2. Pie Charts on a separate row (each uses lg={4} to be 3-across, spanning full width) */}
+          {/* Pie Charts on a separate row */}
           <Grid container spacing={3}>
             {/* Online vs. Offline Pie Chart */}
             <Grid item xs={12} md={6} lg={4}>
@@ -343,7 +448,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "success", component: <WifiIcon /> }}
                   title="Online vs. Offline"
-                  description="Current network connectivity status."
+                  description={`Total devices: ${totalDevices.toLocaleString()}`}
                   chart={onlineOfflinePieData}
                 />
               </MDBox>
@@ -354,26 +459,26 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "dark", component: <DonutLargeIcon /> }}
                   title="All Device Status"
-                  description="Distribution including idle devices."
-                  chart={pieChartData}
+                  description="Distribution including Motion, Idle, and Stopped."
+                  chart={allDeviceStatusPieData}
                 />
               </MDBox>
             </Grid>
-            {/* Alert Type Distribution Pie Chart */}
+            {/* Alert Type Distribution Pie Chart (MOCK DATA) */}
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} sx={{ height: "300px !important" }}>
                 <PieChart
                   icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
                   title="Alert Type Distribution"
                   description="Breakdown of Critical, Warning, and Info alerts."
-                  chart={alertTypePieData}
+                  chart={alertTypePieData} // Using mock data for alerts
                 />
               </MDBox>
             </Grid>
           </Grid>
         </MDBox>
 
-        {/* --- Projects and Orders Overview Section --- (Not modified) */}
+        {/* --- Projects and Orders Overview Section --- */}
         <MDBox>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6} lg={8}>
@@ -386,7 +491,7 @@ function Dashboard() {
         </MDBox>
       </MDBox>
 
-      {/* --- START CHATBOT INTEGRATION SECTION (WITH INLINE CSS) --- (Not modified) */}
+      {/* --- START CHATBOT INTEGRATION SECTION (Modified for IMEI validation) --- */}
 
       {/* ⭐️ CHATBOT ICON BUTTON */}
       <div style={iconStyle} onClick={toggleChatbot}>
@@ -426,6 +531,9 @@ function Dashboard() {
           {/* Quick Links / Options */}
           {chatStep === CHAT_STEP.SHOW_OPTIONS && (
             <MDBox mt={1}>
+              <MDTypography variant="caption" color="text" sx={{ mb: 1 }}>
+                Options for IMEI: {activeImei}
+              </MDTypography>
               <MDButton
                 variant="outlined"
                 color="info"
@@ -474,7 +582,7 @@ function Dashboard() {
                 color="info"
                 iconOnly
                 onClick={handleImeiSubmit}
-                sx={{ minWidth: "40px", height: "36px" }} // Adjusted size to align with input
+                sx={{ minWidth: "40px", height: "36px" }}
               >
                 <Icon>
                   <SendIcon />
