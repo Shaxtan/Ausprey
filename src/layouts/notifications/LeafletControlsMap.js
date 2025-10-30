@@ -72,7 +72,7 @@ const LeafletControlsMap = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [vehicleData, setVehicleData] = useState([]);
   const [highlightedIndex, setHighlightedIndex] = useState(null);
-  const [statusFilter, setStatusFilter] = useState(["MOTION", "STOP", "IDLE"]);
+  const [statusFilter, setStatusFilter] = useState([]);
   const [showOnlyPath, setShowOnlyPath] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
@@ -121,24 +121,16 @@ const LeafletControlsMap = () => {
 
   /* ---------- submit – call getTrackPlayHistory ---------- */
   const handleTrackSubmit = async () => {
-    if (!selectedVehicle?.id) {
-      callAlert("Please select a vehicle.");
-      return;
-    }
-    if (!fromDate || !toDate) {
-      callAlert("Please select both From and To dates.");
-      return;
-    }
-    if (fromDate > toDate) {
-      callAlert("'From' date cannot be after 'To' date.");
-      return;
-    }
+    if (!selectedVehicle?.id) return callAlert("Please select a vehicle.");
+    if (!fromDate || !toDate) return callAlert("Please select both From and To dates.");
+    if (fromDate > toDate) return callAlert("'From' date cannot be after 'To' date.");
 
     setIsLoading(true);
     setShowHistory(false);
     setVehicleData([]);
     setHighlightedIndex(null);
     setShowOnlyPath(false);
+    setStatusFilter(["MOTION", "STOP", "IDLE"]); // ← force all ON
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
@@ -151,13 +143,12 @@ const LeafletControlsMap = () => {
       const res = await ApiService.getTrackPlayHistory(payload);
       const report = res?.data?.response?.report || [];
 
-      if (report.length === 0) {
+      if (!report.length) {
         callAlert("No track data found for the selected period.", "info");
         return;
       }
 
-      // sort chronologically
-      const sorted = report.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+      const sorted = report.sort((a, b) => new Date(a.ts) - new Date(b.ts));
       setVehicleData(sorted);
       setShowHistory(true);
       AlertSuccess(`Loaded ${sorted.length} points.`);
@@ -572,6 +563,7 @@ const LeafletControlsMap = () => {
               const veh = vehicleList.find((v) => v.id === e.target.value);
               setSelectedVehicle(veh);
               setShowHistory(false);
+              setStatusFilter(["MOTION", "STOP", "IDLE"]); // ← reset
             }}
             fullWidth
             size="small"
@@ -670,6 +662,7 @@ const LeafletControlsMap = () => {
         {showHistory && filteredData.length > 0 && (
           <>
             {/* Status filter */}
+            {/* Status filter */}
             <MDTypography variant="button" fontWeight="medium" mb={1}>
               Filter Status
             </MDTypography>
@@ -703,9 +696,18 @@ const LeafletControlsMap = () => {
                       }}
                       onClick={() => {
                         setHighlightedIndex(null);
-                        setStatusFilter((prev) =>
-                          prev.includes(type) ? prev.filter((s) => s !== type) : [...prev, type]
-                        );
+                        setStatusFilter((prev) => {
+                          const toggled = prev.includes(type)
+                            ? prev.filter((s) => s !== type)
+                            : [...prev, type];
+
+                          // Prevent all switches from being OFF
+                          if (toggled.length === 0) {
+                            callAlert("At least one status must stay active.", "warning");
+                            return prev;
+                          }
+                          return toggled;
+                        });
                       }}
                     />
                   </MDBox>
