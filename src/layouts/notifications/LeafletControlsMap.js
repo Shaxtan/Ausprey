@@ -138,7 +138,7 @@ const LeafletControlsMap = () => {
     setShowHistory(false);
     setVehicleData([]);
     setHighlightedIndex(null);
-    setShowOnlyPath(true);
+    setShowOnlyPath(false);
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
