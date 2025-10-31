@@ -69,10 +69,12 @@ function Dashboard() {
   const [devices, setDevices] = useState([]); // List of devices
   const [tripData, setTripData] = useState([]); // Data for the table (not rendered here)
   const [summaryData, setSummaryData] = useState({
+    totalDevices: 0,
     offline: 0,
     onlineIdle: 0,
     onlineStopped: 0,
     onlineMotion: 0,
+    unreachable: 0,
   });
 
   useEffect(() => {
@@ -85,10 +87,12 @@ function Dashboard() {
 
           // 1. Set Summary Data (for Stat Cards)
           const newSummary = {
+            totalDevices: summary.totalDevices || 0,
             offline: summary.offline || 0,
             onlineIdle: summary.onlineIdle || 0,
             onlineStopped: summary.onlineStopped || 0,
             onlineMotion: summary.onlineMotion || 0,
+            unreachable: summary.unreachable || 0,
           };
           setSummaryData(newSummary);
 
@@ -364,11 +368,11 @@ function Dashboard() {
                 color="dark"
                 icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
                 title="Total Devices"
-                count={totalDevices.toLocaleString()}
+                count={summaryData.totalDevices.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "+55%", // Placeholder %
-                  label: "than last week",
+                  // amount: "+55%", // Placeholder %
+                  label: "Total Active Fleet",
                 }}
               />
             </MDBox>
@@ -382,8 +386,8 @@ function Dashboard() {
                 count={summaryData.onlineMotion.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "+3%", // Placeholder %
-                  label: "than last month",
+                  // amount: "+3%", // Placeholder %
+                  label: "Total Online Fleet",
                 }}
               />
             </MDBox>
@@ -398,8 +402,8 @@ function Dashboard() {
                 count={summaryData.onlineIdle.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "", // Placeholder %
-                  label: "Just updated",
+                  // amount: "", // Placeholder %
+                  label: "Total Idle Fleet",
                 }}
               />
             </MDBox>
@@ -414,28 +418,28 @@ function Dashboard() {
                 count={summaryData.offline.toLocaleString()}
                 percentage={{
                   color: "error",
-                  amount: "+1%", // Placeholder %
-                  label: "more than yesterday",
+                  // amount: "+1%", // Placeholder %
+                  label: "Total Offline Fleet",
                 }}
               />
             </MDBox>
           </Grid>
           {/* Online Stopped (Added as 5th card) */}
-          {/* <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="info"
                 icon={<StopIcon style={{ marginTop: "-15px" }} />}
-                title="Online Stopped"
-                count={summaryData.onlineStopped.toLocaleString()}
+                title="Unreachable"
+                count={summaryData.unreachable.toLocaleString()}
                 percentage={{
                   color: "success",
-                  amount: "+0.5%", // Placeholder %
-                  label: "since last hour",
+                  // amount: "+0.5%", // Placeholder %
+                  label: "Total Unreacble Fleet",
                 }}
               />
             </MDBox>
-          </Grid> */}
+          </Grid>
         </Grid>
 
         {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
@@ -448,7 +452,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "success", component: <WifiIcon /> }}
                   title="Online vs. Offline"
-                  description={`Total devices: ${totalDevices.toLocaleString()}`}
+                  description={`Total devices: ${totalDevices.toLocaleString()} \n Online Devices: ${summaryData.onlineMotion.toLocaleString()} Offline Devices: ${summaryData.offline.toLocaleString()}`}
                   chart={onlineOfflinePieData}
                 />
               </MDBox>
