@@ -61,6 +61,7 @@ const LeafletControlsMap = () => {
   const animatedMarkerRef = useRef(null);
   const animationTimeoutRef = useRef(null);
   const panelRef = useRef(null);
+  const originalPathRef = useRef({ line: null, decorator: null, points: [] }); // NEW: Store full path
 
   /* ---------- state ---------- */
   const [isPanelVisible, setIsPanelVisible] = useState(true);
@@ -78,7 +79,7 @@ const LeafletControlsMap = () => {
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState("");
   const [speed] = useState(500); // animation speed (ms)
-  const [fromMilliseconds, setFromMilliseconds] = useState("000"); // Store as a 3-digit string
+  const [fromMilliseconds, setFromMilliseconds] = useState("000");
   const [toMilliseconds, setToMilliseconds] = useState("000");
 
   const SIDEBAR_WIDTH = "300px";
@@ -92,7 +93,6 @@ const LeafletControlsMap = () => {
         const vehicles = res?.data?.response?.vehicles || [];
         setVehicleList(vehicles);
 
-        // default vehicle – keep the old hard-coded IMEI if it exists
         const defaultImei = "868373076396961";
         const defaultVehicle = vehicles.find((v) => v.id === defaultImei) || vehicles[0];
         setSelectedVehicle(defaultVehicle || null);
@@ -130,9 +130,16 @@ const LeafletControlsMap = () => {
     setVehicleData([]);
     setHighlightedIndex(null);
     setShowOnlyPath(false);
-    setStatusFilter(["MOTION", "STOP", "IDLE"]); // ← force all ON
+    setStatusFilter(["MOTION", "STOP", "IDLE"]);
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
+
+    // Reset original path
+    if (originalPathRef.current.line) {
+      originalPathRef.current.line.remove();
+      originalPathRef.current.decorator?.remove();
+      originalPathRef.current = { line: null, decorator: null, points: [] };
+    }
 
     try {
       const payload = {
@@ -160,65 +167,26 @@ const LeafletControlsMap = () => {
     }
   };
 
-  /* ---------- animation (track play) ---------- */
+  /* ---------- animation (track play) – uses full original path ---------- */
   const simulateMovement = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !filteredData.length) return;
+    if (!map || !originalPathRef.current.points.length) return;
 
     layer.clearLayers();
     if (animatedMarkerRef.current) {
       layer.removeLayer(animatedMarkerRef.current);
       animatedMarkerRef.current = null;
     }
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-      animationTimeoutRef.current = null;
-    }
+    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
 
-    const pts = filteredData
-      .map((r) => [+r.lat, +r.lng])
-      .filter((p) => {
-        const [lat, lng] = p;
-        return (
-          typeof lat === "number" &&
-          typeof lng === "number" &&
-          lat >= -90 &&
-          lat <= 90 &&
-          lng >= -180 &&
-          lng <= 180 &&
-          lat !== 0 &&
-          lng !== 0 // optional: remove [0,0] if it's invalid
-        );
-      });
+    // Re-add the original polyline + decorator
+    originalPathRef.current.line?.addTo(layer);
+    originalPathRef.current.decorator?.addTo(layer);
 
-    if (pts.length < 2) {
-      callAlert("Not enough points for animation.", "warning");
-      return;
-    }
+    map.fitBounds(originalPathRef.current.line.getBounds(), { padding: [20, 20] });
 
-    const line = L.polyline(pts, {
-      color: "#00f",
-      weight: 5,
-      opacity: 0.6,
-    }).addTo(layer);
-
-    L.polylineDecorator(line, {
-      patterns: [
-        {
-          offset: 25,
-          repeat: 100,
-          symbol: L.Symbol.arrowHead({
-            pixelSize: 10,
-            polygon: false,
-            pathOptions: { weight: 2 },
-          }),
-        },
-      ],
-    }).addTo(layer);
-
-    map.fitBounds(line.getBounds(), { padding: [20, 20] });
-
+    const pts = originalPathRef.current.points;
     let idx = 0;
     const marker = L.marker(pts[0], {
       icon: new L.Icon({
@@ -246,7 +214,7 @@ const LeafletControlsMap = () => {
       animationTimeoutRef.current = setTimeout(moveNext, speed);
     };
     moveNext();
-  }, [filteredData, speed]);
+  }, [speed]);
 
   const stopAnimation = () => {
     if (animationTimeoutRef.current) {
@@ -401,7 +369,7 @@ const LeafletControlsMap = () => {
     };
   }, []);
 
-  /* ---------- draw markers / polyline ---------- */
+  /* ---------- draw markers / polyline (polyline is fixed) ---------- */
   useEffect(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
@@ -415,7 +383,8 @@ const LeafletControlsMap = () => {
 
     if (!showHistory || !selectedVehicle) return;
 
-    const pts = filteredData
+    // FULL points (unfiltered by status)
+    const fullPoints = vehicleData
       .map((r) => [+r.lat, +r.lng])
       .filter((p) => {
         const [lat, lng] = p;
@@ -429,28 +398,15 @@ const LeafletControlsMap = () => {
         );
       });
 
-    filteredData.forEach((rec, idx) => {
-      const { lat, lng, ts, speed, status } = rec;
-      if (!lat || !lng) return;
+    // Draw the original polyline ONCE
+    if (!originalPathRef.current.line && fullPoints.length > 1) {
+      const line = L.polyline(fullPoints, {
+        color: "#00f",
+        weight: 5,
+        opacity: 0.7,
+      }).addTo(layer);
 
-      if (!showOnlyPath && statusFilter.includes(status)) {
-        let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
-
-        if (idx === highlightedIndex) icon = blueIcon;
-
-        L.marker([+lat, +lng], { icon })
-          .bindTooltip(
-            `Time: ${formatTimestamp(ts)}<br/>Speed: ${
-              speed ?? "N/A"
-            } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
-          )
-          .addTo(layer);
-      }
-    });
-
-    if (pts.length > 1 && highlightedIndex == null) {
-      const line = L.polyline(pts, { color: "#00f", weight: 5, opacity: 0.7 }).addTo(layer);
-      L.polylineDecorator(line, {
+      const decorator = L.polylineDecorator(line, {
         patterns: [
           {
             offset: 25,
@@ -464,14 +420,44 @@ const LeafletControlsMap = () => {
         ],
       }).addTo(layer);
 
+      originalPathRef.current = {
+        line,
+        decorator,
+        points: fullPoints.map((p) => L.latLng(p[0], p[1])),
+      };
+
       const bounds = line.getBounds();
       if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [20, 20] });
       }
-    } else if (pts.length === 1) {
-      map.setView(pts[0], 14);
+    } else if (originalPathRef.current.line) {
+      // Re-add the existing line (was cleared above)
+      originalPathRef.current.line.addTo(layer);
+      originalPathRef.current.decorator?.addTo(layer);
+    } else if (fullPoints.length === 1) {
+      map.setView(fullPoints[0], 14);
     }
+
+    // MARKERS: filtered by status
+    filteredData.forEach((rec, idx) => {
+      const { lat, lng, ts, speed, status } = rec;
+      if (!lat || !lng) return;
+
+      if (!showOnlyPath && statusFilter.includes(status)) {
+        let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
+        if (idx === highlightedIndex) icon = blueIcon;
+
+        L.marker([+lat, +lng], { icon })
+          .bindTooltip(
+            `Time: ${formatTimestamp(ts)}<br/>Speed: ${
+              speed ?? "N/A"
+            } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
+          )
+          .addTo(layer);
+      }
+    });
   }, [
+    vehicleData,
     filteredData,
     highlightedIndex,
     showHistory,
@@ -563,7 +549,7 @@ const LeafletControlsMap = () => {
               const veh = vehicleList.find((v) => v.id === e.target.value);
               setSelectedVehicle(veh);
               setShowHistory(false);
-              setStatusFilter(["MOTION", "STOP", "IDLE"]); // ← reset
+              setStatusFilter(["MOTION", "STOP", "IDLE"]);
             }}
             fullWidth
             size="small"
@@ -585,58 +571,42 @@ const LeafletControlsMap = () => {
         </MDTypography>
         <MDBox mt={3} mb={3}>
           <Grid container spacing={2}>
-            {/* ----------------- FROM DATE/TIME PICKER ----------------- */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   From Date/Time
                 </MDTypography>
-
-                {/* DatePicker integrated here */}
                 <div style={{ width: "100%" }}>
                   <DatePicker
                     selected={fromDate}
-                    onChange={(date) => {
-                      setFromDate(date);
-                      // setShowHistory(false); // Uncomment if needed
-                    }}
+                    onChange={(date) => setFromDate(date)}
                     showTimeSelect
                     timeFormat="HH:mm:ss"
                     timeIntervals={1}
                     dateFormat="dd-MM-yyyy HH:mm:ss"
                     placeholderText="Select From DateTime"
-                    // Use classes to ensure it looks like a standard form input
                     className="form-control"
                     calendarClassName="custom-calendar"
                     popperClassName="custom-popper"
-                    // The inputProps are not directly available here, but className is used for styling
-                    // to mimic full-width appearance.
                   />
                 </div>
               </MDBox>
             </Grid>
 
-            {/* ----------------- TO DATE/TIME PICKER ----------------- */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   To Date/Time
                 </MDTypography>
-
-                {/* DatePicker integrated here */}
                 <div style={{ width: "100%" }}>
                   <DatePicker
                     selected={toDate}
-                    onChange={(date) => {
-                      setToDate(date);
-                      // setShowHistory(false); // Uncomment if needed
-                    }}
+                    onChange={(date) => setToDate(date)}
                     showTimeSelect
                     timeFormat="HH:mm:ss"
                     timeIntervals={1}
                     dateFormat="dd-MM-yyyy HH:mm:ss"
                     placeholderText="Select To DateTime"
-                    // Use classes to ensure it looks like a standard form input
                     className="form-control"
                     calendarClassName="custom-to-calendar"
                     popperClassName="custom-to-popper"
@@ -646,7 +616,7 @@ const LeafletControlsMap = () => {
             </Grid>
           </Grid>
         </MDBox>
-        Ausprey
+
         {/* Submit */}
         <MDButton
           variant="gradient"
@@ -658,10 +628,10 @@ const LeafletControlsMap = () => {
         >
           {isLoading ? "Loading…" : "Get Track Data"}
         </MDButton>
+
         {/* ---------- when history is loaded ---------- */}
         {showHistory && filteredData.length > 0 && (
           <>
-            {/* Status filter */}
             {/* Status filter */}
             <MDTypography variant="button" fontWeight="medium" mb={1}>
               Filter Status
@@ -701,7 +671,6 @@ const LeafletControlsMap = () => {
                             ? prev.filter((s) => s !== type)
                             : [...prev, type];
 
-                          // Prevent all switches from being OFF
                           if (toggled.length === 0) {
                             callAlert("At least one status must stay active.", "warning");
                             return prev;
@@ -721,7 +690,7 @@ const LeafletControlsMap = () => {
                 variant="gradient"
                 color="success"
                 onClick={simulateMovement}
-                disabled={filteredData.length < 2}
+                disabled={originalPathRef.current.points.length < 2}
                 sx={{ flex: 1 }}
               >
                 Play
@@ -766,9 +735,7 @@ const LeafletControlsMap = () => {
                     onClick={() => {
                       setHighlightedIndex(i);
                       if (rec.lat && rec.lng)
-                        mapRef.current.setView([+rec.lat, +rec.lng], 16, {
-                          animate: true,
-                        });
+                        mapRef.current.setView([+rec.lat, +rec.lng], 16, { animate: true });
                     }}
                   >
                     <MDTypography variant="caption">
@@ -779,7 +746,6 @@ const LeafletControlsMap = () => {
               </MDBox>
             )}
 
-            {/* Download */}
             {/* Download */}
             <MDTypography
               variant="button"
