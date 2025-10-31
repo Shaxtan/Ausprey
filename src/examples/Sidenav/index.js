@@ -183,8 +183,9 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
       <MDBox p={2} mt="auto">
         <MDTypography
           variant="button"
-          fontWeight="bold"
-          color="white"
+          // fontWeight="bold"
+          // ⭐️ CHANGED COLOR TO 'light' FOR INDUSTRIAL SUBTLETY ON DARK SIDEBARS ⭐️
+          color="light"
           textAlign="center"
           // Conditional styling based on miniSidenav
           sx={{
@@ -193,7 +194,7 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
             width: miniSidenav ? "auto" : "100%",
           }}
         >
-          {miniSidenav ? "1.0" : "Ausprey 1.0.0"}
+          {miniSidenav ? "1.0" : "Version 1.0.0"}
         </MDTypography>
       </MDBox>
       {/* ⭐️ END: ADJUSTED CODE FOR VERSION TEXT ⭐️ */}

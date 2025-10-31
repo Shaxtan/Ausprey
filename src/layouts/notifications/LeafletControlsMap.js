@@ -596,6 +596,9 @@
 
 // import Grid from "@mui/material/Grid";
 // import Icon from "@mui/material/Icon"; // for the calendar icon
+// At the top of your component file:
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css"; // Don't forget the CSS!
 import TextField from "@mui/material/TextField"; // The replacement input
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import L from "leaflet";
@@ -603,7 +606,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-polylinedecorator";
 import ApiService from "../../services/ApiService"; // ⭐ The API Service
 import { createTileLayers } from "../LoadCellReport/createTileLayers"; // Assuming path is correct
-import DatePicker from "react-datepicker";
+// import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import "leaflet-rotatedmarker";
@@ -1297,11 +1300,6 @@ const LeafletControlsMap = () => {
           Select Date/Time Range
         </MDTypography>
         <MDBox mt={3} mb={3}>
-          {/* Optional: You can put the main title here or keep it outside the MDBox if preferred */}
-          {/* <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
-    📅 Select Date/Time Range
-  </MDTypography> */}
-
           <Grid container spacing={2}>
             {/* ----------------- FROM DATE/TIME PICKER ----------------- */}
             <Grid item xs={12} sm={6}>
@@ -1309,26 +1307,28 @@ const LeafletControlsMap = () => {
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   From Date/Time
                 </MDTypography>
-                <TextField
-                  // Use datetime-local for native browser picker
-                  type="datetime-local"
-                  fullWidth
-                  value={fromDate}
-                  onChange={(e) => {
-                    setFromDate(e.target.value);
-                    // setShowHistory(false); // Uncomment if needed
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
-                    ),
-                  }}
-                  inputProps={
-                    {
-                      // For setting a default value, ensure your state is correctly formatted.
-                    }
-                  }
-                />
+
+                {/* DatePicker integrated here */}
+                <div style={{ width: "100%" }}>
+                  <DatePicker
+                    selected={fromDate}
+                    onChange={(date) => {
+                      setFromDate(date);
+                      // setShowHistory(false); // Uncomment if needed
+                    }}
+                    showTimeSelect
+                    timeFormat="HH:mm:ss"
+                    timeIntervals={1}
+                    dateFormat="dd-MM-yyyy HH:mm:ss"
+                    placeholderText="Select From DateTime"
+                    // Use classes to ensure it looks like a standard form input
+                    className="form-control"
+                    calendarClassName="custom-calendar"
+                    popperClassName="custom-popper"
+                    // The inputProps are not directly available here, but className is used for styling
+                    // to mimic full-width appearance.
+                  />
+                </div>
               </MDBox>
             </Grid>
 
@@ -1338,21 +1338,26 @@ const LeafletControlsMap = () => {
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   To Date/Time
                 </MDTypography>
-                <TextField
-                  // Use datetime-local for native browser picker
-                  type="datetime-local"
-                  fullWidth
-                  value={toDate}
-                  onChange={(e) => {
-                    setToDate(e.target.value);
-                    // setShowHistory(false); // Uncomment if needed
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
-                    ),
-                  }}
-                />
+
+                {/* DatePicker integrated here */}
+                <div style={{ width: "100%" }}>
+                  <DatePicker
+                    selected={toDate}
+                    onChange={(date) => {
+                      setToDate(date);
+                      // setShowHistory(false); // Uncomment if needed
+                    }}
+                    showTimeSelect
+                    timeFormat="HH:mm:ss"
+                    timeIntervals={1}
+                    dateFormat="dd-MM-yyyy HH:mm:ss"
+                    placeholderText="Select To DateTime"
+                    // Use classes to ensure it looks like a standard form input
+                    className="form-control"
+                    calendarClassName="custom-to-calendar"
+                    popperClassName="custom-to-popper"
+                  />
+                </div>
               </MDBox>
             </Grid>
           </Grid>
