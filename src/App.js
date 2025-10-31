@@ -166,10 +166,10 @@ export default function App() {
     : {
         "& .MuiBox-root img": {
           // 💡 INCREASED WIDTH: Changed from 186px to 250px for the main logo
-          marginLeft: "-32px",
-          width: "250px !important",
+          marginLeft: "-27px",
+          width: "240px !important",
           height: "auto !important",
-          borderRadius: "0px !important",
+          borderRadius: "5px !important",
           // border: '1px solid #ddd !important',
         },
       };

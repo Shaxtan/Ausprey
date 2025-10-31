@@ -93,18 +93,50 @@ class ApiService {
         callAlert("Error", error?.message);
       });
   }
+  /**
+   * --------------------------------------------------------------
+   *  getTrackPlayHistory – returns points with a derived status:
+   *
+   *    speed < 5  && ign == "Y"  →  IDLE
+   *    speed < 5  && ign == "N"  →  IDLE
+   *    speed == 0               →  STOP
+   *    speed > 5  && ign == "Y"  →  MOTION
+   *
+   *  The UI (LeafletControlsMap) now only reads `status` – no extra
+   *  field is needed.
+   * --------------------------------------------------------------
+   */
   getTrackPlayHistory(data = {}, header = true) {
     return this.postRequest("/reports/trackPlayHistory", data, header, SERVICES.dashboard)
       .then((res) => {
-        // Normalize the response to match MapView's expected structure
-        const normalizedData = (res?.data?.data || []).map((item) => ({
-          name: item.vehicleNumber || item.imei,
-          lat: item.latitude,
-          lng: item.longitude,
-          ts: item.deviceTime,
-          speed: item.speed,
-          status: item.ign === "Y" ? "MOTION" : item.speed > 0 ? "MOTION" : "STOP", // Infer status
-        }));
+        const raw = res?.data?.data || [];
+
+        const normalizedData = raw.map((item) => {
+          const speedNum = Number(item.speed) || 0; // <-- safe number
+          const ign = (item.ign || "").toUpperCase(); // <-- "Y" / "N"
+
+          // ────── DERIVE STATUS ──────
+          let status = "IDLE"; // default
+
+          if (speedNum === 0) {
+            status = "STOP";
+          } else if (speedNum > 5 && ign === "Y") {
+            status = "MOTION";
+          } else if (speedNum < 5) {
+            status = "IDLE";
+          }
+          // ───────────────────────────
+
+          return {
+            name: item.vehicleNumber || item.imei,
+            lat: item.latitude,
+            lng: item.longitude,
+            ts: item.deviceTime,
+            speed: speedNum,
+            status, // <-- derived
+          };
+        });
+
         return {
           ...res,
           data: {
