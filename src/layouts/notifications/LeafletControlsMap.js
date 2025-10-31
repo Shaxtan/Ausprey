@@ -780,6 +780,7 @@ const LeafletControlsMap = () => {
             )}
 
             {/* Download */}
+            {/* Download */}
             <MDTypography
               variant="button"
               color="info"
@@ -789,6 +790,7 @@ const LeafletControlsMap = () => {
             >
               {showDownload ? "Hide" : "Show"} Download
             </MDTypography>
+
             {showDownload && (
               <MDBox p={1} sx={{ border: "1px dashed #ccc", borderRadius: 1 }}>
                 <MDInput
@@ -800,26 +802,36 @@ const LeafletControlsMap = () => {
                   SelectProps={{ native: true }}
                   sx={{ mb: 1 }}
                 >
-                  <option value="">-- Format --</option>
+                  <option value="">-- Select Format --</option>
                   <option value="csv">CSV</option>
                   <option value="excel">Excel</option>
                   <option value="pdf">PDF</option>
                 </MDInput>
+
                 <MDButton
                   variant="gradient"
                   color="secondary"
                   fullWidth
-                  disabled={!downloadFormat}
+                  disabled={!downloadFormat || filteredData.length === 0}
                   onClick={() => {
-                    const name = `report_${selectedVehicle.id}_${Date.now()}`;
-                    if (downloadFormat === "csv") exportCSV(filteredData, `${name}.csv`);
-                    else if (downloadFormat === "excel") exportExcel(filteredData, `${name}.xlsx`);
-                    else if (downloadFormat === "pdf") exportPDF(filteredData, `${name}.pdf`);
-                    AlertSuccess(`Exported as ${downloadFormat}`);
+                    const imei = selectedVehicle?.id || "unknown";
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+                    const baseName = `track_${imei}_${timestamp}`;
+
+                    if (downloadFormat === "csv") {
+                      exportCSV(filteredData, `${baseName}.csv`);
+                    } else if (downloadFormat === "excel") {
+                      exportExcel(filteredData, `${baseName}.xlsx`);
+                    } else if (downloadFormat === "pdf") {
+                      exportPDF(filteredData, `${baseName}.pdf`);
+                    }
+
+                    AlertSuccess(`Downloaded as ${downloadFormat.toUpperCase()}`);
                     setShowDownload(false);
+                    setDownloadFormat("");
                   }}
                 >
-                  Download
+                  Download Report
                 </MDButton>
               </MDBox>
             )}
