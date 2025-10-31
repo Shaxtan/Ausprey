@@ -9,7 +9,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Icon from "@mui/material/Icon";
 
 // 💡 CORRECTED IMPORT PATH: Assuming App.js is in the 'src' directory.
-import mainLogo from "./assets/images/mainlogo.jpeg";
+import mainLogo from "./assets/images/mainlogoo.png";
 // ⭐ NEW IMPORT: Import the small icon
 import smallIcon from "./assets/images/small-icon.jpeg";
 

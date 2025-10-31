@@ -580,47 +580,58 @@ const LeafletControlsMap = () => {
         </MDTypography>
         <MDBox mt={3} mb={3}>
           <Grid container spacing={2}>
+            {/* ----------------- FROM DATE/TIME PICKER (MUI TextField) ----------------- */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   From Date/Time
                 </MDTypography>
-                <div style={{ width: "100%" }}>
-                  <DatePicker
-                    selected={fromDate}
-                    onChange={(date) => setFromDate(date)}
-                    showTimeSelect
-                    timeFormat="HH:mm:ss"
-                    timeIntervals={1}
-                    dateFormat="dd-MM-yyyy HH:mm:ss"
-                    placeholderText="Select From DateTime"
-                    className="form-control"
-                    calendarClassName="custom-calendar"
-                    popperClassName="custom-popper"
-                  />
-                </div>
+
+                {/* Replaced DatePicker with TextField type="datetime-local" */}
+                <TextField
+                  type="datetime-local"
+                  fullWidth
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    // setShowHistory(false); // Uncomment if needed
+                  }}
+                  // The datetime-local input handles the placeholder and format natively
+                  // The format should be handled by converting the date object to the "YYYY-MM-DDThh:mm:ss" format
+                  // before setting it as the `value` prop, and then converting it back to a Date object
+                  // or desired format in the onChange handler, if necessary.
+                  InputProps={{
+                    startAdornment: (
+                      // Icon is typically not needed for native datetime-local, but added for consistency
+                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
+                    ),
+                  }}
+                />
               </MDBox>
             </Grid>
 
+            {/* ----------------- TO DATE/TIME PICKER (MUI TextField) ----------------- */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   To Date/Time
                 </MDTypography>
-                <div style={{ width: "100%" }}>
-                  <DatePicker
-                    selected={toDate}
-                    onChange={(date) => setToDate(date)}
-                    showTimeSelect
-                    timeFormat="HH:mm:ss"
-                    timeIntervals={1}
-                    dateFormat="dd-MM-yyyy HH:mm:ss"
-                    placeholderText="Select To DateTime"
-                    className="form-control"
-                    calendarClassName="custom-to-calendar"
-                    popperClassName="custom-to-popper"
-                  />
-                </div>
+
+                {/* Replaced DatePicker with TextField type="datetime-local" */}
+                <TextField
+                  type="datetime-local"
+                  fullWidth
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    // setShowHistory(false); // Uncomment if needed
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
+                    ),
+                  }}
+                />
               </MDBox>
             </Grid>
           </Grid>
