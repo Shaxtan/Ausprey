@@ -20,7 +20,7 @@ import ApiService from "../../services/ApiService";
 // import DatePicker from "react-datepicker";
 // >>>>>>> 191ac6946e434fd06cac94e17eadc667aa63035e
 import "react-datepicker/dist/react-datepicker.css";
-import { format } from "date-fns";
+import { format, formatISO } from "date-fns";
 
 import { exportCSV, exportExcel, exportPDF } from "./../utils/downloadUtils";
 import { AlertSuccess, callAlert } from "../../services/CommonService";
@@ -120,16 +120,30 @@ const LeafletControlsMap = () => {
 
   /* ---------- filtered data (date + status) ---------- */
   const filteredData = useMemo(() => {
-    return vehicleData.filter((r) => {
-      const ts = new Date(r.ts).getTime();
-      const dateOk = (!fromDate || ts >= fromDate.getTime()) && (!toDate || ts <= toDate.getTime());
-      const statusOk = statusFilter.includes(r.status);
-      return dateOk && statusOk;
-    });
+  const from = fromDate ? new Date(fromDate) : null;
+  const to = toDate ? new Date(toDate) : null;
+
+  return vehicleData.filter((r) => {
+    const ts = new Date(r.ts).getTime();
+    const dateOk =
+      (!from || ts >= from.getTime()) && (!to || ts <= to.getTime());
+    const statusOk = statusFilter.includes(r.status);
+    return dateOk && statusOk;
+  });
   }, [vehicleData, fromDate, toDate, statusFilter]);
+
+  // const filteredData = useMemo(() => {
+  //   return vehicleData.filter((r) => {
+  //     const ts = new Date(r.ts).getTime();
+  //     const dateOk = (!fromDate || ts >= fromDate.getTime()) && (!toDate || ts <= toDate.getTime());
+  //     const statusOk = statusFilter.includes(r.status);
+  //     return dateOk && statusOk;
+  //   });
+  // }, [vehicleData, fromDate, toDate, statusFilter]);
 
   /* ---------- submit – call getTrackPlayHistory ---------- */
   const handleTrackSubmit = async () => {
+    console.log("Callinfg mneeeeeeeeeeeeeeeeeeeeeeeee");
     if (!selectedVehicle?.id) return callAlert("Please select a vehicle.");
     if (!fromDate || !toDate) return callAlert("Please select both From and To dates.");
     if (fromDate > toDate) return callAlert("'From' date cannot be after 'To' date.");
@@ -151,10 +165,15 @@ const LeafletControlsMap = () => {
     }
 
     try {
+      // const payload = {
+      //   imei: selectedVehicle.id,
+      //   startTime: format(fromDate, "yyyy-mm-dd HH:MM"),
+      //   endTime: format(toDate, "yyyy-mm-dd HH:MM"),
+      // };
       const payload = {
         imei: selectedVehicle.id,
-        startTime: fromDate.toISOString(),
-        endTime: toDate.toISOString(),
+        startTime: formatISO(fromDate), // ISO 8601 format
+        endTime: formatISO(toDate),
       };
       const res = await ApiService.getTrackPlayHistory(payload);
       const report = res?.data?.response?.report || [];
