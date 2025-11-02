@@ -80,14 +80,14 @@ Ignition.propTypes = {
 const tableColumns = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
-  { Header: "VEHICLE NAME", accessor: "vehicleName", width: "12%", align: "left" },
+  // { Header: "VEHICLE NAME", accessor: "vehicleName", width: "12%", align: "left" },
   { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
   { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
   { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
-  { Header: "AVG. SPEED", accessor: "avgSpeed", width: "7%", align: "center" },
+  { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
 ];
 
@@ -129,7 +129,7 @@ function Projects() {
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: <DataCell text={item.address || "N/A"} />,
-              avgSpeed: <DataCell text={item.avg !== null ? `${avgSpeedValue} km/h` : "N/A"} />,
+              avgSpeed: <DataCell text={item.avg !== null ? String(avgSpeedValue) : "N/A"} />,
               currentSpeed: (
                 <DataCell
                   text={item.speed !== null ? `${currentSpeedValue} km/h` : "N/A"}
