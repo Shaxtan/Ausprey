@@ -84,6 +84,7 @@ const tableColumns = [
   { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
   { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
+  { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
   { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
@@ -117,6 +118,7 @@ function Projects() {
 
             const currentSpeedValue = item.speed !== null ? item.speed : 0;
             const avgSpeedValue = item.avg !== null ? item.avg : 0;
+            const ignValue = item.ign === "Y" ? "on" : "Off";
 
             // Map data to the DataCell/Status/Ignition components for the DataTable
             return {
@@ -124,8 +126,9 @@ function Projects() {
               vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
               vehicleName: <DataCell text={item.name || "N/A"} />,
               gpsStatus: <Status status={gpsDisplay} />,
-              ignitionStatus: <Ignition status={currentSpeedValue} />,
+              ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
               imei: <DataCell text={item.imei || "N/A"} />,
+              date: <DataCell text={item.devTs || "N/A"} />,
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: <DataCell text={item.address || "N/A"} />,
