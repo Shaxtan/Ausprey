@@ -408,6 +408,22 @@ function Dashboard() {
               />
             </MDBox>
           </Grid>
+          {/* Online stopped */}
+          <Grid item xs={12} md={6} lg={3}>
+            <MDBox mb={1.5}>
+              <ComplexStatisticsCard
+                color="info"
+                icon={<StopIcon style={{ marginTop: "-15px" }} />}
+                title="Online Stopped"
+                count={summaryData.onlineStopped.toLocaleString()}
+                percentage={{
+                  color: "success",
+                  // amount: "+0.5%", // Placeholder %
+                  label: "Total Unreacble Fleet",
+                }}
+              />
+            </MDBox>
+          </Grid>{" "}
           {/* Offline */}
           <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
@@ -424,7 +440,7 @@ function Dashboard() {
               />
             </MDBox>
           </Grid>
-          {/* Online Stopped (Added as 5th card) */}
+          {/* Unreachable */}
           <Grid item xs={12} md={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
