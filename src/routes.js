@@ -50,17 +50,18 @@ const routes = [
     key: "alerts",
     icon: <Icon fontSize="small">warning</Icon>,
     route: "/alerts",
+    // component: <Alerts />,
     component: <Alerts />,
   },
 
-  {
-    type: "collapse",
-    name: "Trip Dashboard",
-    key: "tables",
-    icon: <Icon fontSize="small">table_view</Icon>,
-    route: "/tables",
-    component: <Tables />,
-  },
+  // {
+  //   type: "collapse",
+  //   name: "Trip Dashboard",
+  //   key: "tables",
+  //   icon: <Icon fontSize="small">table_view</Icon>,
+  //   route: "/tables",
+  //   component: <Tables />,
+  // },
 
   // NOTE: Keeping old Billing route as is
   // {
