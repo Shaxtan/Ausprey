@@ -428,7 +428,7 @@ function LoadCellReport() {
                 <MDBox sx={{ width: "100%", height: 500 }}>
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
-                      No data available for the selected range.
+                      Please select the date range for which you want to see the Load Cell Data.
                     </MDTypography>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
