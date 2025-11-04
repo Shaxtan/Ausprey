@@ -51,7 +51,7 @@ const convertTime = (timestamp) => {
 // --- CUSTOM HOOK ---
 export default function useLoadCellReportLogic() {
   // --- STATE ---
-  const [imei, setImei] = useState("867747073085688");
+  const [imei, setImei] = useState("868373076396961");
   const [imeis, setImeis] = useState([]); // ← NEW: Dropdown options
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -71,8 +71,8 @@ export default function useLoadCellReportLogic() {
         const imeiList = vehicles.map((v) => v.id);
 
         // Ensure default IMEI is at top
-        if (!imeiList.includes("867747073085688")) {
-          imeiList.unshift("867747073085688");
+        if (!imeiList.includes("868373076396961")) {
+          imeiList.unshift("868373076396961");
         }
         setImeis(imeiList);
       })
@@ -111,7 +111,7 @@ export default function useLoadCellReportLogic() {
       endDate: toLocalString(endTime),
     };
 
-    ApiService.postRequest("/device-track/load-graph", payload, true, SERVICES.report)
+    ApiService.postRequest("/reports/load-graph", payload, true, SERVICES.dashboard)
       .then((res) => {
         if (res.data?.resultCode === 1) {
           const rows = res.data.data.map((d) => ({
