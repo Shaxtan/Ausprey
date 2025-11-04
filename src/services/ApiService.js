@@ -4,9 +4,39 @@ import { callAlert } from "./CommonService";
 
 const SERVICES = {
   main: process.env.REACT_APP_BASE_URL + ":8070",
-  report: process.env.REACT_APP_BASE_URL + ":8099",
+  // report: process.env.REACT_APP_BASE_URL + ":8099",
+  report: process.env.REACT_APP_BASE_URL + ":8075",
   dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
 };
+
+
+axios.interceptors.response.use(
+  (response) => {
+    // 💡 Handle backend custom unauthorized response here
+    if (response?.data?.resultCode === 500 && response?.data?.message === "Unauthorized") {
+      console.warn("⚠️ Backend says unauthorized, redirecting...");
+      localStorage.removeItem("userDetails");
+      window.location.replace("/authentication/sign-in");
+      return Promise.reject("Unauthorized");
+    }
+
+    return response; // all good
+  },
+  (error) => {
+    const res = error?.response;
+
+    // Handle standard 401 errors
+    if (res?.status === 401) {
+      console.warn("⚠️ HTTP 401 detected, redirecting...");
+      localStorage.removeItem("userDetails");
+      window.location.replace("/authentication/sign-in");
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+
 
 class ApiService {
   getRequest(url, callback = null, header = true, base = SERVICES.main) {

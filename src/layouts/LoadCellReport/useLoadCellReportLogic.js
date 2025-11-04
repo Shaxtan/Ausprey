@@ -111,7 +111,8 @@ export default function useLoadCellReportLogic() {
       endDate: toLocalString(endTime),
     };
 
-    ApiService.postRequest("/device-track/load-graph", payload, true, SERVICES.report)
+    // ApiService.postRequest("/device-track/load-graph", payload, true, SERVICES.report)
+    ApiService.postRequest("/reports/load-graph", payload, true, SERVICES.report)
       .then((res) => {
         if (res.data?.resultCode === 1) {
           const rows = res.data.data.map((d) => ({
