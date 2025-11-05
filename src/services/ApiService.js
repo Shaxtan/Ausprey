@@ -9,7 +9,6 @@ const SERVICES = {
   dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
 };
 
-
 axios.interceptors.response.use(
   (response) => {
     // 💡 Handle backend custom unauthorized response here
@@ -35,8 +34,6 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-
 
 class ApiService {
   getRequest(url, callback = null, header = true, base = SERVICES.main) {
@@ -181,21 +178,31 @@ class ApiService {
         throw error;
       });
   }
-  getVehicleImeis(accid = 1, header = true) {
-    return this.getRequest(`/reports/report/imeis?accid=${accid}`, null, header, SERVICES.dashboard)
+  getImeiDropdown(accid = 1, header = true) {
+    return this.getRequest(
+      `/reports/report/dropdown?accid=${accid}`,
+      null,
+      header,
+      SERVICES.dashboard
+    )
       .then((res) => {
-        const imeis = res?.data?.data?.imeis || [];
+        // Normalise to the same shape the hook expects
+        const list = res?.data?.data?.imeiVehnumList || [];
+
         return {
           ...res,
           data: {
             response: {
-              vehicles: imeis.map((imei) => ({ id: imei })),
+              vehicles: list.map((item) => ({
+                imei: item.imei,
+                vehnum: item.vehnum,
+              })),
             },
           },
         };
       })
       .catch((error) => {
-        callAlert("Error", error?.message || "Failed to fetch vehicle IMEIs");
+        callAlert("Error", error?.message || "Failed to fetch IMEI dropdown");
         throw error;
       });
   }

@@ -258,8 +258,8 @@ function LoadCellReport() {
                             -- Select IMEI --
                           </MenuItem>
                           {imeis.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
                             </MenuItem>
                           ))}
                         </Select>
