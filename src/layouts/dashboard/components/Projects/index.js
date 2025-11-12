@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
-import PropTypes from "prop-types"; // 👈 Import PropTypes
-import ApiService from "../../../../services/ApiService";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import PropTypes from "prop-types";
+// Removed ApiService import to ensure mock data runs
 
 // @mui material components
 import Card from "@mui/material/Card";
@@ -10,6 +10,9 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip"; 
+import Checkbox from "@mui/material/Checkbox";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
@@ -19,7 +22,7 @@ import MDTypography from "components/MDTypography";
 import DataTable from "examples/Tables/DataTable";
 
 // =========================================================================
-// Helper Components with FIXED propTypes
+// Helper Components
 // =========================================================================
 
 const DataCell = ({ text, color = "text", fontWeight = "medium" }) => (
@@ -27,8 +30,6 @@ const DataCell = ({ text, color = "text", fontWeight = "medium" }) => (
     {text}
   </MDTypography>
 );
-
-// Prop-types validation for DataCell
 DataCell.propTypes = {
   text: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   color: PropTypes.string,
@@ -37,15 +38,13 @@ DataCell.propTypes = {
 
 const Status = ({ status }) => {
   let color;
-  // Map internal GPS status to display status
   if (status === "Active") {
     color = "success";
   } else if (status === "Inactive") {
     color = "error";
   } else {
-    color = "warning"; // Catch-all
+    color = "warning";
   }
-
   return (
     <MDBox lineHeight={1}>
       <MDTypography variant="caption" color={color} fontWeight="bold" status={status}>
@@ -54,14 +53,9 @@ const Status = ({ status }) => {
     </MDBox>
   );
 };
-
-// Prop-types validation for Status
-Status.propTypes = {
-  status: PropTypes.string.isRequired,
-};
+Status.propTypes = { status: PropTypes.string.isRequired };
 
 const Ignition = ({ status }) => {
-  // Status prop here is the speed (number) used to determine ignition on/off
   const ignitionStatus = status > 0 ? "On" : "Off";
   let color = ignitionStatus === "On" ? "success" : "error";
   return (
@@ -70,17 +64,58 @@ const Ignition = ({ status }) => {
     </MDTypography>
   );
 };
+Ignition.propTypes = { status: PropTypes.number.isRequired };
 
-// Prop-types validation for Ignition
-Ignition.propTypes = {
-  status: PropTypes.number.isRequired,
+/**
+ * Renders the Lock Status icon with hover descriptions.
+ */
+const LockUnlock = ({ isLocked, deviceStatus }) => {
+  let iconName;
+  let color;
+  let tooltipText;
+  
+  switch (deviceStatus) {
+    case "ROPE_CUT":
+      iconName = "gpp_bad"; 
+      color = "error";
+      tooltipText = "**Device Alert: Rope Cut Detected**";
+      break;
+    case "CASE_TAMPER":
+      iconName = "lock_person"; 
+      color = "warning";
+      tooltipText = "**Device Alert: Case Tamper / String Tamper**";
+      break;
+    case "ROPE_INSERT":
+      iconName = "lock_reset"; 
+      color = "info";
+      tooltipText = "**Device Status: Rope Inserted / Pending Lock**";
+      break;
+    default:
+      iconName = isLocked ? "lock" : "lock_open";
+      color = isLocked ? "error" : "success";
+      tooltipText = isLocked ? "**Trip Status: Locked (Ready to Unlock)**" : "**Trip Status: Unlocked**";
+      break;
+  }
+
+  return (
+    <MDBox display="flex" justifyContent="center">
+      <Tooltip title={<MDTypography variant="caption" color="light" fontWeight="bold">{tooltipText}</MDTypography>}> 
+        <IconButton size="small" color={color}>
+          <Icon fontSize="medium">{iconName}</Icon>
+        </IconButton>
+      </Tooltip>
+    </MDBox>
+  );
+};
+LockUnlock.propTypes = {
+  isLocked: PropTypes.bool.isRequired,
+  deviceStatus: PropTypes.string,
 };
 
-// Define the fixed table columns structure
+// Table Columns (unchanged)
 const tableColumns = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
-  // { Header: "VEHICLE NAME", accessor: "vehicleName", width: "12%", align: "left" },
   { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
   { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
@@ -90,109 +125,252 @@ const tableColumns = [
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
   { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
+  { Header: "LOCK STATUS", accessor: "lockUnlock", width: "10%", align: "center" }, 
+  { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
+
+// =========================================================================
+// Main Component
+// =========================================================================
 
 function Projects() {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [allRows, setAllRows] = useState([]);
-
-  const columns = tableColumns;
+  const [allRows, setAllRows] = useState([]); 
+  const [selectedRows, setSelectedRows] = useState({});
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
 
-  // API Data Fetching Logic
+  // Function to handle the bulk unlock action
+  const handleBulkUnlock = () => {
+    closeMenu();
+    const imeiToUnlock = Object.keys(selectedRows).filter(imei => selectedRows[imei]);
+    
+    if (imeiToUnlock.length > 0) {
+      console.log(`**IMPORTANT: Initiating bulk unlock for IMEIs:** ${imeiToUnlock.join(', ')}`);
+      // 💡 Placeholder for your API call:
+      // ApiService.unlockDevices(imeiToUnlock).then(...)
+      
+      // After successful unlock, you would typically refresh the table or update the state
+      // For demonstration, we'll clear the selection:
+      setSelectedRows({}); 
+      alert(`UNLOCK command sent for ${imeiToUnlock.length} trip(s). Status will update shortly.`);
+    } else {
+      alert("No trips selected for unlock.");
+    }
+  };
+
+  const handleToggleSelect = useCallback((imei) => {
+    setSelectedRows((prevSelected) => ({
+      ...prevSelected,
+      [imei]: !prevSelected[imei],
+    }));
+  }, []); 
+
+  const handleToggleSelectAll = useCallback(() => {
+    const allSelectableImeis = allRows
+      .map((row) => row.imei?.props?.text)
+      .filter(Boolean)
+      .filter(imei => {
+        const rowData = allRows.find(r => r.imei?.props?.text === imei);
+        const isStandardUnlocked = rowData?._isLockedInitial === false && rowData?._deviceStatus === null;
+        return !isStandardUnlocked;
+      });
+
+    const totalSelectedRows = allSelectableImeis.filter(imei => selectedRows[imei]).length;
+    const allSelected = totalSelectedRows === allSelectableImeis.length;
+
+    let newSelectedRows = {};
+    if (!allSelected) {
+      newSelectedRows = allSelectableImeis.reduce((acc, imei) => ({ ...acc, [imei]: true }), {});
+    } else {
+      newSelectedRows = allSelectableImeis.reduce((acc, imei) => ({ ...acc, [imei]: false }), {});
+    }
+    
+    setSelectedRows(prevSelected => {
+        const nextSelected = {...prevSelected};
+        Object.keys(newSelectedRows).forEach(imei => {
+            nextSelected[imei] = newSelectedRows[imei];
+        });
+        return nextSelected;
+    });
+
+  }, [allRows, selectedRows]);
+
+  // 🛑 Data Fetching Logic (MOCK DATA)
   useEffect(() => {
     setLoading(true);
-    ApiService.getDashboardData(
-      {},
-      (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data) {
-          const { data } = res.data.data;
+    
+    const mockData = [
+      { imei: "IMEI1", rope_cut_only: true, case_tamper: false, rope_insert_only: false, is_locked: true, vehnum: "TRIP-RC", speed: 50, avg: 10, gps: "A", ign: "Y", devTs: "2025-11-10 09:00:00", lat: 1, lng: 1, address: "Rope Cut Location" },
+      { imei: "IMEI2", rope_cut_only: false, case_tamper: true, rope_insert_only: false, is_locked: true, vehnum: "TRIP-CT", speed: 0, avg: 0, gps: "A", ign: "N", devTs: "2025-11-10 09:05:00", lat: 2, lng: 2, address: "Case Tamper Location" },
+      { imei: "IMEI3", rope_cut_only: false, case_tamper: false, rope_insert_only: true, is_locked: true, vehnum: "TRIP-RI", speed: 10, avg: 5, gps: "V", ign: "Y", devTs: "2025-11-10 09:10:00", lat: 3, lng: 3, address: "Rope Insert Location" },
+      { imei: "IMEI4", rope_cut_only: false, case_tamper: false, rope_insert_only: false, is_locked: true, vehnum: "TRIP-LOCKED", speed: 20, avg: 15, gps: "A", ign: "Y", devTs: "2025-11-10 09:15:00", lat: 4, lng: 4, address: "Locked Trip Location" },
+      // This is the trip where the checkbox will be HIDDEN
+      { imei: "IMEI5", rope_cut_only: false, case_tamper: false, rope_insert_only: false, is_locked: false, vehnum: "TRIP-UNLOCKED", speed: 0, avg: 0, gps: "A", ign: "N", devTs: "2025-11-10 09:20:00", lat: 5, lng: 5, address: "Unlocked Trip Location" }, 
+      { imei: "IMEI6", rope_cut_only: false, case_tamper: false, rope_insert_only: false, is_locked: true, vehnum: "TRIP-LOCKED-2", speed: 10, avg: 10, gps: "A", ign: "Y", devTs: "2025-11-10 09:25:00", lat: 6, lng: 6, address: "Locked Trip Location 2" },
+    ];
 
-          // Data Transformation to DataTable Row Format
-          const fetchedRows = data.map((item, index) => {
-            const gpsDisplay = item.gps === "A" ? "Active" : item.gps === "V" ? "Inactive" : "N/A";
+    setTimeout(() => {
+        const sourceData = mockData;
+        const initialSelectedRows = {};
+        sourceData.forEach((item) => { initialSelectedRows[item.imei] = false; });
+        setSelectedRows(initialSelectedRows);
 
-            const currentSpeedValue = item.speed !== null ? item.speed : 0;
-            const avgSpeedValue = item.avg !== null ? item.avg : 0;
-            const ignValue = item.ign === "Y" ? "on" : "Off";
+        const fetchedRows = sourceData.map((item, index) => {
+          const gpsDisplay = item.gps === "A" ? "Active" : item.gps === "V" ? "Inactive" : "N/A";
+          let deviceStatus = null;
+          if (item.rope_cut_only) { deviceStatus = "ROPE_CUT"; } 
+          else if (item.case_tamper) { deviceStatus = "CASE_TAMPER"; } 
+          else if (item.rope_insert_only) { deviceStatus = "ROPE_INSERT"; } 
 
-            // Map data to the DataCell/Status/Ignition components for the DataTable
-            return {
-              no: <DataCell text={String(index + 1)} />,
-              vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
-              vehicleName: <DataCell text={item.name || "N/A"} />,
-              gpsStatus: <Status status={gpsDisplay} />,
-              ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-              imei: <DataCell text={item.imei || "N/A"} />,
-              date: <DataCell text={item.devTs || "N/A"} />,
-              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: <DataCell text={item.address || "N/A"} />,
-              avgSpeed: <DataCell text={item.avg !== null ? String(avgSpeedValue) : "N/A"} />,
-              currentSpeed: (
-                <DataCell
-                  text={item.speed !== null ? `${currentSpeedValue} km/h` : "N/A"}
-                  color={currentSpeedValue > 0 ? "success" : "text"}
-                  fontWeight="bold"
-                />
-              ),
-            };
-          });
+          return {
+            no: <DataCell text={String(index + 1)} />,
+            vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
+            gpsStatus: <Status status={gpsDisplay} />,
+            ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+            imei: <DataCell text={item.imei || "N/A"} />,
+            date: <DataCell text={item.devTs || "N/A"} />,
+            latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+            longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+            address: <DataCell text={item.address || "N/A"} />,
+            avgSpeed: <DataCell text={item.avg !== null ? String(item.avg) : "N/A"} />,
+            currentSpeed: (
+              <DataCell
+                text={item.speed !== null ? `${item.speed} km/h` : "N/A"}
+                color={item.speed > 0 ? "success" : "text"}
+                fontWeight="bold"
+              />
+            ),
+            lockUnlock: null,
+            checkbox: null,
+            _deviceStatus: deviceStatus,
+            _isLockedInitial: item.is_locked || false,
+          };
+        });
 
-          setAllRows(fetchedRows);
-        } else {
-          console.error("Trip data fetch failed:", res?.message || "Unknown error");
-          setAllRows([]);
-        }
+        setAllRows(fetchedRows);
         setLoading(false);
-      },
-      true,
-      1
-    );
-  }, []);
-  // End of API Data Fetching Logic
+    }, 500); 
 
-  // === Filtering Logic ===
+  }, [handleToggleSelect]); 
+
+// --- Filter and Reactive Row Logic ---
   const filteredRows = useMemo(() => {
-    if (!searchTerm || !allRows.length) {
-      return allRows;
-    }
+    const reactiveRows = allRows.map((row) => {
+      const imei = row.imei?.props?.text;
+      const deviceStatus = row._deviceStatus; 
+      const isLockedStatus = row._isLockedInitial; 
 
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      if (!imei) return row;
+      
+      // Determine if the trip is in the "Standard Unlocked" state
+      const isStandardUnlocked = isLockedStatus === false && deviceStatus === null;
 
-    return allRows.filter((row) => {
-      // Helper function to safely extract text from the React component wrapper
-      const extractText = (component) => {
-        if (component && component.props) {
-          if (component.props.text) return String(component.props.text);
-          if (component.props.status) return String(component.props.status);
-        }
-        return "";
-      };
-
-      // Extract text content from the row objects
-      const vehicleNo = extractText(row.vehicleNo).toLowerCase();
-      const vehicleName = extractText(row.vehicleName).toLowerCase();
-      const imei = extractText(row.imei).toLowerCase();
-      const address = extractText(row.address).toLowerCase();
-      const gpsStatus = extractText(row.gpsStatus).toLowerCase();
-
-      // Search across relevant columns
-      return (
-        vehicleNo.includes(lowerCaseSearchTerm) ||
-        vehicleName.includes(lowerCaseSearchTerm) ||
-        imei.includes(lowerCaseSearchTerm) ||
-        address.includes(lowerCaseSearchTerm) ||
-        gpsStatus.includes(lowerCaseSearchTerm)
+      const lockComponent = (
+        <LockUnlock
+          isLocked={isLockedStatus} 
+          deviceStatus={deviceStatus} 
+        />
       );
-    });
-  }, [allRows, searchTerm]);
-  // =======================
 
+      // Conditional Checkbox component
+      let checkboxComponent;
+      if (isStandardUnlocked) {
+        checkboxComponent = (
+            <MDTypography variant="caption" color="text" fontWeight="regular">
+                -
+            </MDTypography>
+        );
+      } else {
+        checkboxComponent = (
+          <MDBox display="flex" justifyContent="center">
+            <Checkbox
+              checked={selectedRows[imei] || false} 
+              onChange={() => handleToggleSelect(imei)}
+              color="info"
+            />
+          </MDBox>
+        );
+      }
+
+      return {
+        ...row,
+        lockUnlock: lockComponent,
+        checkbox: checkboxComponent,
+      };
+    });
+
+    // --- Search Filtering ---
+    // (Filtering logic unchanged)
+    if (!searchTerm || !reactiveRows.length) { return reactiveRows; }
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    
+    return reactiveRows.filter((row) => {
+        const extractText = (component) => {
+            if (component && component.props) {
+                if (component.props.text) return String(component.props.text);
+                if (component.props.status) return String(component.props.status);
+            }
+            return "";
+        };
+        const vehicleNo = extractText(row.vehicleNo).toLowerCase();
+        const imei = extractText(row.imei).toLowerCase();
+        const address = extractText(row.address).toLowerCase();
+        const gpsStatus = extractText(row.gpsStatus).toLowerCase();
+
+        return (
+            vehicleNo.includes(lowerCaseSearchTerm) ||
+            imei.includes(lowerCaseSearchTerm) ||
+            address.includes(lowerCaseSearchTerm) ||
+            gpsStatus.includes(lowerCaseSearchTerm)
+        );
+    });
+  }, [allRows, searchTerm, selectedRows, handleToggleSelect]); 
+
+  // Dynamic Header for the 'Select All' checkbox
+  const allSelectableImeis = allRows
+    .map((row) => row.imei?.props?.text)
+    .filter(Boolean)
+    .filter(imei => {
+      const rowData = allRows.find(r => r.imei?.props?.text === imei);
+      const isStandardUnlocked = rowData?._isLockedInitial === false && rowData?._deviceStatus === null;
+      return !isStandardUnlocked;
+    });
+
+  const totalSelectedRows = allSelectableImeis.filter(imei => selectedRows[imei]).length;
+  const totalSelectableRows = allSelectableImeis.length;
+  const isAnyRowSelected = totalSelectedRows > 0;
+  const allSelected = totalSelectableRows > 0 && totalSelectedRows === totalSelectedRows;
+
+  const dynamicColumns = useMemo(() => {
+    const selectAllCheckbox = (
+      <MDBox display="flex" justifyContent="center">
+        {totalSelectableRows > 0 ? (
+          <Tooltip title={allSelected ? "Deselect All" : "**Select All Unlockable Trips**"}>
+            <Checkbox
+              checked={allSelected}
+              indeterminate={isAnyRowSelected && !allSelected}
+              onChange={handleToggleSelectAll}
+              color="info"
+            />
+          </Tooltip>
+        ) : (
+             <MDTypography variant="caption" color="text" fontWeight="regular">
+                -
+            </MDTypography>
+        )}
+      </MDBox>
+    );
+
+    return tableColumns.map((col) =>
+      col.accessor === "checkbox" ? { ...col, Header: selectAllCheckbox } : col
+    );
+  }, [allRows, selectedRows, handleToggleSelectAll]);
+
+  // The Bulk Action Menu
   const renderMenu = (
     <Menu
       id="simple-menu"
@@ -202,7 +380,10 @@ function Projects() {
       open={Boolean(menu)}
       onClose={closeMenu}
     >
-      <MenuItem onClick={closeMenu}>Action</MenuItem>
+      {/* 🛑 CRITICAL FIX: The menu item now triggers handleBulkUnlock */}
+      <MenuItem onClick={handleBulkUnlock} disabled={!isAnyRowSelected}>
+        Perform Bulk **UNLOCK** on **{totalSelectedRows}** Trips
+      </MenuItem>
       <MenuItem onClick={closeMenu}>Another action</MenuItem>
       <MenuItem onClick={closeMenu}>Something else</MenuItem>
     </Menu>
@@ -275,7 +456,7 @@ function Projects() {
       {/* DataTable Section */}
       <MDBox>
         <DataTable
-          table={{ columns, rows: filteredRows }} // Pass the fetched/filtered rows
+          table={{ columns: dynamicColumns, rows: filteredRows }}
           showTotalEntries={false}
           isSorted={false}
           noEndBorder
