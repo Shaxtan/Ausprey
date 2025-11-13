@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
-// Import the custom hook containing API logic
-import useLoadCellReportLogic from "./useLoadCellReportLogic"; // ADJUST PATH AS NEEDED
+import useLoadCellReportLogic from "./useLoadCellReportLogic";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
@@ -24,9 +23,9 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Icon from "@mui/material/Icon";
 import SendIcon from "@mui/icons-material/Send";
-import CircularProgress from "@mui/material/CircularProgress"; // Added
+import CircularProgress from "@mui/material/CircularProgress";
 
-// Recharts for the Graph
+// Recharts
 import {
   AreaChart,
   Area,
@@ -38,15 +37,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Real Export Functions from utils
+// Export utils
 import { exportCSV, exportExcel, exportPDF } from "../utils/exportUtils";
 
-// Placeholder for a Chatbot Icon URL
+// Chatbot Icon
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
-// --- Main Component ---
 function LoadCellReport() {
-  // USE CUSTOM HOOK FOR ALL REPORT LOGIC AND STATE
   const {
     imei,
     setImei,
@@ -67,10 +64,9 @@ function LoadCellReport() {
     handleSubmit,
   } = useLoadCellReportLogic();
 
-  // Download loading state
   const [downloading, setDownloading] = useState(false);
 
-  // CHATBOT STATE & LOGIC (UNCHANGED)
+  // CHATBOT LOGIC (UNCHANGED)
   const CHAT_STEP = useMemo(
     () => ({
       ASK_IMEI: "ask_imei",
@@ -90,9 +86,7 @@ function LoadCellReport() {
   const [imeiInput, setImeiInput] = useState("");
   const [chatStep, setChatStep] = useState(CHAT_STEP.ASK_IMEI);
 
-  const toggleChatbot = () => {
-    setIsChatbotOpen(!isChatbotOpen);
-  };
+  const toggleChatbot = () => setIsChatbotOpen(!isChatbotOpen);
 
   const handleImeiSubmit = () => {
     if (imeiInput.trim() === "") return;
@@ -139,7 +133,7 @@ function LoadCellReport() {
     }, 1000);
   };
 
-  // --- CHATBOT STYLES (UNCHANGED) ---
+  // CHATBOT STYLES
   const iconStyle = {
     position: "fixed",
     bottom: "30px",
@@ -224,6 +218,38 @@ function LoadCellReport() {
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
 
+  // --- DYNAMIC AVERAGE COLOR LOGIC ---
+  const getAverageColorConfig = () => {
+    if (chartData.length === 0) return null;
+
+    const latestAvg = parseFloat(chartData[chartData.length - 1].Average);
+
+    if (latestAvg > 100) {
+      return {
+        stroke: "#d32f2f",
+        fill: "#ffcdd2",
+        labelColor: "error",
+        labelText: "High Load",
+      };
+    } else if (latestAvg > 50) {
+      return {
+        stroke: "#388e3c",
+        fill: "#c8e6c9",
+        labelColor: "success",
+        labelText: "Moderate Load",
+      };
+    } else {
+      return {
+        stroke: "#1976d2",
+        fill: "#bbdefb",
+        labelColor: "info",
+        labelText: "Low Load",
+      };
+    }
+  };
+
+  const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
+
   return (
     <DashboardLayout>
       <DashboardNavbar />
@@ -258,8 +284,8 @@ function LoadCellReport() {
                             -- Select IMEI --
                           </MenuItem>
                           {imeis.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
                             </MenuItem>
                           ))}
                         </Select>
@@ -361,7 +387,6 @@ function LoadCellReport() {
                         </Select>
                       </FormControl>
 
-                      {/* DOWNLOAD BUTTON WITH LOADING */}
                       <MDButton
                         type="button"
                         variant="gradient"
@@ -418,6 +443,7 @@ function LoadCellReport() {
                   Load Cell Graph with Averages
                 </MDTypography>
               </MDBox>
+
               <MDBox p={3}>
                 {dateRange && (
                   <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
@@ -425,10 +451,29 @@ function LoadCellReport() {
                   </MDTypography>
                 )}
 
-                <MDBox sx={{ width: "100%", height: 500 }}>
+                {/* Current Average Display */}
+                {averageConfig && (
+                  <MDBox textAlign="center" mb={3}>
+                    <MDTypography variant="h5" fontWeight="bold" color={averageConfig.labelColor}>
+                      Current Average Load:{" "}
+                      {parseFloat(chartData[chartData.length - 1].Average).toFixed(2)} tons
+                    </MDTypography>
+                    <MDTypography variant="caption" color="text.secondary">
+                      Status: {averageConfig.labelText}
+                    </MDTypography>
+                  </MDBox>
+                )}
+
+                {/* SPACIOUS CHART CONTAINER */}
+                <MDBox
+                  sx={{
+                    width: "100%",
+                    height: { xs: 450, sm: 550, md: 650, lg: 750 },
+                  }}
+                >
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
-                      No data available for the selected range.
+                      Please select the date range for which you want to see the Load Cell Data.
                     </MDTypography>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -436,12 +481,30 @@ function LoadCellReport() {
                         data={chartData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="time" />
-                        <YAxis yAxisId="left" />
-                        <Tooltip />
-                        <Legend />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(
+                              2,
+                              "0"
+                            )}`;
+                          }}
+                        />
+                        <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #ccc",
+                            borderRadius: 4,
+                          }}
+                          labelStyle={{ fontWeight: "bold" }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
 
+                        {/* Individual Load Cells - Light & Subtle */}
                         {showData && (
                           <>
                             <Area
@@ -449,7 +512,8 @@ function LoadCellReport() {
                               dataKey="V1"
                               stroke="#8884d8"
                               fill="#8884d8"
-                              fillOpacity={0.3}
+                              fillOpacity={0.15}
+                              strokeWidth={1}
                               dot={false}
                               name="Load Cell 1"
                             />
@@ -458,7 +522,8 @@ function LoadCellReport() {
                               dataKey="V2"
                               stroke="#82ca9d"
                               fill="#82ca9d"
-                              fillOpacity={0.3}
+                              fillOpacity={0.15}
+                              strokeWidth={1}
                               dot={false}
                               name="Load Cell 2"
                             />
@@ -467,7 +532,8 @@ function LoadCellReport() {
                               dataKey="V3"
                               stroke="#ffc658"
                               fill="#ffc658"
-                              fillOpacity={0.3}
+                              fillOpacity={0.15}
+                              strokeWidth={1}
                               dot={false}
                               name="Load Cell 3"
                             />
@@ -476,22 +542,27 @@ function LoadCellReport() {
                               dataKey="V4"
                               stroke="#ce7e00"
                               fill="#ce7e00"
-                              fillOpacity={0.3}
+                              fillOpacity={0.15}
+                              strokeWidth={1}
                               dot={false}
                               name="Load Cell 4"
                             />
                           </>
                         )}
 
-                        {showAverage && (
+                        {/* Average Load - Clean, Color-Coded, Not Overpowering */}
+                        {averageConfig && (
                           <Area
                             type="monotone"
                             dataKey="Average"
-                            stroke="#0000FF"
-                            fill="#0000FF"
-                            fillOpacity={0.4}
+                            stroke={averageConfig.stroke}
+                            strokeWidth={2}
+                            fill={averageConfig.fill}
+                            fillOpacity={0.25}
                             dot={false}
+                            activeDot={{ r: 5 }}
                             name="Average Load"
+                            isAnimationActive={false}
                           />
                         )}
                       </AreaChart>
@@ -504,7 +575,7 @@ function LoadCellReport() {
         </Grid>
       </MDBox>
 
-      {/* CHATBOT WIDGET (UNCHANGED) */}
+      {/* CHATBOT WIDGET */}
       <div style={iconStyle} onClick={toggleChatbot}>
         <img
           src={CHATBOT_ICON_PLACEHOLDER}

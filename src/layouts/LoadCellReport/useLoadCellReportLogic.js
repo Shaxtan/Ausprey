@@ -51,8 +51,8 @@ const convertTime = (timestamp) => {
 // --- CUSTOM HOOK ---
 export default function useLoadCellReportLogic() {
   // --- STATE ---
-  const [imei, setImei] = useState("867747073085688");
-  const [imeis, setImeis] = useState([]); // ← NEW: Dropdown options
+  const [imei, setImei] = useState(""); // ← Empty by default
+  const [imeis, setImeis] = useState([]); // Dropdown options
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [chartData, setChartData] = useState([]);
@@ -65,24 +65,29 @@ export default function useLoadCellReportLogic() {
 
   // --- FETCH IMEIs ON MOUNT ---
   useEffect(() => {
-    ApiService.getVehicleImeis(1, true)
+    ApiService.getImeiDropdown(1, true)
       .then((res) => {
         const vehicles = res?.data?.response?.vehicles || [];
-        const imeiList = vehicles.map((v) => v.id);
 
-        // Ensure default IMEI is at top
-        if (!imeiList.includes("867747073085688")) {
-          imeiList.unshift("867747073085688");
-        }
-        setImeis(imeiList);
+        // Map to dropdown options: IMEI (Vehicle Number)
+        const options = vehicles.map((v) => ({
+          value: v.imei,
+          label: `${v.imei} (${v.vehnum})`,
+        }));
+
+        // Optional: Sort alphabetically by vehicle number or IMEI
+        const sortedOptions = options.sort((a, b) => a.label.localeCompare(b.label));
+
+        setImeis(sortedOptions);
+        // No default selection — imei remains ""
       })
       .catch((err) => {
-        console.error("Failed to fetch IMEIs:", err);
+        console.error("Failed to fetch IMEI dropdown:", err);
         callAlert("Error", "Could not load IMEI list.");
       });
   }, []);
 
-  // --- SET DEFAULT DATES ---
+  // --- SET DEFAULT DATES (Today 00:00:00 to 23:59:59) ---
   useEffect(() => {
     const now = new Date();
     const from = getDateString(now, 0, 0, 0);
@@ -111,8 +116,7 @@ export default function useLoadCellReportLogic() {
       endDate: toLocalString(endTime),
     };
 
-    // ApiService.postRequest("/device-track/load-graph", payload, true, SERVICES.report)
-    ApiService.postRequest("/reports/load-graph", payload, true, SERVICES.report)
+    ApiService.postRequest("/reports/load-graph", payload, true, SERVICES.dashboard)
       .then((res) => {
         if (res.data?.resultCode === 1) {
           const rows = res.data.data.map((d) => ({
@@ -167,11 +171,10 @@ export default function useLoadCellReportLogic() {
   };
 
   // --- RETURN ALL STATE & HANDLERS ---
-  // --- RETURN ALL STATE & HANDLERS ---
   return {
     imei,
     setImei,
-    imeis, // THIS WAS MISSING!
+    imeis,
     fromDate,
     setFromDate,
     toDate,

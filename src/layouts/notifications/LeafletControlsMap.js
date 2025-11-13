@@ -94,42 +94,46 @@ const LeafletControlsMap = () => {
   const SIDEBAR_WIDTH = "300px";
 
   /* ---------- fetch vehicle list (IMEI) ---------- */
+  /* ---------- fetch vehicle list (IMEI) ---------- */
   useEffect(() => {
     const fetchVehicles = async () => {
       setIsLoading(true);
       try {
-        const res = await ApiService.getVehicleImeis(1);
+        const res = await ApiService.getImeiDropdown(1, true);
         const vehicles = res?.data?.response?.vehicles || [];
-        setVehicleList(vehicles);
 
-        const defaultImei = "868373076396961";
-        const defaultVehicle = vehicles.find((v) => v.id === defaultImei) || vehicles[0];
-        setSelectedVehicle(defaultVehicle || null);
+        const options = vehicles.map((v) => ({
+          value: v.imei,
+          label: `${v.imei} (${v.vehnum})`,
+        }));
+
+        const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
+        setVehicleList(sorted);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load IMEI dropdown:", err);
         callAlert("Failed to load vehicle list.");
-        const fallback = { id: "868373076396961" };
+
+        const fallback = { value: "868373076396961", label: "868373076396961" };
         setVehicleList([fallback]);
-        setSelectedVehicle(fallback);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchVehicles();
   }, []);
 
   /* ---------- filtered data (date + status) ---------- */
   const filteredData = useMemo(() => {
-  const from = fromDate ? new Date(fromDate) : null;
-  const to = toDate ? new Date(toDate) : null;
+    const from = fromDate ? new Date(fromDate) : null;
+    const to = toDate ? new Date(toDate) : null;
 
-  return vehicleData.filter((r) => {
-    const ts = new Date(r.ts).getTime();
-    const dateOk =
-      (!from || ts >= from.getTime()) && (!to || ts <= to.getTime());
-    const statusOk = statusFilter.includes(r.status);
-    return dateOk && statusOk;
-  });
+    return vehicleData.filter((r) => {
+      const ts = new Date(r.ts).getTime();
+      const dateOk = (!from || ts >= from.getTime()) && (!to || ts <= to.getTime());
+      const statusOk = statusFilter.includes(r.status);
+      return dateOk && statusOk;
+    });
   }, [vehicleData, fromDate, toDate, statusFilter]);
 
   // const filteredData = useMemo(() => {
@@ -143,8 +147,7 @@ const LeafletControlsMap = () => {
 
   /* ---------- submit – call getTrackPlayHistory ---------- */
   const handleTrackSubmit = async () => {
-    console.log("Callinfg mneeeeeeeeeeeeeeeeeeeeeeeee");
-    if (!selectedVehicle?.id) return callAlert("Please select a vehicle.");
+    if (!selectedVehicle?.value) return callAlert("Please select a vehicle.");
     if (!fromDate || !toDate) return callAlert("Please select both From and To dates.");
     if (fromDate > toDate) return callAlert("'From' date cannot be after 'To' date.");
 
@@ -157,7 +160,6 @@ const LeafletControlsMap = () => {
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
-    // Reset original path
     if (originalPathRef.current.line) {
       originalPathRef.current.line.remove();
       originalPathRef.current.decorator?.remove();
@@ -165,14 +167,9 @@ const LeafletControlsMap = () => {
     }
 
     try {
-      // const payload = {
-      //   imei: selectedVehicle.id,
-      //   startTime: format(fromDate, "yyyy-mm-dd HH:MM"),
-      //   endTime: format(toDate, "yyyy-mm-dd HH:MM"),
-      // };
       const payload = {
-        imei: selectedVehicle.id,
-        startTime: formatISO(fromDate), // ISO 8601 format
+        imei: selectedVehicle.value, // ← Use .value
+        startTime: formatISO(fromDate),
         endTime: formatISO(toDate),
       };
       const res = await ApiService.getTrackPlayHistory(payload);
@@ -353,7 +350,7 @@ const LeafletControlsMap = () => {
     map.addControl(
       new (L.Control.extend({
         onAdd: () => container,
-      }))({ position: "bottomright" })
+      }))({ position: "topright" })
     );
 
     /* ---- custom zoom buttons ---- */
@@ -382,7 +379,7 @@ const LeafletControlsMap = () => {
     map.addControl(
       new (L.Control.extend({
         onAdd: () => zoomPanel,
-      }))({ position: "bottomright" })
+      }))({ position: "topright" })
     );
 
     L.control.zoomview({ position: "topleft" }).addTo(map);
@@ -572,9 +569,9 @@ const LeafletControlsMap = () => {
         <MDBox mb={2}>
           <MDInput
             select
-            value={selectedVehicle?.id || ""}
+            value={selectedVehicle?.value || ""}
             onChange={(e) => {
-              const veh = vehicleList.find((v) => v.id === e.target.value);
+              const veh = vehicleList.find((v) => v.value === e.target.value);
               setSelectedVehicle(veh);
               setShowHistory(false);
               setStatusFilter(["MOTION", "STOP", "IDLE"]);
@@ -587,8 +584,8 @@ const LeafletControlsMap = () => {
               -- Select Vehicle --
             </option>
             {vehicleList.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.id}
+              <option key={v.value} value={v.value}>
+                {v.label}
               </option>
             ))}
           </MDInput>
@@ -819,7 +816,7 @@ const LeafletControlsMap = () => {
                   fullWidth
                   disabled={!downloadFormat || filteredData.length === 0}
                   onClick={() => {
-                    const imei = selectedVehicle?.id || "unknown";
+                    const imei = selectedVehicle?.value || "unknown";
                     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
                     const baseName = `track_${imei}_${timestamp}`;
 
