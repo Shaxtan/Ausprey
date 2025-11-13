@@ -51,8 +51,8 @@ const convertTime = (timestamp) => {
 // --- CUSTOM HOOK ---
 export default function useLoadCellReportLogic() {
   // --- STATE ---
-  const [imei, setImei] = useState("868373076396961");
-  const [imeis, setImeis] = useState([]); // ← NEW: Dropdown options
+  const [imei, setImei] = useState(""); // ← Empty by default
+  const [imeis, setImeis] = useState([]); // Dropdown options
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [chartData, setChartData] = useState([]);
@@ -64,35 +64,22 @@ export default function useLoadCellReportLogic() {
   const intervalRef = useRef(null);
 
   // --- FETCH IMEIs ON MOUNT ---
-  // --- FETCH IMEIs ON MOUNT (UPDATED) ---
   useEffect(() => {
-    ApiService.getImeiDropdown(1, true) // <-- NEW CALL
+    ApiService.getImeiDropdown(1, true)
       .then((res) => {
         const vehicles = res?.data?.response?.vehicles || [];
 
-        // 1. Build the options array for the <select>
+        // Map to dropdown options: IMEI (Vehicle Number)
         const options = vehicles.map((v) => ({
           value: v.imei,
           label: `${v.imei} (${v.vehnum})`,
         }));
 
-        // 2. Ensure default IMEI is at the top
-        const defaultImei = "868373076396961";
-        const defaultOption = options.find((o) => o.value === defaultImei);
-        if (defaultOption) {
-          // Remove it from wherever it is and push to front
-          const filtered = options.filter((o) => o.value !== defaultImei);
-          filtered.unshift(defaultOption);
-          setImeis(filtered); // <-- array of {value, label}
-        } else {
-          // Fallback – just IMEI list (no vehnum)
-          const imeiOnly = vehicles.map((v) => ({ value: v.imei, label: v.imei }));
-          imeiOnly.unshift({ value: defaultImei, label: defaultImei });
-          setImeis(imeiOnly);
-        }
+        // Optional: Sort alphabetically by vehicle number or IMEI
+        const sortedOptions = options.sort((a, b) => a.label.localeCompare(b.label));
 
-        // Keep the selected IMEI in sync
-        setImei(defaultImei);
+        setImeis(sortedOptions);
+        // No default selection — imei remains ""
       })
       .catch((err) => {
         console.error("Failed to fetch IMEI dropdown:", err);
@@ -100,7 +87,7 @@ export default function useLoadCellReportLogic() {
       });
   }, []);
 
-  // --- SET DEFAULT DATES ---
+  // --- SET DEFAULT DATES (Today 00:00:00 to 23:59:59) ---
   useEffect(() => {
     const now = new Date();
     const from = getDateString(now, 0, 0, 0);
@@ -184,11 +171,10 @@ export default function useLoadCellReportLogic() {
   };
 
   // --- RETURN ALL STATE & HANDLERS ---
-  // --- RETURN ALL STATE & HANDLERS ---
   return {
     imei,
     setImei,
-    imeis, // THIS WAS MISSING!
+    imeis,
     fromDate,
     setFromDate,
     toDate,
