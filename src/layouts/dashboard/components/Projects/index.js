@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import PropTypes from "prop-types"; // 👈 Import PropTypes
+import PropTypes from "prop-types"; // Import PropTypes
 import ApiService from "../../../../services/ApiService";
 
 // @mui material components
@@ -118,7 +118,6 @@ function Projects() {
 
             const currentSpeedValue = item.speed !== null ? item.speed : 0;
             const avgSpeedValue = item.avg !== null ? item.avg : 0;
-            const ignValue = item.ign === "Y" ? "on" : "Off";
 
             // Map data to the DataCell/Status/Ignition components for the DataTable
             return {
@@ -208,6 +207,7 @@ function Projects() {
     </Menu>
   );
 
+  // Loading State
   if (loading) {
     return (
       <Card>
@@ -223,6 +223,7 @@ function Projects() {
 
   return (
     <Card>
+      {/* Header Section */}
       <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
         <MDBox display="flex" alignItems="center" width="100%">
           {/* Title Section */}
@@ -272,15 +273,29 @@ function Projects() {
         {renderMenu}
       </MDBox>
 
-      {/* DataTable Section */}
+      {/* Content: Table or Empty State */}
       <MDBox>
-        <DataTable
-          table={{ columns, rows: filteredRows }} // Pass the fetched/filtered rows
-          showTotalEntries={false}
-          isSorted={false}
-          noEndBorder
-          entriesPerPage={false}
-        />
+        {filteredRows.length === 0 ? (
+          <MDBox p={6} display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            <Icon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }}>search_off</Icon>
+            <MDTypography variant="h6" color="text.secondary" gutterBottom>
+              No records to display
+            </MDTypography>
+            <MDTypography variant="body2" color="text.secondary">
+              {searchTerm
+                ? `No trips match "${searchTerm}". Try adjusting your search.`
+                : "There is no trip data available at the moment."}
+            </MDTypography>
+          </MDBox>
+        ) : (
+          <DataTable
+            table={{ columns, rows: filteredRows }}
+            showTotalEntries={false}
+            isSorted={false}
+            noEndBorder
+            entriesPerPage={false}
+          />
+        )}
       </MDBox>
     </Card>
   );
