@@ -94,46 +94,32 @@ const LeafletControlsMap = () => {
   const SIDEBAR_WIDTH = "300px";
 
   /* ---------- fetch vehicle list (IMEI) ---------- */
+  /* ---------- fetch vehicle list (IMEI) ---------- */
   useEffect(() => {
     const fetchVehicles = async () => {
       setIsLoading(true);
       try {
-        const res = await ApiService.getImeiDropdown(1, true); // NEW API
+        const res = await ApiService.getImeiDropdown(1, true);
         const vehicles = res?.data?.response?.vehicles || [];
-        const defaultImei = "868373076396961";
 
-        // Build dropdown options: { value: imei, label: "imei (vehnum)" }
         const options = vehicles.map((v) => ({
           value: v.imei,
           label: `${v.imei} (${v.vehnum})`,
         }));
 
-        // Ensure default IMEI is at top
-        const defaultOption = options.find((o) => o.value === defaultImei);
-        let finalOptions = options;
-
-        if (defaultOption) {
-          finalOptions = options.filter((o) => o.value !== defaultImei);
-          finalOptions.unshift(defaultOption);
-        } else {
-          finalOptions = [{ value: defaultImei, label: defaultImei }, ...options];
-        }
-
-        setVehicleList(finalOptions); // Now array of { value, label }
-
-        // Auto-select default
-        const defaultVehicle = finalOptions.find((o) => o.value === defaultImei) || finalOptions[0];
-        setSelectedVehicle(defaultVehicle || null);
+        const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
+        setVehicleList(sorted);
       } catch (err) {
         console.error("Failed to load IMEI dropdown:", err);
         callAlert("Failed to load vehicle list.");
+
         const fallback = { value: "868373076396961", label: "868373076396961" };
         setVehicleList([fallback]);
-        setSelectedVehicle(fallback);
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchVehicles();
   }, []);
 
