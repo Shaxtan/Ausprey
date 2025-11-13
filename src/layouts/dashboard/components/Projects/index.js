@@ -125,7 +125,6 @@ const tableColumns = [
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
   { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
-  { Header: "LOCK STATUS", accessor: "lockUnlock", width: "10%", align: "center" }, 
   { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
