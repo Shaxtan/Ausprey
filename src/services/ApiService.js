@@ -11,6 +11,7 @@ const SERVICES = {
 
 axios.interceptors.response.use(
   (response) => {
+    console.log("Responmse", response)
     // 💡 Handle backend custom unauthorized response here
     if (response?.data?.resultCode === 500 && response?.data?.message === "Unauthorized") {
       console.warn("⚠️ Backend says unauthorized, redirecting...");
@@ -18,13 +19,12 @@ axios.interceptors.response.use(
       window.location.replace("/authentication/sign-in");
       return Promise.reject("Unauthorized");
     }
-      if (response?.data?.resultCode === 400 || response?.data?.resultCode === 401) {
+    if (response?.data?.resultCode === 400 || response?.data?.resultCode === 401) {
       console.warn("⚠️ Backend says unauthorized, redirecting...");
       localStorage.removeItem("userDetails");
       window.location.replace("/authentication/sign-in");
       return Promise.reject("Unauthorized");
     }
-
     return response; // all good
   },
   (error) => {
@@ -36,6 +36,14 @@ axios.interceptors.response.use(
       localStorage.removeItem("userDetails");
       window.location.replace("/authentication/sign-in");
     }
+    if (res?.status === 400) {
+      console.warn("⚠️ HTTP 400 detected, redirecting to sign-in...");
+      localStorage.removeItem("userDetails");
+      window.location.replace("/authentication/sign-in");
+      return Promise.reject("Bad Request - Redirected");
+    }
+
+
 
     return Promise.reject(error);
   }
