@@ -18,6 +18,12 @@ axios.interceptors.response.use(
       window.location.replace("/authentication/sign-in");
       return Promise.reject("Unauthorized");
     }
+      if (response?.data?.resultCode === 400 || response?.data?.resultCode === 401) {
+      console.warn("⚠️ Backend says unauthorized, redirecting...");
+      localStorage.removeItem("userDetails");
+      window.location.replace("/authentication/sign-in");
+      return Promise.reject("Unauthorized");
+    }
 
     return response; // all good
   },
