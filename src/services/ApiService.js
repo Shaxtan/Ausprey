@@ -88,13 +88,13 @@ class ApiService {
       });
   }
 
-  getDashboardData(data = {}, callback, header = true, accid = 1) {
+  getDashboardData(data = {}, callback, header = true) {
     return this.postRequest(
       "/reports/report/dashboard",
       data,
       header,
-      SERVICES.dashboard,
-      { accid } // Pass accid as query parameter
+      SERVICES.dashboard
+      // { accid } // Pass accid as query parameter
     )
       .then((res) => {
         if (callback) callback(res);
