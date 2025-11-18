@@ -87,7 +87,7 @@ const LeafletControlsMap = () => {
   const [showDownload, setShowDownload] = useState(false);
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState("");
-  const [speed] = useState(500); // animation speed (ms)
+  const [speed] = useState(50); // animation speed (ms)
   const [fromMilliseconds, setFromMilliseconds] = useState("000");
   const [toMilliseconds, setToMilliseconds] = useState("000");
 
@@ -158,6 +158,11 @@ const LeafletControlsMap = () => {
     setShowOnlyPath(false);
     setStatusFilter(["MOTION", "STOP", "IDLE"]);
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+    // ⭐ FIX: Remove the animated marker explicitly before clearing the layer
+    if (animatedMarkerRef.current) {
+      animatedMarkerRef.current.remove();
+      animatedMarkerRef.current = null;
+    }
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
     if (originalPathRef.current.line) {
@@ -183,7 +188,7 @@ const LeafletControlsMap = () => {
       const sorted = report.sort((a, b) => new Date(a.ts) - new Date(b.ts));
       setVehicleData(sorted);
       setShowHistory(true);
-      AlertSuccess(`Loaded ${sorted.length} points.`);
+      // AlertSuccess(`Loaded ${sorted.length} points.`);
     } catch (err) {
       console.error(err);
       callAlert("Failed to load track data.");
@@ -193,11 +198,14 @@ const LeafletControlsMap = () => {
   };
 
   /* ---------- animation (track play) – uses full original path ---------- */
+  // Inside the component:
+
   const simulateMovement = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
     if (!map || !originalPathRef.current.points.length) return;
 
+    // 1. STOP any existing animation and clear the layer
     layer.clearLayers();
     if (animatedMarkerRef.current) {
       layer.removeLayer(animatedMarkerRef.current);
@@ -205,7 +213,7 @@ const LeafletControlsMap = () => {
     }
     if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
 
-    // Re-add the original polyline + decorator
+    // 2. Re-add the original polyline + decorator (Ensures the path is visible)
     originalPathRef.current.line?.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
 
@@ -213,9 +221,11 @@ const LeafletControlsMap = () => {
 
     const pts = originalPathRef.current.points;
     let idx = 0;
+
+    // 3. Create and add the single animated marker
     const marker = L.marker(pts[0], {
       icon: new L.Icon({
-        iconUrl: "/icons/arrows.png",
+        iconUrl: "/iconss/arrows.png",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       }),
@@ -229,25 +239,41 @@ const LeafletControlsMap = () => {
       idx++;
       if (idx >= pts.length) {
         callAlert("Track play finished.", "info");
-        setHighlightedIndex(null);
+        setHighlightedIndex(null); // IMPORTANT: Resets to null to allow static markers to reappear in useEffect
+        // ⭐ FIX: Remove the marker when animation finishes
+        if (animatedMarkerRef.current) {
+          animatedMarkerRef.current.remove(); // Remove from map
+          animatedMarkerRef.current = null; // Clear reference
+        }
         return;
       }
       const next = pts[idx];
       marker.setLatLng(next);
       map.panTo(next, { animate: true, duration: 0.5 });
+
+      // You are setting highlightedIndex here. This will trigger the marker draw useEffect.
+      // We will now use this check to prevent static marker drawing.
       setHighlightedIndex(idx);
       animationTimeoutRef.current = setTimeout(moveNext, speed);
     };
-    moveNext();
-  }, [speed]);
+
+    // Set initial index to 0 to start the animation and hide static markers immediately
+    setHighlightedIndex(0);
+    animationTimeoutRef.current = setTimeout(moveNext, speed);
+  }, [speed]); // dependency array is fine
 
   const stopAnimation = () => {
     if (animationTimeoutRef.current) {
       clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
+    // ⭐ FIX: Remove the marker when animation is explicitly stopped
+    if (animatedMarkerRef.current) {
+      animatedMarkerRef.current.remove(); // Remove from map
+      animatedMarkerRef.current = null; // Clear reference
+    }
     setHighlightedIndex(null);
-    callAlert("Animation stopped.", "info");
+    // callAlert("Animation stopped.", "info");
   };
 
   /* ---------- marker icons ---------- */
@@ -402,8 +428,8 @@ const LeafletControlsMap = () => {
 
     layer.clearLayers();
     if (animatedMarkerRef.current) {
-      layer.removeLayer(animatedMarkerRef.current);
-      animatedMarkerRef.current = null;
+      // IMPORTANT: Re-add the animated marker if it exists (it's what's moving)
+      animatedMarkerRef.current.addTo(layer);
     }
 
     if (!showHistory || !selectedVehicle) return;
@@ -464,23 +490,24 @@ const LeafletControlsMap = () => {
     }
 
     // MARKERS: filtered by status
-    filteredData.forEach((rec, idx) => {
-      const { lat, lng, ts, speed, status } = rec;
-      if (!lat || !lng) return;
+    if (highlightedIndex === null) {
+      filteredData.forEach((rec, idx) => {
+        const { lat, lng, ts, speed, status } = rec;
+        if (!lat || !lng) return;
 
-      if (!showOnlyPath && statusFilter.includes(status)) {
-        let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
-        if (idx === highlightedIndex) icon = blueIcon;
+        if (!showOnlyPath && statusFilter.includes(status)) {
+          let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
 
-        L.marker([+lat, +lng], { icon })
-          .bindTooltip(
-            `Time: ${formatTimestamp(ts)}<br/>Speed: ${
-              speed ?? "N/A"
-            } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
-          )
-          .addTo(layer);
-      }
-    });
+          L.marker([+lat, +lng], { icon })
+            .bindTooltip(
+              `Time: ${formatTimestamp(ts)}<br/>Speed: ${
+                speed ?? "N/A"
+              } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
+            )
+            .addTo(layer);
+        }
+      });
+    }
   }, [
     vehicleData,
     filteredData,

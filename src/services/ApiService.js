@@ -99,7 +99,7 @@ class ApiService {
       data,
       header,
       SERVICES.dashboard
-      // { accid } // Pass accid as query parameter
+      // { accid }
     )
       .then((res) => {
         if (callback) callback(res);
