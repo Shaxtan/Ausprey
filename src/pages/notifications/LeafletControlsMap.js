@@ -14,6 +14,7 @@ import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers"; 
 // import DatePicker from "react-datepicker";
 // =======
 import "leaflet-rotatedmarker";
+import "leaflet-geometryutil"; // npm install leaflet-geometryutil
 
 import ApiService from "../../services/ApiService";
 // import { createTileLayers } from "../LoadCellReport/createTileLayers";
@@ -203,28 +204,22 @@ const LeafletControlsMap = () => {
   const simulateMovement = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !originalPathRef.current.points.length) return;
+    if (!map || !originalPathRef.current.line) return;
 
-    // 1. STOP any existing animation and clear the layer
+    stopAnimation();
     layer.clearLayers();
-    if (animatedMarkerRef.current) {
-      layer.removeLayer(animatedMarkerRef.current);
-      animatedMarkerRef.current = null;
-    }
-    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-
-    // 2. Re-add the original polyline + decorator (Ensures the path is visible)
-    originalPathRef.current.line?.addTo(layer);
+    originalPathRef.current.line.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
 
-    map.fitBounds(originalPathRef.current.line.getBounds(), { padding: [20, 20] });
+    const polyline = originalPathRef.current.line;
+    const totalLength = L.GeometryUtil.length(polyline);
+    const points = vehicleData;
 
-    const pts = originalPathRef.current.points;
-    let idx = 0;
+    let startTime = null;
+    const totalDuration = 30000; // 30 seconds total animation (adjustable)
 
-    // 3. Create and add the single animated marker
-    const marker = L.marker(pts[0], {
-      icon: new L.Icon({
+    const marker = L.marker(polyline.getLatLngs()[0], {
+      icon: L.icon({
         iconUrl: "/iconss/arrows.png",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
@@ -232,35 +227,39 @@ const LeafletControlsMap = () => {
       rotationAngle: 0,
       rotationOrigin: "center center",
     }).addTo(layer);
+
     animatedMarkerRef.current = marker;
-    map.setView(pts[0], 14);
 
-    const moveNext = () => {
-      idx++;
-      if (idx >= pts.length) {
-        callAlert("Track play finished.", "info");
-        setHighlightedIndex(null); // IMPORTANT: Resets to null to allow static markers to reappear in useEffect
-        // ⭐ FIX: Remove the marker when animation finishes
-        if (animatedMarkerRef.current) {
-          animatedMarkerRef.current.remove(); // Remove from map
-          animatedMarkerRef.current = null; // Clear reference
-        }
-        return;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / totalDuration, 1);
+
+      const position = L.GeometryUtil.interpolateOnLine(map, polyline, progress);
+      marker.setLatLng(position.latLng);
+
+      // Update rotation
+      if (position.predecessor) {
+        const bearing = L.GeometryUtil.bearing(position.predecessor, position.latLng);
+        marker.setRotationAngle(bearing);
       }
-      const next = pts[idx];
-      marker.setLatLng(next);
-      map.panTo(next, { animate: true, duration: 0.5 });
 
-      // You are setting highlightedIndex here. This will trigger the marker draw useEffect.
-      // We will now use this check to prevent static marker drawing.
-      setHighlightedIndex(idx);
-      animationTimeoutRef.current = setTimeout(moveNext, speed);
+      // Update highlighted index
+      const pointIndex = Math.floor(progress * (points.length - 1));
+      setHighlightedIndex(pointIndex);
+
+      if (progress < 1) {
+        animationTimeoutRef.current = requestAnimationFrame(animate);
+      } else {
+        callAlert("Track play finished.", "info");
+        setHighlightedIndex(null);
+        marker.remove();
+        animatedMarkerRef.current = null;
+      }
     };
 
-    // Set initial index to 0 to start the animation and hide static markers immediately
-    setHighlightedIndex(0);
-    animationTimeoutRef.current = setTimeout(moveNext, speed);
-  }, [speed]); // dependency array is fine
+    animationTimeoutRef.current = requestAnimationFrame(animate);
+  }, [vehicleData]);
 
   const stopAnimation = () => {
     if (animationTimeoutRef.current) {
@@ -753,7 +752,7 @@ const LeafletControlsMap = () => {
                 variant="gradient"
                 color="success"
                 onClick={simulateMovement}
-                disabled={originalPathRef.current.points.length < 2}
+                disabled={!showHistory || vehicleData.length < 2}
                 sx={{ flex: 1 }}
               >
                 Play

@@ -27,6 +27,7 @@
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "leaflet": "1.9",
+    "leaflet-geometryutil": "^0.10.3",
     "leaflet-polylinedecorator": "^1.6.0",
     "leaflet-rotatedmarker": "^0.2.0",
     "leaflet.markercluster": "^1.5.3",
