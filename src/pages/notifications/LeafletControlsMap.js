@@ -15,6 +15,7 @@ import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers"; 
 // =======
 import "leaflet-rotatedmarker";
 import "leaflet-geometryutil"; // npm install leaflet-geometryutil
+import simplify from "simplify-js";
 
 import ApiService from "../../services/ApiService";
 // import { createTileLayers } from "../LoadCellReport/createTileLayers";
@@ -423,48 +424,66 @@ const LeafletControlsMap = () => {
   useEffect(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !layer) return;
+    if (!map || !layer || !showHistory || !selectedVehicle) return;
 
     layer.clearLayers();
-    if (animatedMarkerRef.current) {
-      // IMPORTANT: Re-add the animated marker if it exists (it's what's moving)
-      animatedMarkerRef.current.addTo(layer);
-    }
+    if (animatedMarkerRef.current) animatedMarkerRef.current.addTo(layer);
 
-    if (!showHistory || !selectedVehicle) return;
+    if (vehicleData.length === 0) return;
 
-    // FULL points (unfiltered by status)
-    const fullPoints = vehicleData
-      .map((r) => [+r.lat, +r.lng])
+    // 1. Extract raw points
+    let points = vehicleData
+      .map((r) => ({ x: +r.lng, y: +r.lat, data: r }))
       .filter((p) => {
-        const [lat, lng] = p;
-        return (
-          typeof lat === "number" &&
-          typeof lng === "number" &&
-          lat >= -90 &&
-          lat <= 90 &&
-          lng >= -180 &&
-          lng <= 180
-        );
+        const valid =
+          typeof p.x === "number" &&
+          typeof p.y === "number" &&
+          p.y >= -90 &&
+          p.y <= 90 &&
+          p.x >= -180 &&
+          p.x <= 180;
+        return valid && !isNaN(p.x) && !isNaN(p.y);
       });
 
-    // Draw the original polyline ONCE
-    if (!originalPathRef.current.line && fullPoints.length > 1) {
-      const line = L.polyline(fullPoints, {
-        color: "#00f",
-        weight: 5,
-        opacity: 0.7,
+    // 2. Remove duplicate consecutive points
+    points = points.filter((p, i, arr) => i === 0 || p.x !== arr[i - 1].x || p.y !== arr[i - 1].y);
+
+    if (points.length < 2) {
+      if (points.length === 1) {
+        map.setView([points[0].y, points[0].x], 15);
+        L.marker([points[0].y, points[0].x]).addTo(layer);
+      }
+      return;
+    }
+
+    // 3. Dynamic tolerance based on point count
+    const count = points.length;
+    const tolerance =
+      count > 10000 ? 0.001 : count > 5000 ? 0.0005 : count > 1000 ? 0.0002 : 0.0001;
+
+    // 4. Simplify using Douglas-Peucker
+    const simplified = simplify(points, tolerance, true);
+    const simplifiedLatLngs = simplified.map((p) => [p.y, p.x]);
+
+    // 5. Draw simplified polyline ONCE
+    if (!originalPathRef.current.line) {
+      const line = L.polyline(simplifiedLatLngs, {
+        color: "#3388ff",
+        weight: 4,
+        opacity: 0.85,
+        smoothFactor: 1,
       }).addTo(layer);
 
       const decorator = L.polylineDecorator(line, {
         patterns: [
           {
-            offset: 25,
-            repeat: 100,
+            offset: "8%",
+            repeat: "15%",
             symbol: L.Symbol.arrowHead({
-              pixelSize: 10,
+              pixelSize: 12,
+              headAngle: 60,
               polygon: false,
-              pathOptions: { weight: 2 },
+              pathOptions: { color: "#3388ff", weight: 3, opacity: 1 },
             }),
           },
         ],
@@ -473,38 +492,32 @@ const LeafletControlsMap = () => {
       originalPathRef.current = {
         line,
         decorator,
-        points: fullPoints.map((p) => L.latLng(p[0], p[1])),
+        points: simplified.map((p) => L.latLng(p.y, p.x)),
       };
 
       const bounds = line.getBounds();
       if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [20, 20] });
+        map.fitBounds(bounds, { padding: [50, 50] });
       }
-    } else if (originalPathRef.current.line) {
-      // Re-add the existing line (was cleared above)
+    } else {
       originalPathRef.current.line.addTo(layer);
       originalPathRef.current.decorator?.addTo(layer);
-    } else if (fullPoints.length === 1) {
-      map.setView(fullPoints[0], 14);
     }
 
-    // MARKERS: filtered by status
+    // 6. Add filtered markers
     if (highlightedIndex === null) {
-      filteredData.forEach((rec, idx) => {
-        const { lat, lng, ts, speed, status } = rec;
-        if (!lat || !lng) return;
+      filteredData.forEach((rec) => {
+        if (!rec.lat || !rec.lng) return;
+        const icon =
+          rec.status === "MOTION" ? greenIcon : rec.status === "STOP" ? redIcon : yellowIcon;
 
-        if (!showOnlyPath && statusFilter.includes(status)) {
-          let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
-
-          L.marker([+lat, +lng], { icon })
-            .bindTooltip(
-              `Time: ${formatTimestamp(ts)}<br/>Speed: ${
-                speed ?? "N/A"
-              } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
-            )
-            .addTo(layer);
-        }
+        L.marker([+rec.lat, +rec.lng], { icon })
+          .bindTooltip(
+            `Time: ${formatTimestamp(rec.ts)}<br/>
+             Speed: ${rec.speed ?? "N/A"} km/h<br/>
+             Status: ${rec.status}`
+          )
+          .addTo(layer);
       });
     }
   }, [
