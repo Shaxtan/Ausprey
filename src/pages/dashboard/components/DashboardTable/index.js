@@ -112,13 +112,13 @@ LockUnlock.propTypes = {
 const tableColumns = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
-  { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
-  { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
   { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
+  { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
   { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
-  { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
+  { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
+  { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
   { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
@@ -218,7 +218,20 @@ function Projects() {
             const imei = item.imei || "N/A";
 
             return {
-              no: <DataCell text={String(index + 1)} />,
+              no: (
+                <MDBox display="flex" alignItems="center" gap={0.5}>
+                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
+                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                  </Icon>
+                  <MDTypography
+                    variant="caption"
+                    fontWeight="bold"
+                    color={item.ign === "Y" ? "success" : "error"}
+                  >
+                    {index + 1}
+                  </MDTypography>
+                </MDBox>
+              ),
               vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
               gpsStatus: <Status status={gpsDisplay} />,
               ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
@@ -360,7 +373,7 @@ function Projects() {
         <MDBox display="flex" alignItems="center" width="100%">
           <MDBox mr={3}>
             <MDTypography variant="h6" gutterBottom>
-              Live Device Status Report
+              Trip Report Table
             </MDTypography>
             <MDTypography variant="button" fontWeight="regular" color="text">
               <strong>{filteredRows.length}</strong> trip{filteredRows.length !== 1 ? "s" : ""}{" "}

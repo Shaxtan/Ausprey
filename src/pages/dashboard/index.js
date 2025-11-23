@@ -137,32 +137,34 @@ function Dashboard() {
   // =========================================================================
 
   // Helper to format pie chart data for MD PieChart component
+  // Updated: Online vs Offline vs Unreachable Pie Chart
   const onlineOfflinePieData = useMemo(() => {
-    const onlineValue = pieData.find((item) => item.name === "Online")?.value || 0;
-    const offlineValue = pieData.find((item) => item.name === "Offline")?.value || 0;
+    const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
+    const offline = summaryData.offline;
+    const unreachable = summaryData.unreachable;
 
     return {
-      labels: ["Online", "Offline"],
+      labels: ["Online", "Offline", "Unreachable"],
       datasets: {
         label: "Connection Status",
-        backgroundColors: ["success", "error"],
-        data: [onlineValue, offlineValue],
+        backgroundColors: ["success", "error", "info"], // Green, Red, Orange/Yellow
+        data: [online, offline, unreachable],
       },
     };
-  }, [pieData]);
+  }, [summaryData]);
 
+  // Updated: Detailed Device Status Pie Chart (3 slices as requested)
   const allDeviceStatusPieData = useMemo(() => {
+    const inMotion = summaryData.onlineMotion;
+    const stopped = summaryData.onlineStopped + summaryData.offline; // Stopped + Offline = "Not Moving"
+    const idle = summaryData.onlineIdle;
+
     return {
-      labels: ["Motion", "Idle", "Stopped", "Offline"],
+      labels: ["In Motion", "Stopped", "Idle"],
       datasets: {
-        label: "Device Status",
-        backgroundColors: ["success", "primary", "info", "error"],
-        data: [
-          summaryData.onlineMotion,
-          summaryData.onlineIdle,
-          summaryData.onlineStopped,
-          summaryData.offline,
-        ],
+        label: "Vehicle Status",
+        backgroundColors: ["success", "error", "warning"], // Green = Moving, Red = Stopped/Offline, Orange = Idle
+        data: [inMotion, stopped, idle],
       },
     };
   }, [summaryData]);
@@ -462,24 +464,57 @@ function Dashboard() {
         <MDBox mt={4.5}>
           {/* Pie Charts on a separate row */}
           <Grid container spacing={3}>
-            {/* Online vs. Offline Pie Chart */}
+            {/* Online vs Offline vs Unreachable Pie Chart */}
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
+              <MDBox mb={3} sx={{ height: "320px !important" }}>
                 <PieChart
                   icon={{ color: "success", component: <WifiIcon /> }}
-                  title="Online vs. Offline"
-                  description={`Total devices: ${totalDevices.toLocaleString()} \n Online Devices: ${summaryData.onlineMotion.toLocaleString()} Offline Devices: ${summaryData.offline.toLocaleString()}`}
+                  title="Online vs Offline vs Unreachable"
+                  description={
+                    <>
+                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
+                      <br />
+                      Online:{" "}
+                      <strong>
+                        {(
+                          summaryData.onlineMotion +
+                          summaryData.onlineIdle +
+                          summaryData.onlineStopped
+                        ).toLocaleString()}
+                      </strong>{" "}
+                      | Offline: <strong>{summaryData.offline.toLocaleString()}</strong> |
+                      Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                    </>
+                  }
                   chart={onlineOfflinePieData}
                 />
               </MDBox>
             </Grid>
-            {/* All Device Statuses Pie Chart */}
+
+            {/* Vehicle Running Status Pie Chart - Perfectly styled like the first one */}
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
+              <MDBox mb={3} sx={{ height: "320px !important" }}>
                 <PieChart
                   icon={{ color: "dark", component: <DonutLargeIcon /> }}
-                  title="All Device Status"
-                  description="Distribution including Motion, Idle, and Stopped."
+                  title="Vehicle Running Status"
+                  description={
+                    <>
+                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
+                      <br />
+                      In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
+                      Stopped:{" "}
+                      <strong>
+                        {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
+                      </strong>{" "}
+                      | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
+                      {summaryData.unreachable > 0 && (
+                        <>
+                          {" | "}Unreachable:{" "}
+                          <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                        </>
+                      )}
+                    </>
+                  }
                   chart={allDeviceStatusPieData}
                 />
               </MDBox>

@@ -25,7 +25,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format, formatISO } from "date-fns";
 
 import { exportCSV, exportExcel, exportPDF } from "./../utils/downloadUtils";
-import { AlertSuccess, callAlert } from "../../services/CommonService";
+import { AlertSuccess, callAlert, callAlertConfirm } from "../../services/CommonService";
 
 /* MUI components (used inside the panel) */
 import MDBox from "../../assets/components/MDBox";
@@ -73,6 +73,8 @@ const LeafletControlsMap = () => {
   const animationTimeoutRef = useRef(null);
   const panelRef = useRef(null);
   const originalPathRef = useRef({ line: null, decorator: null, points: [] }); // NEW: Store full path
+  // NEW REF: To store the time offset when paused.
+  const pauseTimeRef = useRef(0);
 
   /* ---------- state ---------- */
   const [isPanelVisible, setIsPanelVisible] = useState(true);
@@ -92,6 +94,8 @@ const LeafletControlsMap = () => {
   const [speed] = useState(50); // animation speed (ms)
   const [fromMilliseconds, setFromMilliseconds] = useState("000");
   const [toMilliseconds, setToMilliseconds] = useState("000");
+  // NEW STATE: Tracks if the animation is paused.
+  const [isPaused, setIsPaused] = useState(false);
 
   const SIDEBAR_WIDTH = "300px";
 
@@ -137,6 +141,20 @@ const LeafletControlsMap = () => {
       return dateOk && statusOk;
     });
   }, [vehicleData, fromDate, toDate, statusFilter]);
+  /* ---------- FULL STOP (used on form submit) ---------- */
+  const fullStopAnimation = useCallback(() => {
+    if (animationTimeoutRef.current) {
+      cancelAnimationFrame(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+    if (animatedMarkerRef.current) {
+      animatedMarkerRef.current.remove();
+      animatedMarkerRef.current = null;
+    }
+    pauseTimeRef.current = 0; // Reset time offset
+    setIsPaused(false); // Reset pause state
+    setHighlightedIndex(null);
+  }, []);
 
   // const filteredData = useMemo(() => {
   //   return vehicleData.filter((r) => {
@@ -159,12 +177,8 @@ const LeafletControlsMap = () => {
     setHighlightedIndex(null);
     setShowOnlyPath(false);
     setStatusFilter(["MOTION", "STOP", "IDLE"]);
-    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
-    // ⭐ FIX: Remove the animated marker explicitly before clearing the layer
-    if (animatedMarkerRef.current) {
-      animatedMarkerRef.current.remove();
-      animatedMarkerRef.current = null;
-    }
+    // Stop and clean up any ongoing animation
+    fullStopAnimation();
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
     if (originalPathRef.current.line) {
@@ -202,50 +216,78 @@ const LeafletControlsMap = () => {
   /* ---------- animation (track play) – uses full original path ---------- */
   // Inside the component:
 
-  const simulateMovement = useCallback(() => {
+  // Renamed simulateMovement to startAnimation for clarity
+  const startAnimation = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !originalPathRef.current.line) return;
 
-    stopAnimation();
+    // Check if the path data is ready
+    if (!map || !originalPathRef.current.line || vehicleData.length < 2) {
+      return callAlert("Track data not ready or insufficient points for animation.", "warning");
+    }
+
+    // If currently animating, do nothing (or explicitly handle resume/restart logic)
+    if (animationTimeoutRef.current && !isPaused) return;
+
+    // Stop any existing animation frame request (but keep marker and path if paused)
+    if (animationTimeoutRef.current) {
+      cancelAnimationFrame(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+
+    // Resume logic: Clear the pause state
+    setIsPaused(false);
+
     layer.clearLayers();
     originalPathRef.current.line.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
 
     const polyline = originalPathRef.current.line;
-    const totalLength = L.GeometryUtil.length(polyline);
     const points = vehicleData;
-
     let startTime = null;
     const totalDuration = 30000; // 30 seconds total animation (adjustable)
 
-    const marker = L.marker(polyline.getLatLngs()[0], {
-      icon: L.icon({
-        iconUrl: "/iconss/arrows.png",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-      }),
-      rotationAngle: 0,
-      rotationOrigin: "center center",
-    }).addTo(layer);
+    // Determine the starting progress (0 if new, based on pauseTimeRef if resuming)
+    const initialProgress = pauseTimeRef.current / totalDuration;
 
-    animatedMarkerRef.current = marker;
+    let marker = animatedMarkerRef.current;
+
+    // Initialize marker if it doesn't exist (i.e., new animation)
+    if (!marker) {
+      // Calculate initial position based on initialProgress
+      const initialPosition = L.GeometryUtil.interpolateOnLine(map, polyline, initialProgress);
+
+      marker = L.marker(initialPosition.latLng, {
+        icon: L.icon({
+          iconUrl: "/iconss/vehiclemarker.png",
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        }),
+        rotationAngle: 0,
+        rotationOrigin: "center center",
+      }).addTo(layer);
+
+      animatedMarkerRef.current = marker;
+    } else {
+      // If marker exists (i.e., resuming), just ensure it's on the layer
+      marker.addTo(layer);
+    }
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
+
+      // Elapsed time is the current time minus the start time, plus the pause offset
+      const elapsed = timestamp - startTime + pauseTimeRef.current;
       const progress = Math.min(elapsed / totalDuration, 1);
 
       const position = L.GeometryUtil.interpolateOnLine(map, polyline, progress);
-      marker.setLatLng(position.latLng);
+      marker.setLatLng(position.latLng); // Update rotation
 
-      // Update rotation
       if (position.predecessor) {
         const bearing = L.GeometryUtil.bearing(position.predecessor, position.latLng);
         marker.setRotationAngle(bearing);
-      }
+      } // Update highlighted index
 
-      // Update highlighted index
       const pointIndex = Math.floor(progress * (points.length - 1));
       setHighlightedIndex(pointIndex);
 
@@ -253,58 +295,107 @@ const LeafletControlsMap = () => {
         animationTimeoutRef.current = requestAnimationFrame(animate);
       } else {
         callAlert("Track play finished.", "info");
-        setHighlightedIndex(null);
-        marker.remove();
-        animatedMarkerRef.current = null;
+        fullStopAnimation(); // Call the unified stop function
       }
     };
 
     animationTimeoutRef.current = requestAnimationFrame(animate);
-  }, [vehicleData]);
+  }, [vehicleData, isPaused, fullStopAnimation]); // Added fullStopAnimation dependency
 
-  const stopAnimation = () => {
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
+  /* ---------- PAUSE / RESUME logic ---------- */
+  const togglePlayPause = () => {
+    // If animation is running (animationTimeoutRef.current is set and not paused)
+    if (animationTimeoutRef.current && !isPaused) {
+      // PAUSE
+      cancelAnimationFrame(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
+      setIsPaused(true);
+      // Crucially, calculate the current progress time to resume from
+      // We use the current highlighted index to approximate the time elapsed,
+      // or a more accurate position calculation if needed.
+      if (highlightedIndex !== null && vehicleData.length > 0) {
+        // Simplified time update based on index (index / total_indices * total_duration)
+        const totalDuration = 30000;
+        pauseTimeRef.current = (highlightedIndex / (vehicleData.length - 1)) * totalDuration;
+      }
+      // callAlertConfirm("Animation paused.", "info");
+    } else if (isPaused) {
+      // RESUME
+      // The marker is already on the map, and pauseTimeRef.current holds the offset
+      startAnimation();
+      // callAlert("Animation resumed.", "info");
+    } else {
+      // START NEW PLAYBACK
+      pauseTimeRef.current = 0; // Reset offset to 0 for a new run
+      startAnimation();
     }
-    // ⭐ FIX: Remove the marker when animation is explicitly stopped
-    if (animatedMarkerRef.current) {
-      animatedMarkerRef.current.remove(); // Remove from map
-      animatedMarkerRef.current = null; // Clear reference
-    }
-    setHighlightedIndex(null);
-    // callAlert("Animation stopped.", "info");
-  };
+  }; /* ---------- marker icons ---------- */
 
-  /* ---------- marker icons ---------- */
-  const redIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const greenIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const yellowIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const blueIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
+  const redIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const greenIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const yellowIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const blueIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const startIcon = useMemo(
+    () =>
+      L.divIcon({
+        html: `<div style="background:#4caf50;color:white;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">START</div>`,
+        className: "custom-start-marker",
+        iconSize: [70, 30],
+        iconAnchor: [35, 30],
+      }),
+    []
+  );
+
+  const endIcon = useMemo(
+    () =>
+      L.divIcon({
+        html: `<div style="background:#f44336;color:white;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">END</div>`,
+        className: "custom-end-marker",
+        iconSize: [60, 30],
+        iconAnchor: [30, 30],
+      }),
+    []
+  );
 
   /* ---------- map init (once) ---------- */
   useEffect(() => {
@@ -414,66 +505,57 @@ const LeafletControlsMap = () => {
       if (zoomDivRef.current) zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
     });
 
+    // Cleanup on unmount
     return () => {
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      fullStopAnimation(); // Ensures animation is stopped
       map.remove();
     };
-  }, []);
+  }, [fullStopAnimation]); // Added fullStopAnimation dependency
 
-  /* ---------- draw markers / polyline (polyline is fixed) ---------- */
+  /* Draw Path + Markers */
   useEffect(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
     if (!map || !layer || !showHistory || !selectedVehicle) return;
 
-    layer.clearLayers();
-    if (animatedMarkerRef.current) animatedMarkerRef.current.addTo(layer);
+    const isAnimationActive = animationTimeoutRef.current || isPaused;
+
+    if (!isAnimationActive) layer.clearLayers();
+    else {
+      layer.clearLayers();
+      animatedMarkerRef.current?.addTo(layer);
+      originalPathRef.current.line?.addTo(layer);
+      originalPathRef.current.decorator?.addTo(layer);
+      originalPathRef.current.startMarker?.addTo(layer);
+      originalPathRef.current.endMarker?.addTo(layer);
+    }
 
     if (vehicleData.length === 0) return;
 
-    // 1. Extract raw points
-    let points = vehicleData
-      .map((r) => ({ x: +r.lng, y: +r.lat, data: r }))
-      .filter((p) => {
-        const valid =
-          typeof p.x === "number" &&
-          typeof p.y === "number" &&
-          p.y >= -90 &&
-          p.y <= 90 &&
-          p.x >= -180 &&
-          p.x <= 180;
-        return valid && !isNaN(p.x) && !isNaN(p.y);
-      });
-
-    // 2. Remove duplicate consecutive points
-    points = points.filter((p, i, arr) => i === 0 || p.x !== arr[i - 1].x || p.y !== arr[i - 1].y);
-
-    if (points.length < 2) {
-      if (points.length === 1) {
-        map.setView([points[0].y, points[0].x], 15);
-        L.marker([points[0].y, points[0].x]).addTo(layer);
-      }
-      return;
-    }
-
-    // 3. Dynamic tolerance based on point count
-    const count = points.length;
-    const tolerance =
-      count > 10000 ? 0.001 : count > 5000 ? 0.0005 : count > 1000 ? 0.0002 : 0.0001;
-
-    // 4. Simplify using Douglas-Peucker
-    const simplified = simplify(points, tolerance, true);
-    const simplifiedLatLngs = simplified.map((p) => [p.y, p.x]);
-
-    // 5. Draw simplified polyline ONCE
     if (!originalPathRef.current.line) {
-      const line = L.polyline(simplifiedLatLngs, {
-        color: "#3388ff",
-        weight: 4,
-        opacity: 0.85,
-        smoothFactor: 1,
-      }).addTo(layer);
+      let points = vehicleData
+        .map((r) => ({ x: +r.lng, y: +r.lat, data: r }))
+        .filter(
+          (p) => !isNaN(p.x) && !isNaN(p.y) && p.y >= -90 && p.y <= 90 && p.x >= -180 && p.x <= 180
+        );
 
+      points = points.filter(
+        (p, i, arr) => i === 0 || p.x !== arr[i - 1].x || p.y !== arr[i - 1].y
+      );
+      if (points.length < 2) return;
+
+      const tolerance =
+        points.length > 10000
+          ? 0.001
+          : points.length > 5000
+          ? 0.0005
+          : points.length > 1000
+          ? 0.0002
+          : 0.0001;
+      const simplified = simplify(points, tolerance, true);
+      const latLngs = simplified.map((p) => [p.y, p.x]);
+
+      const line = L.polyline(latLngs, { color: "#3388ff", weight: 4, opacity: 0.85 }).addTo(layer);
       const decorator = L.polylineDecorator(line, {
         patterns: [
           {
@@ -483,39 +565,51 @@ const LeafletControlsMap = () => {
               pixelSize: 12,
               headAngle: 60,
               polygon: false,
-              pathOptions: { color: "#3388ff", weight: 3, opacity: 1 },
+              pathOptions: { color: "#3388ff", weight: 3 },
             }),
           },
         ],
       }).addTo(layer);
 
+      // Start Marker
+      const startLatLng = latLngs[0];
+      const startMarker = L.marker(startLatLng, { icon: startIcon })
+        // .bindTooltip("Start Point", { permanent: true, direction: "top", offset: [0, -10] })
+        .addTo(layer);
+
+      // End Marker
+      const endLatLng = latLngs[latLngs.length - 1];
+      const endMarker = L.marker(endLatLng, { icon: endIcon })
+        // .bindTooltip("End Point", { permanent: true, direction: "top", offset: [0, -10] })
+        .addTo(layer);
+
       originalPathRef.current = {
         line,
         decorator,
         points: simplified.map((p) => L.latLng(p.y, p.x)),
+        startMarker,
+        endMarker,
       };
 
-      const bounds = line.getBounds();
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-    } else {
+      map.fitBounds(line.getBounds(), { padding: [50, 50] });
+    } else if (!isAnimationActive) {
       originalPathRef.current.line.addTo(layer);
       originalPathRef.current.decorator?.addTo(layer);
+      originalPathRef.current.startMarker?.addTo(layer);
+      originalPathRef.current.endMarker?.addTo(layer);
+      map.fitBounds(originalPathRef.current.line.getBounds(), { padding: [50, 50] });
     }
 
-    // 6. Add filtered markers
-    if (highlightedIndex === null) {
+    if (!isAnimationActive) {
       filteredData.forEach((rec) => {
         if (!rec.lat || !rec.lng) return;
         const icon =
           rec.status === "MOTION" ? greenIcon : rec.status === "STOP" ? redIcon : yellowIcon;
-
         L.marker([+rec.lat, +rec.lng], { icon })
           .bindTooltip(
-            `Time: ${formatTimestamp(rec.ts)}<br/>
-             Speed: ${rec.speed ?? "N/A"} km/h<br/>
-             Status: ${rec.status}`
+            `Time: ${formatTimestamp(rec.ts)}<br>Speed: ${rec.speed ?? "N/A"} km/h<br>Status: ${
+              rec.status
+            }`
           )
           .addTo(layer);
       });
@@ -523,15 +617,14 @@ const LeafletControlsMap = () => {
   }, [
     vehicleData,
     filteredData,
-    highlightedIndex,
     showHistory,
-    showOnlyPath,
-    statusFilter,
     selectedVehicle,
+    isPaused,
     greenIcon,
     redIcon,
     yellowIcon,
-    blueIcon,
+    startIcon,
+    endIcon,
   ]);
 
   /* ---------- render ---------- */
@@ -613,6 +706,8 @@ const LeafletControlsMap = () => {
               const veh = vehicleList.find((v) => v.value === e.target.value);
               setSelectedVehicle(veh);
               setShowHistory(false);
+              // Stop any ongoing animation when changing vehicle
+              fullStopAnimation();
               setStatusFilter(["MOTION", "STOP", "IDLE"]);
             }}
             fullWidth
@@ -758,23 +853,36 @@ const LeafletControlsMap = () => {
                 );
               })}
             </MDBox>
-
-            {/* Play / Stop */}
-            <MDBox display="flex" gap={1} mb={2}>
+            {/* Play / Pause / Stop Buttons - Improved Spacing & Icons */}
+            <MDBox display="flex" gap={2} justifyContent="space-between" mb={3}>
+              {/* Play / Pause Button */}
               <MDButton
                 variant="gradient"
-                color="success"
-                onClick={simulateMovement}
+                color={animationTimeoutRef.current ? (isPaused ? "success" : "warning") : "success"}
+                startIcon={
+                  <Icon>{animationTimeoutRef.current && !isPaused ? "pause" : "play_arrow"}</Icon>
+                }
+                onClick={togglePlayPause}
                 disabled={!showHistory || vehicleData.length < 2}
-                sx={{ flex: 1 }}
+                sx={{ flex: 1, minWidth: 0 }}
+                size="medium"
               >
-                Play
+                {animationTimeoutRef.current ? (isPaused ? "Resume" : "Pause") : "Play Track"}
               </MDButton>
-              <MDButton variant="gradient" color="error" onClick={stopAnimation} sx={{ flex: 1 }}>
+
+              {/* Full Stop Button */}
+              <MDButton
+                variant="gradient"
+                color="error"
+                startIcon={<Icon>stop</Icon>}
+                onClick={fullStopAnimation}
+                disabled={!animationTimeoutRef.current && !isPaused}
+                sx={{ flex: 1, minWidth: 0 }}
+                size="medium"
+              >
                 Stop
               </MDButton>
             </MDBox>
-
             {/* History list */}
             <MDTypography
               variant="button"
@@ -820,7 +928,6 @@ const LeafletControlsMap = () => {
                 ))}
               </MDBox>
             )}
-
             {/* Download */}
             <MDTypography
               variant="button"
@@ -831,7 +938,6 @@ const LeafletControlsMap = () => {
             >
               {showDownload ? "Hide" : "Show"} Download
             </MDTypography>
-
             {showDownload && (
               <MDBox p={1} sx={{ border: "1px dashed #ccc", borderRadius: 1 }}>
                 <MDInput

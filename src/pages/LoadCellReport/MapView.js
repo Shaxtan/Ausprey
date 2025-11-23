@@ -7,7 +7,7 @@ import "leaflet.markercluster";
 
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
-import MDInput from "../../assets/components/MDInput"; // For search
+import MDInput from "../../assets/components/MDInput";
 import Grid from "@mui/material/Grid";
 import Icon from "@mui/material/Icon";
 import Card from "@mui/material/Card";
@@ -19,7 +19,7 @@ import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardN
 import ApiService from "../../services/ApiService";
 
 // -----------------------------
-// Custom Icons (Green, Red, Highlight Blue)
+// Custom Icons
 // -----------------------------
 const greenIcon = new L.Icon({
   iconUrl:
@@ -34,6 +34,16 @@ const greenIcon = new L.Icon({
 const redIcon = new L.Icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const yellowIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -75,6 +85,7 @@ const MapView = () => {
   const [vehicleStats, setVehicleStats] = useState({
     total: 0,
     inMotion: 0,
+    idle: 0,
     stopped: 0,
     locked: 0,
   });
@@ -82,7 +93,7 @@ const MapView = () => {
   const [vehicleList, setVehicleList] = useState([]);
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Start open like old version
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const indiaCenter = { lat: 22.5589409, lng: 75.6089374 };
   const baseMaps = createTileLayers();
@@ -95,28 +106,37 @@ const MapView = () => {
       const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesFilter =
         filter === "All" ||
-        (filter === "Motion" && veh.status === "ON") ||
-        (filter === "Idle" && veh.status === "OFF" && veh.lock === "0") ||
-        (filter === "Stop" && veh.status === "OFF") ||
+        (filter === "Motion" && veh.status === "MOTION") ||
+        (filter === "Idle" && veh.status === "IDLE") ||
+        (filter === "Stop" && veh.status === "STOP") ||
         (filter === "Lock" && veh.lock === "1");
       return matchesSearch && matchesFilter;
     });
   }, [vehicleList, filter, searchTerm]);
 
   // -----------------------------
-  // Status Label & Badge
+  // Status Label & Color
   // -----------------------------
   const getStatusLabel = (status, lock) => {
-    if (status === "ON") return "In Motion";
     if (lock === "1") return "Locked";
-    if (status === "OFF" && lock === "0") return "Idle";
-    return "Stopped";
+    if (status === "MOTION") return "In Motion";
+    if (status === "IDLE") return "Idle";
+    if (status === "STOP") return "Stopped";
+    return "Unknown";
   };
 
   const getStatusColor = (status, lock) => {
-    if (status === "ON") return "#4CAF50";
-    if (lock === "1") return "#2196F3";
-    return "#F44336";
+    if (lock === "1") return "#2196F3"; // Blue
+    if (status === "MOTION") return "#4CAF50"; // Green
+    if (status === "IDLE") return "#FF9800"; // Orange
+    return "#F44336"; // Red for Stopped
+  };
+
+  const getIconForStatus = (status, lock) => {
+    if (lock === "1") return highlightIcon;
+    if (status === "MOTION") return greenIcon;
+    if (status === "IDLE") return yellowIcon;
+    return redIcon; // STOP or unknown
   };
 
   // -----------------------------
@@ -150,7 +170,6 @@ const MapView = () => {
     L.control.zoomview({ position: "topleft" }).addTo(map);
     L.control.scale().addTo(map);
 
-    // Marker Cluster Group
     const cluster = L.markerClusterGroup({
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
@@ -185,26 +204,44 @@ const MapView = () => {
       const vehicles = [];
       let total = 0,
         inMotion = 0,
+        idle = 0,
         stopped = 0,
         locked = 0;
 
-      // Clear previous markers
       markerClusterRef.current.clearLayers();
       markerMapRef.current = {};
 
       data.forEach((v) => {
-        const { lat, lng, vehnum, speed, gps, cts } = v;
+        const { lat, lng, vehnum, speed, gps, cts, ign, lock, address } = v;
         if (!lat || !lng) return;
 
-        const status = speed > 0 ? "ON" : "OFF";
-        const lock = "0"; // Adjust if API provides lock status
-        const icon = status === "ON" ? greenIcon : redIcon;
+        const speedNum = Number(speed) || 0;
+        const ignition = (ign || "N").toString().toUpperCase();
+        const isLocked = lock === "1" || lock === true;
+
+        // Correct Status Logic
+        let status;
+        if (speedNum === 0 && ignition === "N") {
+          status = "STOP";
+        } else if (speedNum > 5 && ignition === "Y") {
+          status = "MOTION";
+        } else if (speedNum < 5) {
+          status = "IDLE";
+        } else {
+          status = "IDLE"; // fallback
+        }
+
+        const effectiveStatus = isLocked ? "LOCKED" : status;
+        const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
 
         const marker = L.marker([lat, lng], { icon });
         marker.bindPopup(
-          `<b>${vehnum}</b><br>Status: ${
-            status === "ON" ? "Moving" : "Stopped"
-          }<br>Speed: ${speed} km/h<br>GPS Time: ${cts || gps}`
+          `<b>${vehnum}</b><br>
+           Status: ${getStatusLabel(effectiveStatus, isLocked ? "1" : "0")}<br>
+           Speed: ${speedNum} km/h<br>
+           Ignition: ${ignition}<br>
+           GPS Time: ${cts || gps || "N/A"}<br>
+           Address: ${address || "Resolving..."}`
         );
 
         markerClusterRef.current.addLayer(marker);
@@ -213,21 +250,22 @@ const MapView = () => {
         allLatLngs.push([lat, lng]);
 
         total++;
-        if (status === "ON") inMotion++;
-        else stopped++;
-        if (lock === "1") locked++;
+        if (effectiveStatus === "MOTION") inMotion++;
+        else if (effectiveStatus === "IDLE") idle++;
+        else if (effectiveStatus === "STOP") stopped++;
+        if (isLocked) locked++;
 
         vehicles.push({
           vehnum,
-          status,
-          lock,
-          time: cts || new Date().toLocaleString(),
-          location: "Location not available", // Update if API has address
+          status: effectiveStatus,
+          lock: isLocked ? "1" : "0",
+          time: cts || gps || new Date().toLocaleString(),
+          location: address || "Location resolving...",
           alert: "Route ID - RD101",
         });
       });
 
-      setVehicleStats({ total, inMotion, stopped, locked });
+      setVehicleStats({ total, inMotion, idle, stopped, locked });
       setVehicleList(vehicles);
 
       if (allLatLngs.length > 0) {
@@ -237,7 +275,7 @@ const MapView = () => {
   }, []);
 
   // -----------------------------
-  // Handle Vehicle Click (Highlight + Zoom + Close Sidebar)
+  // Handle Vehicle Click
   // -----------------------------
   const handleVehicleClick = (veh) => {
     const marker = markerMapRef.current[veh.vehnum];
@@ -245,21 +283,19 @@ const MapView = () => {
 
     // Reset previous highlight
     if (highlightedVeh) {
-      const old = vehicleList.find((v) => v.vehnum === highlightedVeh);
+      const oldVeh = vehicleList.find((v) => v.vehnum === highlightedVeh);
       const oldMarker = markerMapRef.current[highlightedVeh];
-      if (oldMarker && old) {
-        oldMarker.setIcon(old.status === "ON" ? greenIcon : redIcon);
+      if (oldMarker && oldVeh) {
+        oldMarker.setIcon(getIconForStatus(oldVeh.status, oldVeh.lock));
       }
     }
 
-    // Highlight new
+    // Highlight current
     marker.setIcon(highlightIcon);
     setHighlightedVeh(veh.vehnum);
 
     mapRef.current.flyTo(marker.getLatLng(), 15, { animate: true });
     marker.openPopup();
-
-    // Close sidebar on mobile-like experience
     setIsSidebarOpen(false);
   };
 
@@ -288,10 +324,8 @@ const MapView = () => {
                 </MDTypography>
               </MDBox>
 
-              {/* Leaflet Map */}
               <div ref={mapContainerRef} style={{ height: "calc(100% - 70px)", width: "100%" }} />
 
-              {/* Overlay Sidebar Panel */}
               <div style={overlayPanelStyle}>
                 <Card
                   sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 6 }}
@@ -311,19 +345,15 @@ const MapView = () => {
 
                   <Collapse in={isSidebarOpen} timeout="auto" unmountOnExit>
                     <MDBox p={2} pt={1} flex={1} sx={{ overflow: "auto" }}>
-                      {/* Search */}
                       <MDInput
                         placeholder="Search vehicle..."
                         fullWidth
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         sx={{ mb: 2 }}
-                        InputProps={{
-                          startAdornment: <Icon sx={{ mr: 1 }}>search</Icon>,
-                        }}
+                        InputProps={{ startAdornment: <Icon sx={{ mr: 1 }}>search</Icon> }}
                       />
 
-                      {/* Filter Tabs */}
                       <MDBox display="flex" flexWrap="wrap" gap={1} mb={3}>
                         {["All", "Motion", "Idle", "Stop", "Lock"].map((tab) => (
                           <MDBox
@@ -350,7 +380,7 @@ const MapView = () => {
                                 {
                                   All: vehicleStats.total,
                                   Motion: vehicleStats.inMotion,
-                                  Idle: vehicleStats.stopped - vehicleStats.locked,
+                                  Idle: vehicleStats.idle,
                                   Stop: vehicleStats.stopped,
                                   Lock: vehicleStats.locked,
                                 }[tab]
@@ -361,7 +391,6 @@ const MapView = () => {
                         ))}
                       </MDBox>
 
-                      {/* Vehicle List */}
                       <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
                         {filteredVehicles.length === 0 ? (
                           <MDTypography
