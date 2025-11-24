@@ -12,7 +12,7 @@ Coded by www.creative-tim.com
 
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
-
+import LiveTrack from "pages/LiveTrack/LiveTrack";
 // ** CORRECT IMPORT FOR ALERTS **
 import Alerts from "../src/pages/Alerts/Alerts";
 // ** NEW IMPORT FOR LOAD CELL REPORT **
@@ -57,6 +57,14 @@ const routes = [
     route: "/device-configuration", // Unique route path
     component: <DeviceConfiguration />, // Your new component
   },
+{
+    type: "collapse",
+    name: "Live Track",
+    key: "live-track",
+    icon: <Icon fontSize="small">gps_fixed</Icon>,
+    route: "/live-track",
+    component: <LiveTrack />,
+  },
   // ----------------------------------------------------------------------
   // ** ✅ NEW ROUTE: MAP VIEW **
   {
