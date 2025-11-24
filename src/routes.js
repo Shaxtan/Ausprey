@@ -38,93 +38,77 @@ import Icon from "@mui/material/Icon";
 import MapView from "../src/pages/LoadCellReport/MapView"; // UNCOMMENTED/ADDED
 
 const routes = [
-  {
-    type: "collapse",
-    name: "Dashboard",
-    key: "dashboard",
-    icon: <Icon fontSize="small">dashboard</Icon>,
-    route: "/dashboard",
-    component: <Dashboard />,
-  },
+  {
+    type: "collapse",
+    name: "Dashboard",
+    key: "dashboard",
+    icon: <Icon fontSize="small">dashboard</Icon>,
+    route: "/dashboard",
+    component: <Dashboard />,
+  }, // ---------------------------------------------------------------------- // ** ✅ NEW ROUTE: DEVICE CONFIGURATION **
 
-  // ----------------------------------------------------------------------
-  // ** ✅ NEW ROUTE: DEVICE CONFIGURATION **
-  {
-    type: "collapse",
-    name: "Device Config", // Display name in the sidebar
-    key: "device-configuration", // Unique key
-    icon: <Icon fontSize="small">settings_cell</Icon>, // Using a relevant icon
-    route: "/device-configuration", // Unique route path
-    component: <DeviceConfiguration />, // Your new component
-  },
-{
+  {
+    type: "collapse",
+    name: "Device Config", // Display name in the sidebar
+    key: "device-configuration", // Unique key
+    icon: <Icon fontSize="small">settings_cell</Icon>, // Using a relevant icon
+    route: "/device-configuration", // Unique route path
+    component: <DeviceConfiguration />, // Your new component
+  },
+  {
     type: "collapse",
     name: "Live Track",
     key: "live-track",
     icon: <Icon fontSize="small">gps_fixed</Icon>,
     route: "/live-track",
     component: <LiveTrack />,
+  }, // ---------------------------------------------------------------------- // ** ✅ NEW ROUTE: MAP VIEW **
+  {
+    type: "collapse",
+    name: "Map View", // Display name in the sidebar
+    key: "map-view", // Unique key
+    icon: <Icon fontSize="small">map</Icon>, // Using a relevant icon (e.g., 'map')
+    route: "/map-view", // Unique route path
+    component: <MapView />, // Your new component
+  }, // ----------------------------------------------------------------------
+  {
+    type: "collapse",
+    name: "Alerts",
+    key: "alerts",
+    icon: <Icon fontSize="small">warning</Icon>,
+    route: "/alerts",
+    component: <Alerts />,
+  }, // Commented-out routes skipped for brevity...
+  {
+    type: "collapse",
+    name: "Track Play",
+    key: "notifications",
+    icon: <Icon fontSize="small">notifications</Icon>,
+    route: "/notifications",
+    component: <Notifications />,
+  }, // ---------------------------------------------------------------------- // ** CORRECTED LOAD CELL REPORT ROUTE **
+  {
+    type: "collapse",
+    name: "Load Sensor",
+    key: "load-cell-report",
+    icon: <Icon fontSize="small">scale</Icon>,
+    route: "/load-cell-report",
+    component: <LoadCellReport />,
+  }, // ----------------------------------------------------------------------
+  {
+    // type: "collapse",
+    // name: "Sign In",
+    key: "sign-in", // icon: <Icon fontSize="small">login</Icon>,
+    route: "/authentication/sign-in",
+    component: <SignIn />,
   },
-  // ----------------------------------------------------------------------
-  // ** ✅ NEW ROUTE: MAP VIEW **
-  {
-    type: "collapse",
-    name: "Map View", // Display name in the sidebar
-    key: "map-view", // Unique key
-    icon: <Icon fontSize="small">map</Icon>, // Using a relevant icon (e.g., 'map')
-    route: "/map-view", // Unique route path
-    component: <MapView />, // Your new component
-  },
-  // ----------------------------------------------------------------------
-
-  {
-    type: "collapse",
-    name: "Alerts",
-    key: "alerts",
-    icon: <Icon fontSize="small">warning</Icon>,
-    route: "/alerts",
-    component: <Alerts />,
-  }, 
-  
-  // Commented-out routes skipped for brevity...
-
-  {
-    type: "collapse",
-    name: "Track Play",
-    key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
-    route: "/notifications",
-    component: <Notifications />,
-  }, 
-  
-  // ---------------------------------------------------------------------- 
-  // ** CORRECTED LOAD CELL REPORT ROUTE **
-  {
-    type: "collapse",
-    name: "Load Sensor",
-    key: "load-cell-report", 
-    icon: <Icon fontSize="small">scale</Icon>, 
-    route: "/load-cell-report", 
-    component: <LoadCellReport />, 
-  }, 
-  // ---------------------------------------------------------------------- 
-
-  {
-    // type: "collapse",
-    // name: "Sign In",
-    key: "sign-in", 
-    // icon: <Icon fontSize="small">login</Icon>,
-    route: "/authentication/sign-in",
-    component: <SignIn />,
-  },
-  {
-    // type: "collapse",
-    // name: "Sign Up",
-    key: "sign-up", 
-    // icon: <Icon fontSize="small">assignment</Icon>,
-    route: "/authentication/sign-up",
-    component: <SignUp />,
-  },
+  {
+    // type: "collapse",
+    // name: "Sign Up",
+    key: "sign-up", // icon: <Icon fontSize="small">assignment</Icon>,
+    route: "/authentication/sign-up",
+    component: <SignUp />,
+  },
 ];
 
 export default routes;

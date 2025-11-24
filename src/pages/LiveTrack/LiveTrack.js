@@ -3,14 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Polyline,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -29,7 +22,7 @@ import Paper from "@mui/material/Paper";
 import Tooltip from "@mui/material/Tooltip";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
-import Avatar from "@mui/material/Avatar"; 
+import Avatar from "@mui/material/Avatar";
 import { useTheme } from "@mui/material/styles";
 
 // Layout
@@ -52,7 +45,7 @@ const MOCK_DEVICES = [
     battery: 95,
     ignition: true,
     lastUpdate: "10:58:30 AM",
-    driverName: "Rajesh Kumar", 
+    driverName: "Rajesh Kumar",
     vehicleType: "Truck",
     route: [
       [18.5204, 73.8567],
@@ -211,7 +204,7 @@ const MOCK_DEVICES = [
     driverName: "N/A",
     vehicleType: "Trailer",
     route: [
-      [18.50, 73.89],
+      [18.5, 73.89],
       [18.501, 73.891],
     ],
   },
@@ -376,7 +369,7 @@ const MOCK_DEVICES = [
     driverName: "Ramesh Pawar",
     vehicleType: "Bus",
     route: [
-      [18.50, 73.87],
+      [18.5, 73.87],
       [18.505, 73.865],
       [18.51, 73.86],
     ],
@@ -458,7 +451,7 @@ const MOCK_DEVICES = [
     driverName: "N/A",
     vehicleType: "Utility",
     route: [
-      [18.50, 73.83],
+      [18.5, 73.83],
       [18.501, 73.831],
     ],
   },
@@ -483,8 +476,7 @@ const MOCK_TRIP_BASE = {
   ============================ */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -537,8 +529,8 @@ InfoRow.defaultProps = { value: null, icon: null };
  * This avoids non-standard theme colors that could cause the 'type' error.
  */
 function getStatusColor(status) {
-  const normalizedStatus = String(status || "").trim(); 
-  
+  const normalizedStatus = String(status || "").trim();
+
   switch (normalizedStatus) {
     case "Running":
       return "success";
@@ -549,7 +541,7 @@ function getStatusColor(status) {
     case "Inactive":
     // Use default color for any status that is not green, red, or amber
     default:
-      return "default"; 
+      return "default";
   }
 }
 
@@ -559,10 +551,10 @@ function getStatusColor(status) {
  */
 function getCustomChipStyle(status) {
   const normalizedStatus = String(status || "").trim();
-  
+
   if (normalizedStatus === "Inactive") {
     // Custom style for 'Inactive' (e.g., dark background)
-    return { 
+    return {
       backgroundColor: "#344767", // Example Dark Grey color
       color: "#FFFFFF",
     };
@@ -570,12 +562,12 @@ function getCustomChipStyle(status) {
 
   if (normalizedStatus === "No Data" || normalizedStatus === "") {
     // Custom style for 'No Data' (e.g., light grey background)
-    return { 
+    return {
       backgroundColor: "#bdbdbd", // MUI Grey 400
       color: "#FFFFFF",
     };
   }
-  
+
   // Return an empty object if a standard color (success, error, warning) is used
   return {};
 }
@@ -592,45 +584,54 @@ function getBatteryIcon(percentage) {
  * IMPORTANT: Added dummyImage property.
  */
 function getVehicleIconOrImage(vehicleType) {
-    const type = (vehicleType || '').toLowerCase();
-    
-    // Using the uploaded image as a dummy placeholder URL for a 'Truck' or similar heavy vehicle.
-    const DUMMY_TRUCK_IMAGE = "http://googleusercontent.com/image_collection/image_retrieval/some_id_string";
-    // Placeholder image for construction/yellow vehicles
-    const DUMMY_CONSTRUCTION_IMAGE = "https://i.imgur.com/example/construction_v.png"; // Dummy URL
-    // Placeholder image for buses/vans
-    const DUMMY_VAN_IMAGE = "https://i.imgur.com/example/delivery_van.png"; // Dummy URL
+  const type = (vehicleType || "").toLowerCase();
 
+  // Using the uploaded image as a dummy placeholder URL for a 'Truck' or similar heavy vehicle.
+  const DUMMY_TRUCK_IMAGE =
+    "http://googleusercontent.com/image_collection/image_retrieval/some_id_string";
+  // Placeholder image for construction/yellow vehicles
+  const DUMMY_CONSTRUCTION_IMAGE = "https://i.imgur.com/example/construction_v.png"; // Dummy URL
+  // Placeholder image for buses/vans
+  const DUMMY_VAN_IMAGE = "https://i.imgur.com/example/delivery_van.png"; // Dummy URL
 
-    if (type.includes("truck") || type.includes("trailer") || type.includes("tipper") || type.includes("flatbed")) {
-      return { 
-          icon: "local_shipping", 
-          color: "info",
-          // *** IMPLEMENTATION: Use the actual image placeholder tag or a dummy URL ***
-          dummyImage: DUMMY_TRUCK_IMAGE,
-      };
-    }
-    if (type.includes("tanker")) {
-      return { icon: "liquor", color: "warning" };
-    }
-    if (type.includes("bus")) {
-      return { icon: "directions_bus", color: "primary", dummyImage: DUMMY_VAN_IMAGE };
-    }
-    if (type.includes("van") || type.includes("pickup") || type.includes("utility")) {
-      return { icon: "airport_shuttle", color: "secondary", dummyImage: DUMMY_VAN_IMAGE };
-    }
-    if (type.includes("excavator") || type.includes("roller") || type.includes("compactor") || type.includes("concrete")) {
-      return { icon: "construction", color: "error", dummyImage: DUMMY_CONSTRUCTION_IMAGE };
-    }
-    if (type.includes("crane") || type.includes("forklift")) {
-      return { icon: "build_circle", color: "success" };
-    }
-    if (type.includes("ambulance")) {
-      return { icon: "local_hospital", color: "error" };
-    }
-    return { icon: "crop_square", color: "default" }; // Default/Other
+  if (
+    type.includes("truck") ||
+    type.includes("trailer") ||
+    type.includes("tipper") ||
+    type.includes("flatbed")
+  ) {
+    return {
+      icon: "local_shipping",
+      color: "info",
+      // *** IMPLEMENTATION: Use the actual image placeholder tag or a dummy URL ***
+      dummyImage: DUMMY_TRUCK_IMAGE,
+    };
+  }
+  if (type.includes("tanker")) {
+    return { icon: "liquor", color: "warning" };
+  }
+  if (type.includes("bus")) {
+    return { icon: "directions_bus", color: "primary", dummyImage: DUMMY_VAN_IMAGE };
+  }
+  if (type.includes("van") || type.includes("pickup") || type.includes("utility")) {
+    return { icon: "airport_shuttle", color: "secondary", dummyImage: DUMMY_VAN_IMAGE };
+  }
+  if (
+    type.includes("excavator") ||
+    type.includes("roller") ||
+    type.includes("compactor") ||
+    type.includes("concrete")
+  ) {
+    return { icon: "construction", color: "error", dummyImage: DUMMY_CONSTRUCTION_IMAGE };
+  }
+  if (type.includes("crane") || type.includes("forklift")) {
+    return { icon: "build_circle", color: "success" };
+  }
+  if (type.includes("ambulance")) {
+    return { icon: "local_hospital", color: "error" };
+  }
+  return { icon: "crop_square", color: "default" }; // Default/Other
 }
-
 
 /* ============================
   VehicleHeaderBox (NEW COMPONENT)
@@ -638,7 +639,7 @@ function getVehicleIconOrImage(vehicleType) {
 function VehicleHeaderBox({ device }) {
   if (!device) {
     return (
-      <Card sx={{ p: 2, textAlign: 'center', height: 100 }}>
+      <Card sx={{ p: 2, textAlign: "center", height: 100 }}>
         <Typography color="text.secondary">Select a device to view details</Typography>
       </Card>
     );
@@ -647,21 +648,21 @@ function VehicleHeaderBox({ device }) {
   const { icon, color, dummyImage } = getVehicleIconOrImage(device.vehicleType);
 
   return (
-    <Card sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Card sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}>
       {/* Truck Image/Icon Placeholder - MODIFIED */}
-      <Avatar 
-        sx={{ 
-          width: 70, 
-          height: 70, 
-          bgcolor: dummyImage ? 'transparent' : `${color}.main`, // Transparent background if image is used
-          border: dummyImage ? `1px solid ${color}.main` : 'none', // Optional border
+      <Avatar
+        sx={{
+          width: 70,
+          height: 70,
+          bgcolor: dummyImage ? "transparent" : `${color}.main`, // Transparent background if image is used
+          border: dummyImage ? `1px solid ${color}.main` : "none", // Optional border
           p: dummyImage ? 0.5 : 0, // Optional padding
-          overflow: 'hidden', // Ensure image stays inside
+          overflow: "hidden", // Ensure image stays inside
         }}
         src={dummyImage} // Set the dummy image URL
       >
         {/* If no dummyImage, show the Material Icon */}
-        {!dummyImage && <Icon sx={{ fontSize: 40, color: 'white' }}>{icon}</Icon>}
+        {!dummyImage && <Icon sx={{ fontSize: 40, color: "white" }}>{icon}</Icon>}
       </Avatar>
 
       {/* Details */}
@@ -670,7 +671,7 @@ function VehicleHeaderBox({ device }) {
         <Typography variant="h6" fontWeight={700} noWrap>
           {device.name}
         </Typography>
-        
+
         {/* Status Chip */}
         <Chip
           label={device.status}
@@ -685,8 +686,8 @@ function VehicleHeaderBox({ device }) {
 
         {/* Driver Name */}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          <Icon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }}>person</Icon>
-          **Driver:** {device.driverName || 'N/A'}
+          <Icon sx={{ fontSize: 16, verticalAlign: "middle", mr: 0.5 }}>person</Icon>
+          **Driver:** {device.driverName || "N/A"}
         </Typography>
       </Box>
     </Card>
@@ -697,7 +698,6 @@ VehicleHeaderBox.propTypes = {
 };
 VehicleHeaderBox.defaultProps = { device: null };
 
-
 /* ============================
   StatusBox 
   ============================ */
@@ -706,16 +706,14 @@ function StatusBox({ status, count, isSelected, onClick }) {
     Running: "success",
     Stopped: "error",
     Idle: "warning",
-    Inactive: "default", 
-    "No Data": "default", 
+    Inactive: "default",
+    "No Data": "default",
     Total: "primary",
   };
   const color = colorMap[status] || "default";
 
   // Use a custom color for the count text for Inactive/No Data to mimic the chip color
-  const countColor = 
-    status === "Inactive" ? "#344767" : 
-    status === "No Data" ? "#bdbdbd" : color;
+  const countColor = status === "Inactive" ? "#344767" : status === "No Data" ? "#bdbdbd" : color;
 
   return (
     <Card
@@ -723,7 +721,7 @@ function StatusBox({ status, count, isSelected, onClick }) {
       sx={{
         p: 1.5,
         minWidth: 100,
-        flexShrink: 0, 
+        flexShrink: 0,
         flexGrow: 1,
         textAlign: "center",
         cursor: "pointer",
@@ -768,8 +766,8 @@ function DeviceTable({ devices, selectedId, onSelect }) {
       <TableContainer
         component={Paper}
         sx={{
-          // Adjusted height due to new boxes 
-          maxHeight: "calc(100vh - 330px) !important", 
+          // Adjusted height due to new boxes
+          maxHeight: "calc(100vh - 330px) !important",
           overflow: "auto !important",
           borderRadius: 0,
         }}
@@ -884,7 +882,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                       display: "inline-block",
                       maxWidth: "100%",
                       // Apply custom styles for non-standard colors
-                      ...getCustomChipStyle(d.status), 
+                      ...getCustomChipStyle(d.status),
                     }}
                   />
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
@@ -924,12 +922,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     pr: 2,
                   }}
                 >
-                  <Stack
-                    direction="row"
-                    spacing={2}
-                    justifyContent="center"
-                    alignItems="center"
-                  >
+                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
                       <Icon
                         color={d.ignition ? "success" : "error"}
@@ -992,11 +985,12 @@ export default function LiveTrack() {
 
     MOCK_DEVICES.forEach((d) => {
       total++;
-      
+
       // Use the logic from getStatusColor to categorize
-      const statusKey = (d.status && ["Running", "Stopped", "Idle", "Inactive"].includes(d.status)) 
-        ? d.status 
-        : "No Data";
+      const statusKey =
+        d.status && ["Running", "Stopped", "Idle", "Inactive"].includes(d.status)
+          ? d.status
+          : "No Data";
 
       statusMap[statusKey]++;
     });
@@ -1005,11 +999,11 @@ export default function LiveTrack() {
 
     const devicesToRender = MOCK_DEVICES.filter((d) => {
       if (filterStatus === "Total") return true;
-      
+
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
 
       if (filterStatus === "No Data") return isNoData;
-      
+
       return d.status === filterStatus;
     });
 
@@ -1023,13 +1017,12 @@ export default function LiveTrack() {
       ...base,
       id: selectedDevice.tripId,
       vehicle: selectedDevice.name,
-      driverName: selectedDevice.driverName, 
+      driverName: selectedDevice.driverName,
       currentSpeed: `${selectedDevice.speed} km/h`,
       signalLevel: selectedDevice.battery > 50 ? "High" : "Low",
-      currentLocation:
-        selectedDevice.route?.length
-          ? selectedDevice.route[selectedDevice.route.length - 1].join(",")
-          : base.currentLocation,
+      currentLocation: selectedDevice.route?.length
+        ? selectedDevice.route[selectedDevice.route.length - 1].join(",")
+        : base.currentLocation,
       currentAddress: "Mock Address (Pune, India)",
       route: selectedDevice.route,
     };
@@ -1075,7 +1068,7 @@ export default function LiveTrack() {
   };
 
   const stopPlayback = () => {
-    isPlaying && pausePlayback(); 
+    isPlaying && pausePlayback();
     setCurrentStep(0);
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   };
@@ -1089,7 +1082,7 @@ export default function LiveTrack() {
 
   // If the currently selected device is filtered out, clear selection
   useEffect(() => {
-    if (selectedDevice && !filteredDevices.some(d => d.id === selectedDevice.id)) {
+    if (selectedDevice && !filteredDevices.some((d) => d.id === selectedDevice.id)) {
       setSelectedDevice(filteredDevices[0] || null);
     }
     // Also, if the filter changes to something empty, clear the device selection
@@ -1097,7 +1090,6 @@ export default function LiveTrack() {
       setSelectedDevice(null);
     }
   }, [filterStatus, filteredDevices, selectedDevice]);
-
 
   return (
     <DashboardLayout>
@@ -1128,11 +1120,7 @@ export default function LiveTrack() {
           }}
         >
           {/* Status Filter Boxes */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}
-          >
+          <Stack direction="row" spacing={1} sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}>
             {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
               <StatusBox
                 key={status}
@@ -1180,22 +1168,29 @@ export default function LiveTrack() {
             {filteredDevices.map((d) => {
               const [lat, lng] = d.route[d.route.length - 1];
               const { color } = getVehicleIconOrImage(d.vehicleType);
-              
+
               // Custom Leaflet icon for better visibility and color-coding
               const customIcon = L.divIcon({
-                  className: 'custom-div-icon',
-                  html: `<div style="background-color:${d.status === 'Running' ? 'green' : (d.status === 'Stopped' ? 'red' : 'orange')}; width:10px; height:10px; border-radius:50%; border:2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-                  iconSize: [20, 20],
-                  iconAnchor: [10, 10],
+                className: "custom-div-icon",
+                html: `<div style="background-color:${
+                  d.status === "Running" ? "green" : d.status === "Stopped" ? "red" : "orange"
+                }; width:10px; height:10px; border-radius:50%; border:2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
               });
-
 
               return (
                 <Marker key={d.id} position={[lat, lng]} icon={customIcon}>
                   <Popup>
-                    <Typography variant="body2" fontWeight={700}>{d.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">Status: {d.status}</Typography>
-                    <Typography variant="caption" color="text.secondary">Speed: {d.speed} km/h</Typography>
+                    <Typography variant="body2" fontWeight={700}>
+                      {d.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Status: {d.status}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Speed: {d.speed} km/h
+                    </Typography>
                   </Popup>
                 </Marker>
               );
@@ -1211,15 +1206,19 @@ export default function LiveTrack() {
               <Marker
                 position={markerPos}
                 icon={L.divIcon({
-                  className: 'playback-marker',
+                  className: "playback-marker",
                   html: `<div style="background-color:purple; width:14px; height:14px; border-radius:50%; border:3px solid white; box-shadow: 0 0 8px rgba(128,0,128,1);"></div>`,
                   iconSize: [20, 20],
                   iconAnchor: [10, 10],
                 })}
               >
                 <Popup>
-                  <Typography variant="body2" fontWeight={700}>Playback Position</Typography>
-                  <Typography variant="caption" color="text.secondary">Step: {currentStep + 1} / {selectedTrip.route.length}</Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    Playback Position
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Step: {currentStep + 1} / {selectedTrip.route.length}
+                  </Typography>
                 </Popup>
               </Marker>
             )}
@@ -1265,12 +1264,7 @@ export default function LiveTrack() {
               <InfoRow label="Signal" value={selectedTrip?.signalLevel} icon="network_cell" />
               <InfoRow label="Direction" value={selectedTrip?.currentDirection} icon="explore" />
               <Box sx={{ mt: 1 }}>
-                <Stack 
-                  direction="row" 
-                  spacing={1} 
-                  justifyContent="center" 
-                  sx={{ mt: 2 }}
-                >
+                <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
                   <Button
                     variant="contained"
                     color={isPlaying ? "error" : "primary"}
