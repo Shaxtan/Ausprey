@@ -564,72 +564,110 @@ export default function LiveTrack() {
   // left panel fixed width (desktop) - responsive for small screens
   const LEFT_PANEL_WIDTH = 520;
 
-  // NEW STATE: To hold the live device data (will be an array of one device)
-  const [liveDevices, setLiveDevices] = useState([]);
-
+  // NEW MASTER STATE: Holds ALL devices fetched from getDashboardData
+  const [allDevices, setAllDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [markerPos, setMarkerPos] = useState(null);
   const intervalRef = useRef(null);
+  // Add a state to hold the live metrics, decoupled from selectedDevice
+  const [liveMetrics, setLiveMetrics] = useState({});
 
   // State for filtering
   const [filterStatus, setFilterStatus] = useState("Total");
 
-  // --- NEW: Live Data Fetcher ---
-  const fetchLiveDeviceData = async () => {
-    try {
-      const response = await ApiService.testData();
-
-      if (response?.data?.resultCode === 1 && response?.data?.data) {
-        const rawData = response.data.data;
-
-        // 💡 Normalize the single API response into the MOCK_DEVICES array structure
-        const normalizedDevice = {
-          id: rawData.imei,
-          name: rawData.vehnum || rawData.imei,
-          tripId: "LIVE",
-          status:
-            rawData.ign === "Y"
-              ? rawData.speed > 5
-                ? "Running"
-                : rawData.speed > 0
-                ? "Idle"
-                : "Stopped"
-              : "Stopped",
-          speed: rawData.speed,
-          battery: rawData.anl ? Math.round((Number(rawData.anl) / 4.2) * 100) : 50, // Mocked battery logic from anl/voltage field
-          ignition: rawData.ign === "Y",
-          lastUpdate: new Date().toLocaleTimeString(),
-          driverName: "LIVE Driver", // Placeholder
-          vehicleType: "Truck", // Placeholder
-          // Crucially, the route is just the current position for 'Live' data
-          route: [[rawData.lat, rawData.lng]],
-        };
-
-        setLiveDevices([normalizedDevice]);
-
-        // Auto-select the device on the first successful fetch
-        setSelectedDevice((prev) => (prev === null ? normalizedDevice : prev));
-      }
-    } catch (error) {
-      console.error("Failed to fetch live data:", error);
-      // callAlert is handled by ApiService for network errors
-    }
-  };
-
-  // --- Core Refresh Logic ---
+  // --- INITIAL DATA FETCH: Get all devices once ---
   useEffect(() => {
-    // 1. Initial fetch
-    fetchLiveDeviceData();
+    // 1. Initial fetch of ALL devices from the dashboard API
+    ApiService.getAllDevices()
+      .then((devices) => {
+        setAllDevices(devices);
 
-    // 2. Set up 30-second interval refresh
-    const liveInterval = setInterval(fetchLiveDeviceData, 30000); // 30000ms = 30 seconds
+        // Auto-select the first device found
+        if (devices.length > 0) {
+          setSelectedDevice(devices[0]);
+        }
+      })
+      .catch(console.error); // Error handled by ApiService.callAlert
+  }, []); // Runs only once on mount
 
-    // 3. Cleanup on component unmount
+  // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
+  // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
+  useEffect(() => {
+    if (!selectedDevice || !selectedDevice.accountId || !selectedDevice.id) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+
+    const imei = selectedDevice.id;
+    const accountId = selectedDevice.accountId || 1;
+
+    const fetchLiveUpdate = async () => {
+      try {
+        const response = await ApiService.testData(accountId, imei);
+        const rawData = response?.data?.data;
+
+        if (response?.data?.resultCode === 1 && rawData) {
+          const speedNum = Number(rawData.speed) || 0;
+          const ign = (rawData.ign || "").toUpperCase();
+
+          let status;
+          if (ign === "Y") {
+            status = speedNum > 5 ? "Running" : "Idle";
+          } else {
+            status = speedNum === 0 ? "Stopped" : "Inactive";
+          }
+
+          const newLocation = [rawData.lat, rawData.lng];
+
+          // --- UPDATE LOGIC (MODIFIED): Update the Master List & Live Metrics ---
+          setAllDevices((prevDevices) => {
+            const updatedDevices = prevDevices.map((d) => {
+              if (d.id === imei) {
+                const accumulatedRoute = [...(d.route || []), newLocation].slice(-100);
+
+                const updatedDevice = {
+                  ...d,
+                  status,
+                  speed: speedNum,
+                  ignition: ign === "Y",
+                  battery: rawData.anl ? Math.round((Number(rawData.anl) / 4.2) * 100) : 50,
+                  lastUpdate: new Date().toLocaleTimeString(),
+                  location: `${rawData.lat},${rawData.lng}`,
+                  route: accumulatedRoute,
+                };
+
+                // --- NEW: Update separate liveMetrics state ---
+                // This object only contains the latest live data
+                setLiveMetrics(updatedDevice);
+
+                return updatedDevice;
+              }
+              return d;
+            });
+
+            // Sync selectedDevice with the latest object (if still selected)
+            // The old setSelectedDevice line is commented out to prevent triggering re-run
+            // setSelectedDevice(updatedDevices.find((d) => d.id === imei));
+
+            return updatedDevices;
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to fetch live update for ${imei}:`, error);
+      }
+    };
+
+    // 2. Initial call + Set up 30-second interval refresh
+    fetchLiveUpdate();
+    const liveInterval = setInterval(fetchLiveUpdate, 30000);
+
+    // 3. Cleanup on component unmount or when selectedDevice ID/Account changes
     return () => clearInterval(liveInterval);
-  }, []); // Empty dependency array means it runs only on mount/unmount
+  }, [selectedDevice?.id, selectedDevice?.accountId]); // *** CRITICAL CHANGE: Depend only on ID/Account ***
 
+  // --- FILTERING LOGIC ---
   const { filteredDevices, counts } = useMemo(() => {
     const statusMap = {
       Running: 0,
@@ -640,7 +678,8 @@ export default function LiveTrack() {
     };
     let total = 0;
 
-    liveDevices.forEach((d) => {
+    allDevices.forEach((d) => {
+      // CHANGE: Use allDevices
       total++;
 
       // Use the logic from getStatusColor to categorize
@@ -654,7 +693,8 @@ export default function LiveTrack() {
 
     const counts = { ...statusMap, Total: total };
 
-    const devicesToRender = liveDevices.filter((d) => {
+    const devicesToRender = allDevices.filter((d) => {
+      // CHANGE: Use allDevices
       if (filterStatus === "Total") return true;
 
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
@@ -665,32 +705,46 @@ export default function LiveTrack() {
     });
 
     return { filteredDevices: devicesToRender, counts };
-  }, [filterStatus, liveDevices]); // <--- CORRECTED: liveDevices must be included here
+  }, [filterStatus, allDevices]); // CHANGE: Dependency is allDevices
 
+  // --- SELECTED TRIP (DERIVED DATA) ---
   const selectedTrip = useMemo(() => {
     if (!selectedDevice) return null;
+
+    // Find the selected device's latest object from liveMetrics state
+    const liveData = selectedDevice.id === liveMetrics.id ? liveMetrics : selectedDevice;
+
     const base = { ...MOCK_TRIP_BASE };
     return {
       ...base,
-      id: selectedDevice.tripId,
-      vehicle: selectedDevice.name,
-      driverName: selectedDevice.driverName,
-      currentSpeed: `${selectedDevice.speed} km/h`,
-      signalLevel: selectedDevice.battery > 50 ? "High" : "Low",
-      currentLocation: selectedDevice.route?.length
-        ? selectedDevice.route[selectedDevice.route.length - 1].join(",")
+      id: liveData.tripId,
+      vehicle: liveData.name,
+      driverName: liveData.driverName,
+      // Use live data for speed, status, etc.
+      currentSpeed: `${liveData.speed} km/h`,
+      signalLevel: liveData.battery > 50 ? "High" : "Low",
+      currentLocation: liveData.route?.length
+        ? liveData.route[liveData.route.length - 1].join(",")
         : base.currentLocation,
       currentAddress: "Mock Address (Pune, India)",
-      route: selectedDevice.route,
-    };
-  }, [selectedDevice]);
+      route: liveData.route,
 
+      // Pass the raw live data properties needed for the marker/header
+      status: liveData.status,
+      speed: liveData.speed,
+      lastUpdate: liveData.lastUpdate,
+      driverName: liveData.driverName,
+    };
+  }, [liveMetrics, selectedDevice]); // DEPENDENCY CHANGE
+  // --- MAP CENTER ---
   const mapCenter = useMemo(() => {
     const r = selectedTrip?.route;
-    if (r?.length) return r[0];
-    return [18.5204, 73.8567];
+    // Center on the latest point if available, otherwise use a default
+    if (r?.length) return r[r.length - 1];
+    return [18.5204, 73.8567]; // Pune, India
   }, [selectedTrip]);
 
+  // --- PLAYBACK LOGIC (Unchanged, but now runs on accumulated route) ---
   const startPlayback = (speedMultiplier = 1) => {
     if (!selectedTrip?.route?.length) return;
 
@@ -730,27 +784,24 @@ export default function LiveTrack() {
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   };
 
+  // --- UI Filter/Selection Sync ---
   useEffect(() => {
-    ApiService.testData({}, true).catch(() => null);
-  }, []);
+    // If the currently selected device is filtered out, clear selection or select first visible
+    const isSelectedFilteredOut =
+      selectedDevice && !filteredDevices.some((d) => d.id === selectedDevice.id);
 
+    if (isSelectedFilteredOut || filteredDevices.length === 0) {
+      // Clear selection or select the first device in the new filtered list
+      setSelectedDevice(filteredDevices[0] || null);
+    }
+  }, [filterStatus, filteredDevices]); // Only check when filters or the list of all devices changes
+
+  // Reset playback when a new device is selected
   useEffect(() => {
-    // Stop/Reset playback when a new device is selected
     pausePlayback();
     setCurrentStep(0);
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   }, [selectedDevice]);
-
-  // If the currently selected device is filtered out, clear selection
-  useEffect(() => {
-    if (selectedDevice && !filteredDevices.some((d) => d.id === selectedDevice.id)) {
-      setSelectedDevice(filteredDevices[0] || null);
-    }
-    // Also, if the filter changes to something empty, clear the device selection
-    if (filteredDevices.length === 0) {
-      setSelectedDevice(null);
-    }
-  }, [filterStatus, filteredDevices, selectedDevice]);
 
   return (
     <DashboardLayout>

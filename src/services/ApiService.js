@@ -234,6 +234,70 @@ class ApiService {
         })
     );
   }
+  getAllDevices(accountId = 1) {
+    // You are using postRequest for getDashboardData, so we stick to that.
+    return this.postRequest(
+      "/reports/report/dashboard",
+      { accid: accountId }, // Assuming accid is passed in the body
+      true,
+      SERVICES.dashboard
+    )
+      .then((res) => {
+        const rawDevices = res?.data?.data?.data || [];
+
+        // Normalize the raw API response into the structure needed by LiveTrack.js
+        const normalizedDevices = rawDevices.map((d) => {
+          const speedNum = Number(d.speed) || 0;
+          const ign = (d.ign || "").toUpperCase();
+
+          let status;
+          if (ign === "Y") {
+            status = speedNum > 5 ? "Running" : "Idle";
+          } else {
+            status = speedNum === 0 ? "Stopped" : "Inactive";
+          }
+
+          // Convert location string to Leaflet array format
+          const location = d.lat && d.lng ? `${d.lat},${d.lng}` : null;
+
+          return {
+            id: d.imei,
+            name: d.vehnum || d.imei,
+            tripId: d.imei, // Using IMEI as a dummy tripId for live view
+            status: status,
+            speed: speedNum,
+            battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50, // Mocked/calculated battery
+            ignition: ign === "Y",
+            lastUpdate: new Date(d.devTs).toLocaleTimeString(), // Use device timestamp
+            driverName: "N/A", // Placeholder: Needs proper API call if real
+            vehicleType: "Truck", // Placeholder
+            // Initialize route with the latest position for map rendering
+            route: location ? [[d.lat, d.lng]] : [],
+            location: location, // Store the lat/lng string
+            accountId: d.accid, // Store account ID for live track API call
+          };
+        });
+
+        // The LiveTrack component expects an array of normalized devices
+        return normalizedDevices;
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch device list");
+        throw error;
+      });
+  }
+  testData(accountId, imei, header = true) {
+    // Update the hardcoded URL to use the passed parameters
+    return this.postRequest(
+      `/reports/livetrack?accountId=${accountId}&imei=${imei}`,
+      {}, // Empty data body
+      header,
+      SERVICES.dashboard
+    ).catch((error) => {
+      callAlert("Error", error?.message);
+      throw error;
+    });
+  }
 }
 
 export { SERVICES };
