@@ -82,15 +82,18 @@ class ApiService {
     return this.postRequest("/device-track/history-track", data, false, SERVICES.report);
   }
 
-  getLiveData(accid, imei, callback) {
-    const url = `${SERVICES.report}/device-track/live-track`;
-    return axios
-      .get(url, { params: { accid, imei } })
-      .then((res) => callback(res))
-      .catch((err) => {
-        callback({ message: err.message });
-        callAlert("Error", err.message);
-      });
+  getLiveData(accountId, imei, callback) {
+    const url = `${SERVICES.report}/reports/livetrack`;
+    return (
+      axios
+        .get(url + `?accountId=${accountId}&imei=${imei}`)
+        // .get(url, { params: { accountId, imei } })
+        .then((res) => callback(res))
+        .catch((err) => {
+          callback({ message: err.message });
+          callAlert("Error", err.message);
+        })
+    );
   }
 
   getDashboardData(data = {}, callback, header = true) {
@@ -210,6 +213,26 @@ class ApiService {
         callAlert("Error", error?.message || "Failed to fetch IMEI dropdown");
         throw error;
       });
+  }
+
+  testData(data = {}, header = true) {
+    return (
+      this.postRequest(
+        "/reports/livetrack?accountId=1&imei=869356078374846",
+        data,
+        header,
+        SERVICES.dashboard
+        // { accid }
+      )
+        // .then((res) => {
+        //   if (callback) callback(res);
+        // })
+        .catch((error) => {
+          // Only callAlert here, but re-throw the error
+          callAlert("Error", error?.message);
+          throw error;
+        })
+    );
   }
 }
 

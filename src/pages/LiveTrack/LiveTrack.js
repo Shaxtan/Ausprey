@@ -31,432 +31,10 @@ import DashboardNavbar from "../../../src/assets/components/examples/Navbars/Das
 
 // MD Components
 import MDBox from "../../assets/components/MDBox";
-
+import ApiService from "../../services/ApiService";
 /* ============================
   MOCK DATA (ENHANCED)
   ============================ */
-const MOCK_DEVICES = [
-  {
-    id: "D001",
-    name: "Truck 1",
-    tripId: "T12345",
-    status: "Running",
-    speed: 60,
-    battery: 95,
-    ignition: true,
-    lastUpdate: "10:58:30 AM",
-    driverName: "Rajesh Kumar",
-    vehicleType: "Truck",
-    route: [
-      [18.5204, 73.8567],
-      [18.525, 73.845],
-      [18.535, 73.84],
-      [18.545, 73.848],
-      [18.552, 73.857],
-    ],
-  },
-  {
-    id: "D002",
-    name: "Diesel Tanker MH.14",
-    tripId: "T98765",
-    status: "Running",
-    speed: 40,
-    battery: 80,
-    ignition: true,
-    lastUpdate: "11:02:15 AM",
-    driverName: "Priya Sharma",
-    vehicleType: "Tanker",
-    route: [
-      [18.5, 73.86],
-      [18.505, 73.872],
-      [18.515, 73.88],
-      [18.53, 73.885],
-    ],
-  },
-  {
-    id: "D003",
-    name: "Concrete Truck 4445",
-    tripId: "T55555",
-    status: "Stopped",
-    speed: 0,
-    battery: 60,
-    ignition: false,
-    lastUpdate: "09:45:00 AM",
-    driverName: "Amit Singh",
-    vehicleType: "Concrete Mixer",
-    route: [
-      [18.54, 73.86],
-      [18.545, 73.862],
-      [18.548, 73.859],
-    ],
-  },
-  {
-    id: "D004",
-    name: "MG-Truck 4465",
-    tripId: "T22222",
-    status: "Idle",
-    speed: 5,
-    battery: 35,
-    ignition: true,
-    lastUpdate: "10:55:00 AM",
-    driverName: "Vikram Bose",
-    vehicleType: "Truck",
-    route: [
-      [18.56, 73.84],
-      [18.555, 73.845],
-      [18.548, 73.85],
-      [18.542, 73.852],
-    ],
-  },
-  {
-    id: "D005",
-    name: "Object 4465",
-    tripId: "T11111",
-    status: "Inactive",
-    speed: 0,
-    battery: 10,
-    ignition: false,
-    lastUpdate: "Yesterday",
-    driverName: "N/A",
-    vehicleType: "Object",
-    route: [
-      [18.51, 73.835],
-      [18.512, 73.838],
-      [18.515, 73.839],
-    ],
-  },
-  // --- START: 20 NEW MOCK DEVICES (driverName and vehicleType added) ---
-  {
-    id: "D006",
-    name: "Delivery Van A-7",
-    tripId: "T60001",
-    status: "Running",
-    speed: 55,
-    battery: 98,
-    ignition: true,
-    lastUpdate: "11:05:10 AM",
-    driverName: "Suresh Patil",
-    vehicleType: "Van",
-    route: [
-      [18.52, 73.87],
-      [18.525, 73.875],
-      [18.53, 73.88],
-    ],
-  },
-  {
-    id: "D007",
-    name: "Excavator E-3",
-    tripId: "T60002",
-    status: "Stopped",
-    speed: 0,
-    battery: 75,
-    ignition: false,
-    lastUpdate: "08:30:00 AM",
-    driverName: "Mohan Kale",
-    vehicleType: "Excavator",
-    route: [
-      [18.55, 73.83],
-      [18.551, 73.831],
-    ],
-  },
-  {
-    id: "D008",
-    name: "Waste Compactor MH.12",
-    tripId: "T60003",
-    status: "Running",
-    speed: 25,
-    battery: 65,
-    ignition: true,
-    lastUpdate: "11:00:45 AM",
-    driverName: "Pooja Deshmukh",
-    vehicleType: "Compactor",
-    route: [
-      [18.51, 73.84],
-      [18.512, 73.845],
-      [18.514, 73.85],
-    ],
-  },
-  {
-    id: "D009",
-    name: "Water Tanker W-9",
-    tripId: "T60004",
-    status: "Idle",
-    speed: 8,
-    battery: 45,
-    ignition: true,
-    lastUpdate: "10:45:20 AM",
-    driverName: "Ganesh Iyer",
-    vehicleType: "Tanker",
-    route: [
-      [18.53, 73.85],
-      [18.532, 73.852],
-    ],
-  },
-  {
-    id: "D010",
-    name: "Heavy Trailer H-1",
-    tripId: "T60005",
-    status: "Inactive",
-    speed: 0,
-    battery: 20,
-    ignition: false,
-    lastUpdate: "2 Days Ago",
-    driverName: "N/A",
-    vehicleType: "Trailer",
-    route: [
-      [18.5, 73.89],
-      [18.501, 73.891],
-    ],
-  },
-  {
-    id: "D011",
-    name: "Flatbed F-4",
-    tripId: "T60006",
-    status: "Running",
-    speed: 70,
-    battery: 90,
-    ignition: true,
-    lastUpdate: "11:04:05 AM",
-    driverName: "Kishore Jadhav",
-    vehicleType: "Truck",
-    route: [
-      [18.56, 73.86],
-      [18.55, 73.87],
-      [18.54, 73.88],
-      [18.53, 73.89],
-    ],
-  },
-  {
-    id: "D012",
-    name: "Logistics Van L-12",
-    tripId: "T60007",
-    status: "Idle",
-    speed: 2,
-    battery: 50,
-    ignition: true,
-    lastUpdate: "11:01:30 AM",
-    driverName: "Rohit Kulkarni",
-    vehicleType: "Van",
-    route: [
-      [18.51, 73.865],
-      [18.511, 73.867],
-    ],
-  },
-  {
-    id: "D013",
-    name: "Crane C-22",
-    tripId: "T60008",
-    status: "Stopped",
-    speed: 0,
-    battery: 88,
-    ignition: false,
-    lastUpdate: "10:15:00 AM",
-    driverName: "Deepak Yadav",
-    vehicleType: "Crane",
-    route: [
-      [18.545, 73.875],
-      [18.546, 73.876],
-    ],
-  },
-  {
-    id: "D014",
-    name: "Tractor T-100",
-    tripId: "T60009",
-    status: "Running",
-    speed: 30,
-    battery: 55,
-    ignition: true,
-    lastUpdate: "10:59:00 AM",
-    driverName: "Anil More",
-    vehicleType: "Tractor",
-    route: [
-      [18.52, 73.88],
-      [18.525, 73.87],
-      [18.53, 73.86],
-    ],
-  },
-  {
-    id: "D015",
-    name: "Mini Truck M-5",
-    tripId: "T60010",
-    status: "Running",
-    speed: 45,
-    battery: 70,
-    ignition: true,
-    lastUpdate: "11:03:55 AM",
-    driverName: "Sanjay Rane",
-    vehicleType: "Truck",
-    route: [
-      [18.555, 73.84],
-      [18.56, 73.845],
-    ],
-  },
-  {
-    id: "D016",
-    name: "Service Vehicle S-8",
-    tripId: "T60011",
-    status: "Idle",
-    speed: 10,
-    battery: 30,
-    ignition: true,
-    lastUpdate: "10:30:10 AM",
-    driverName: "Ajay Bhosale",
-    vehicleType: "Van",
-    route: [
-      [18.538, 73.835],
-      [18.54, 73.837],
-    ],
-  },
-  {
-    id: "D017",
-    name: "Tipper T-33",
-    tripId: "T60012",
-    status: "Running",
-    speed: 50,
-    battery: 92,
-    ignition: true,
-    lastUpdate: "11:01:12 AM",
-    driverName: "Eknath Shinde",
-    vehicleType: "Tipper",
-    route: [
-      [18.51, 73.88],
-      [18.515, 73.885],
-      [18.52, 73.89],
-    ],
-  },
-  {
-    id: "D018",
-    name: "Forklift F-99",
-    tripId: "T60013",
-    status: "Stopped",
-    speed: 0,
-    battery: 68,
-    ignition: false,
-    lastUpdate: "07:50:00 AM",
-    driverName: "Javed Khan",
-    vehicleType: "Forklift",
-    route: [
-      [18.505, 73.85],
-      [18.506, 73.851],
-    ],
-  },
-  {
-    id: "D019",
-    name: "Refrigerated Truck R-5",
-    tripId: "T60014",
-    status: "Running",
-    speed: 62,
-    battery: 85,
-    ignition: true,
-    lastUpdate: "11:04:40 AM",
-    driverName: "Fatima Syed",
-    vehicleType: "Truck",
-    route: [
-      [18.55, 73.88],
-      [18.545, 73.875],
-      [18.54, 73.87],
-    ],
-  },
-  {
-    id: "D020",
-    name: "Bus B-42",
-    tripId: "T60015",
-    status: "Running",
-    speed: 35,
-    battery: 78,
-    ignition: true,
-    lastUpdate: "11:02:00 AM",
-    driverName: "Ramesh Pawar",
-    vehicleType: "Bus",
-    route: [
-      [18.5, 73.87],
-      [18.505, 73.865],
-      [18.51, 73.86],
-    ],
-  },
-  {
-    id: "D021",
-    name: "Pickup P-11",
-    tripId: "T60016",
-    status: "Idle",
-    speed: 3,
-    battery: 40,
-    ignition: true,
-    lastUpdate: "10:50:00 AM",
-    driverName: "Santosh Mhetre",
-    vehicleType: "Pickup",
-    route: [
-      [18.56, 73.88],
-      [18.562, 73.881],
-    ],
-  },
-  {
-    id: "D022",
-    name: "Road Roller RR-1",
-    tripId: "T60017",
-    status: "Stopped",
-    speed: 0,
-    battery: 58,
-    ignition: false,
-    lastUpdate: "09:00:00 AM",
-    driverName: "Baban Ghadge",
-    vehicleType: "Roller",
-    route: [
-      [18.54, 73.89],
-      [18.541, 73.891],
-    ],
-  },
-  {
-    id: "D023",
-    name: "Ambulance AMB-1",
-    tripId: "T60018",
-    status: "Running",
-    speed: 80,
-    battery: 99,
-    ignition: true,
-    lastUpdate: "11:05:30 AM",
-    driverName: "Dr. Kiran Rege",
-    vehicleType: "Ambulance",
-    route: [
-      [18.51, 73.83],
-      [18.52, 73.835],
-      [18.53, 73.84],
-    ],
-  },
-  {
-    id: "D024",
-    name: "School Bus SB-3",
-    tripId: "T60019",
-    status: "Idle",
-    speed: 5,
-    battery: 72,
-    ignition: true,
-    lastUpdate: "10:40:00 AM",
-    driverName: "Sunita Reddy",
-    vehicleType: "Bus",
-    route: [
-      [18.55, 73.865],
-      [18.552, 73.867],
-    ],
-  },
-  {
-    id: "D025",
-    name: "Utility Cart U-2",
-    tripId: "T60020",
-    status: "Inactive",
-    speed: 0,
-    battery: 15,
-    ignition: false,
-    lastUpdate: "3 Weeks Ago",
-    driverName: "N/A",
-    vehicleType: "Utility",
-    route: [
-      [18.5, 73.83],
-      [18.501, 73.831],
-    ],
-  },
-  // --- END: 20 NEW MOCK DEVICES ---
-];
 
 const MOCK_TRIP_BASE = {
   startTime: "2025-10-26 08:00 AM",
@@ -958,13 +536,38 @@ DeviceTable.propTypes = {
 DeviceTable.defaultProps = { selectedId: null };
 
 /* ============================
+  FlyToMarker Component
+  ============================ */
+function FlyToMarker({ position }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (position && position[0] && position[1]) {
+      map.flyTo(position, 16, {
+        duration: 1.8,
+        easeLinearity: 0.25,
+      });
+    }
+  }, [position, map]);
+
+  return null;
+}
+// props for flymarker
+FlyToMarker.propTypes = {
+  position: PropTypes.arrayOf(PropTypes.number).isRequired,
+};
+
+/* ============================
   MAIN COMPONENT
   ============================ */
 export default function LiveTrack() {
   // left panel fixed width (desktop) - responsive for small screens
   const LEFT_PANEL_WIDTH = 520;
 
-  const [selectedDevice, setSelectedDevice] = useState(MOCK_DEVICES[0] ?? null);
+  // NEW STATE: To hold the live device data (will be an array of one device)
+  const [liveDevices, setLiveDevices] = useState([]);
+
+  const [selectedDevice, setSelectedDevice] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [markerPos, setMarkerPos] = useState(null);
@@ -972,6 +575,60 @@ export default function LiveTrack() {
 
   // State for filtering
   const [filterStatus, setFilterStatus] = useState("Total");
+
+  // --- NEW: Live Data Fetcher ---
+  const fetchLiveDeviceData = async () => {
+    try {
+      const response = await ApiService.testData();
+
+      if (response?.data?.resultCode === 1 && response?.data?.data) {
+        const rawData = response.data.data;
+
+        // 💡 Normalize the single API response into the MOCK_DEVICES array structure
+        const normalizedDevice = {
+          id: rawData.imei,
+          name: rawData.vehnum || rawData.imei,
+          tripId: "LIVE",
+          status:
+            rawData.ign === "Y"
+              ? rawData.speed > 5
+                ? "Running"
+                : rawData.speed > 0
+                ? "Idle"
+                : "Stopped"
+              : "Stopped",
+          speed: rawData.speed,
+          battery: rawData.anl ? Math.round((Number(rawData.anl) / 4.2) * 100) : 50, // Mocked battery logic from anl/voltage field
+          ignition: rawData.ign === "Y",
+          lastUpdate: new Date().toLocaleTimeString(),
+          driverName: "LIVE Driver", // Placeholder
+          vehicleType: "Truck", // Placeholder
+          // Crucially, the route is just the current position for 'Live' data
+          route: [[rawData.lat, rawData.lng]],
+        };
+
+        setLiveDevices([normalizedDevice]);
+
+        // Auto-select the device on the first successful fetch
+        setSelectedDevice((prev) => (prev === null ? normalizedDevice : prev));
+      }
+    } catch (error) {
+      console.error("Failed to fetch live data:", error);
+      // callAlert is handled by ApiService for network errors
+    }
+  };
+
+  // --- Core Refresh Logic ---
+  useEffect(() => {
+    // 1. Initial fetch
+    fetchLiveDeviceData();
+
+    // 2. Set up 30-second interval refresh
+    const liveInterval = setInterval(fetchLiveDeviceData, 30000); // 30000ms = 30 seconds
+
+    // 3. Cleanup on component unmount
+    return () => clearInterval(liveInterval);
+  }, []); // Empty dependency array means it runs only on mount/unmount
 
   const { filteredDevices, counts } = useMemo(() => {
     const statusMap = {
@@ -983,7 +640,7 @@ export default function LiveTrack() {
     };
     let total = 0;
 
-    MOCK_DEVICES.forEach((d) => {
+    liveDevices.forEach((d) => {
       total++;
 
       // Use the logic from getStatusColor to categorize
@@ -997,7 +654,7 @@ export default function LiveTrack() {
 
     const counts = { ...statusMap, Total: total };
 
-    const devicesToRender = MOCK_DEVICES.filter((d) => {
+    const devicesToRender = liveDevices.filter((d) => {
       if (filterStatus === "Total") return true;
 
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
@@ -1008,7 +665,7 @@ export default function LiveTrack() {
     });
 
     return { filteredDevices: devicesToRender, counts };
-  }, [filterStatus]);
+  }, [filterStatus, liveDevices]); // <--- CORRECTED: liveDevices must be included here
 
   const selectedTrip = useMemo(() => {
     if (!selectedDevice) return null;
@@ -1072,6 +729,10 @@ export default function LiveTrack() {
     setCurrentStep(0);
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   };
+
+  useEffect(() => {
+    ApiService.testData({}, true).catch(() => null);
+  }, []);
 
   useEffect(() => {
     // Stop/Reset playback when a new device is selected
@@ -1164,37 +825,72 @@ export default function LiveTrack() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {/* Render all device markers (static position: last known location) */}
-            {filteredDevices.map((d) => {
-              const [lat, lng] = d.route[d.route.length - 1];
-              const { color } = getVehicleIconOrImage(d.vehicleType);
-
-              // Custom Leaflet icon for better visibility and color-coding
-              const customIcon = L.divIcon({
-                className: "custom-div-icon",
-                html: `<div style="background-color:${
-                  d.status === "Running" ? "green" : d.status === "Stopped" ? "red" : "orange"
-                }; width:10px; height:10px; border-radius:50%; border:2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10],
-              });
-
-              return (
-                <Marker key={d.id} position={[lat, lng]} icon={customIcon}>
-                  <Popup>
-                    <Typography variant="body2" fontWeight={700}>
-                      {d.name}
+            {/* LIVE MOVING MARKER - Only for the selected (or only) live device */}
+            {selectedDevice && selectedDevice.route?.length > 0 && (
+              <Marker
+                position={selectedDevice.route[selectedDevice.route.length - 1]} // Latest position
+                icon={L.divIcon({
+                  className: "live-vehicle-marker",
+                  html: `
+        <div style="
+          background-color: ${
+            selectedDevice.status === "Running"
+              ? "#4caf50"
+              : selectedDevice.status === "Stopped"
+              ? "#f44336"
+              : "#ff9800"
+          };
+          width: 18px;
+          height: 18px;
+          border-radius: 50% 50% 50% 0;
+          border: 3px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          transform: rotate(-45deg);
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+          "></div>
+        </div>
+      `,
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12],
+                })}
+              >
+                <Popup>
+                  <Box sx={{ minWidth: 180 }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {selectedDevice.name}
+                    </Typography>
+                    <Typography variant="body2">
+                      Status: <strong>{selectedDevice.status}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Speed: <strong>{selectedDevice.speed} km/h</strong>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Status: {d.status}
+                      Last Update: {selectedDevice.lastUpdate}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Speed: {d.speed} km/h
-                    </Typography>
-                  </Popup>
-                </Marker>
-              );
-            })}
+                    {selectedDevice.driverName && (
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Driver: {selectedDevice.driverName}
+                      </Typography>
+                    )}
+                  </Box>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* THIS IS WHERE YOU PUT IT - Right here! */}
+            {selectedDevice && selectedDevice.route?.length > 0 && (
+              <FlyToMarker position={selectedDevice.route[selectedDevice.route.length - 1]} />
+            )}
 
             {/* Render the selected trip's historical route */}
             {selectedTrip?.route?.length > 0 && (
