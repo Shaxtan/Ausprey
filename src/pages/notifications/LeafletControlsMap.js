@@ -14,6 +14,8 @@ import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers"; 
 // import DatePicker from "react-datepicker";
 // =======
 import "leaflet-rotatedmarker";
+import "leaflet-geometryutil"; // npm install leaflet-geometryutil
+import simplify from "simplify-js";
 
 import ApiService from "../../services/ApiService";
 // import { createTileLayers } from "../LoadCellReport/createTileLayers";
@@ -23,7 +25,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format, formatISO } from "date-fns";
 
 import { exportCSV, exportExcel, exportPDF } from "./../utils/downloadUtils";
-import { AlertSuccess, callAlert } from "../../services/CommonService";
+import { AlertSuccess, callAlert, callAlertConfirm } from "../../services/CommonService";
 
 /* MUI components (used inside the panel) */
 import MDBox from "../../assets/components/MDBox";
@@ -71,6 +73,8 @@ const LeafletControlsMap = () => {
   const animationTimeoutRef = useRef(null);
   const panelRef = useRef(null);
   const originalPathRef = useRef({ line: null, decorator: null, points: [] }); // NEW: Store full path
+  // NEW REF: To store the time offset when paused.
+  const pauseTimeRef = useRef(0);
 
   /* ---------- state ---------- */
   const [isPanelVisible, setIsPanelVisible] = useState(true);
@@ -87,9 +91,11 @@ const LeafletControlsMap = () => {
   const [showDownload, setShowDownload] = useState(false);
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState("");
-  const [speed] = useState(500); // animation speed (ms)
+  const [speed] = useState(50); // animation speed (ms)
   const [fromMilliseconds, setFromMilliseconds] = useState("000");
   const [toMilliseconds, setToMilliseconds] = useState("000");
+  // NEW STATE: Tracks if the animation is paused.
+  const [isPaused, setIsPaused] = useState(false);
 
   const SIDEBAR_WIDTH = "300px";
 
@@ -135,6 +141,20 @@ const LeafletControlsMap = () => {
       return dateOk && statusOk;
     });
   }, [vehicleData, fromDate, toDate, statusFilter]);
+  /* ---------- FULL STOP (used on form submit) ---------- */
+  const fullStopAnimation = useCallback(() => {
+    if (animationTimeoutRef.current) {
+      cancelAnimationFrame(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+    }
+    if (animatedMarkerRef.current) {
+      animatedMarkerRef.current.remove();
+      animatedMarkerRef.current = null;
+    }
+    pauseTimeRef.current = 0; // Reset time offset
+    setIsPaused(false); // Reset pause state
+    setHighlightedIndex(null);
+  }, []);
 
   // const filteredData = useMemo(() => {
   //   return vehicleData.filter((r) => {
@@ -157,7 +177,8 @@ const LeafletControlsMap = () => {
     setHighlightedIndex(null);
     setShowOnlyPath(false);
     setStatusFilter(["MOTION", "STOP", "IDLE"]);
-    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+    // Stop and clean up any ongoing animation
+    fullStopAnimation();
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
     if (originalPathRef.current.line) {
@@ -183,7 +204,7 @@ const LeafletControlsMap = () => {
       const sorted = report.sort((a, b) => new Date(a.ts) - new Date(b.ts));
       setVehicleData(sorted);
       setShowHistory(true);
-      AlertSuccess(`Loaded ${sorted.length} points.`);
+      // AlertSuccess(`Loaded ${sorted.length} points.`);
     } catch (err) {
       console.error(err);
       callAlert("Failed to load track data.");
@@ -193,92 +214,188 @@ const LeafletControlsMap = () => {
   };
 
   /* ---------- animation (track play) – uses full original path ---------- */
-  const simulateMovement = useCallback(() => {
+  // Inside the component:
+
+  // Renamed simulateMovement to startAnimation for clarity
+  const startAnimation = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !originalPathRef.current.points.length) return;
 
-    layer.clearLayers();
-    if (animatedMarkerRef.current) {
-      layer.removeLayer(animatedMarkerRef.current);
-      animatedMarkerRef.current = null;
+    // Check if the path data is ready
+    if (!map || !originalPathRef.current.line || vehicleData.length < 2) {
+      return callAlert("Track data not ready or insufficient points for animation.", "warning");
     }
-    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
 
-    // Re-add the original polyline + decorator
-    originalPathRef.current.line?.addTo(layer);
-    originalPathRef.current.decorator?.addTo(layer);
+    // If currently animating, do nothing (or explicitly handle resume/restart logic)
+    if (animationTimeoutRef.current && !isPaused) return;
 
-    map.fitBounds(originalPathRef.current.line.getBounds(), { padding: [20, 20] });
-
-    const pts = originalPathRef.current.points;
-    let idx = 0;
-    const marker = L.marker(pts[0], {
-      icon: new L.Icon({
-        iconUrl: "/icons/arrows.png",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-      }),
-      rotationAngle: 0,
-      rotationOrigin: "center center",
-    }).addTo(layer);
-    animatedMarkerRef.current = marker;
-    map.setView(pts[0], 14);
-
-    const moveNext = () => {
-      idx++;
-      if (idx >= pts.length) {
-        callAlert("Track play finished.", "info");
-        setHighlightedIndex(null);
-        return;
-      }
-      const next = pts[idx];
-      marker.setLatLng(next);
-      map.panTo(next, { animate: true, duration: 0.5 });
-      setHighlightedIndex(idx);
-      animationTimeoutRef.current = setTimeout(moveNext, speed);
-    };
-    moveNext();
-  }, [speed]);
-
-  const stopAnimation = () => {
+    // Stop any existing animation frame request (but keep marker and path if paused)
     if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
+      cancelAnimationFrame(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
-    setHighlightedIndex(null);
-    callAlert("Animation stopped.", "info");
-  };
 
-  /* ---------- marker icons ---------- */
-  const redIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const greenIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const yellowIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
-  const blueIcon = new L.Icon({
-    iconUrl:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-  });
+    // Resume logic: Clear the pause state
+    setIsPaused(false);
+
+    layer.clearLayers();
+    originalPathRef.current.line.addTo(layer);
+    originalPathRef.current.decorator?.addTo(layer);
+
+    const polyline = originalPathRef.current.line;
+    const points = vehicleData;
+    let startTime = null;
+    const totalDuration = 30000; // 30 seconds total animation (adjustable)
+
+    // Determine the starting progress (0 if new, based on pauseTimeRef if resuming)
+    const initialProgress = pauseTimeRef.current / totalDuration;
+
+    let marker = animatedMarkerRef.current;
+
+    // Initialize marker if it doesn't exist (i.e., new animation)
+    if (!marker) {
+      // Calculate initial position based on initialProgress
+      const initialPosition = L.GeometryUtil.interpolateOnLine(map, polyline, initialProgress);
+
+      marker = L.marker(initialPosition.latLng, {
+        icon: L.icon({
+          iconUrl: "/iconss/vehiclemarker.png",
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        }),
+        rotationAngle: 0,
+        rotationOrigin: "center center",
+      }).addTo(layer);
+
+      animatedMarkerRef.current = marker;
+    } else {
+      // If marker exists (i.e., resuming), just ensure it's on the layer
+      marker.addTo(layer);
+    }
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+
+      // Elapsed time is the current time minus the start time, plus the pause offset
+      const elapsed = timestamp - startTime + pauseTimeRef.current;
+      const progress = Math.min(elapsed / totalDuration, 1);
+
+      const position = L.GeometryUtil.interpolateOnLine(map, polyline, progress);
+      marker.setLatLng(position.latLng); // Update rotation
+
+      if (position.predecessor) {
+        const bearing = L.GeometryUtil.bearing(position.predecessor, position.latLng);
+        marker.setRotationAngle(bearing);
+      } // Update highlighted index
+
+      const pointIndex = Math.floor(progress * (points.length - 1));
+      setHighlightedIndex(pointIndex);
+
+      if (progress < 1) {
+        animationTimeoutRef.current = requestAnimationFrame(animate);
+      } else {
+        callAlert("Track play finished.", "info");
+        fullStopAnimation(); // Call the unified stop function
+      }
+    };
+
+    animationTimeoutRef.current = requestAnimationFrame(animate);
+  }, [vehicleData, isPaused, fullStopAnimation]); // Added fullStopAnimation dependency
+
+  /* ---------- PAUSE / RESUME logic ---------- */
+  const togglePlayPause = () => {
+    // If animation is running (animationTimeoutRef.current is set and not paused)
+    if (animationTimeoutRef.current && !isPaused) {
+      // PAUSE
+      cancelAnimationFrame(animationTimeoutRef.current);
+      animationTimeoutRef.current = null;
+      setIsPaused(true);
+      // Crucially, calculate the current progress time to resume from
+      // We use the current highlighted index to approximate the time elapsed,
+      // or a more accurate position calculation if needed.
+      if (highlightedIndex !== null && vehicleData.length > 0) {
+        // Simplified time update based on index (index / total_indices * total_duration)
+        const totalDuration = 30000;
+        pauseTimeRef.current = (highlightedIndex / (vehicleData.length - 1)) * totalDuration;
+      }
+      // callAlertConfirm("Animation paused.", "info");
+    } else if (isPaused) {
+      // RESUME
+      // The marker is already on the map, and pauseTimeRef.current holds the offset
+      startAnimation();
+      // callAlert("Animation resumed.", "info");
+    } else {
+      // START NEW PLAYBACK
+      pauseTimeRef.current = 0; // Reset offset to 0 for a new run
+      startAnimation();
+    }
+  }; /* ---------- marker icons ---------- */
+
+  const redIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const greenIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const yellowIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const blueIcon = useMemo(
+    () =>
+      new L.Icon({
+        iconUrl:
+          "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      }),
+    []
+  );
+  const startIcon = useMemo(
+    () =>
+      L.divIcon({
+        html: `<div style="background:#4caf50;color:white;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">START</div>`,
+        className: "custom-start-marker",
+        iconSize: [70, 30],
+        iconAnchor: [35, 30],
+      }),
+    []
+  );
+
+  const endIcon = useMemo(
+    () =>
+      L.divIcon({
+        html: `<div style="background:#f44336;color:white;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.3);">END</div>`,
+        className: "custom-end-marker",
+        iconSize: [60, 30],
+        iconAnchor: [30, 30],
+      }),
+    []
+  );
 
   /* ---------- map init (once) ---------- */
   useEffect(() => {
@@ -388,111 +505,126 @@ const LeafletControlsMap = () => {
       if (zoomDivRef.current) zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
     });
 
+    // Cleanup on unmount
     return () => {
-      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      fullStopAnimation(); // Ensures animation is stopped
       map.remove();
     };
-  }, []);
+  }, [fullStopAnimation]); // Added fullStopAnimation dependency
 
-  /* ---------- draw markers / polyline (polyline is fixed) ---------- */
+  /* Draw Path + Markers */
   useEffect(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
-    if (!map || !layer) return;
+    if (!map || !layer || !showHistory || !selectedVehicle) return;
 
-    layer.clearLayers();
-    if (animatedMarkerRef.current) {
-      layer.removeLayer(animatedMarkerRef.current);
-      animatedMarkerRef.current = null;
+    const isAnimationActive = animationTimeoutRef.current || isPaused;
+
+    if (!isAnimationActive) layer.clearLayers();
+    else {
+      layer.clearLayers();
+      animatedMarkerRef.current?.addTo(layer);
+      originalPathRef.current.line?.addTo(layer);
+      originalPathRef.current.decorator?.addTo(layer);
+      originalPathRef.current.startMarker?.addTo(layer);
+      originalPathRef.current.endMarker?.addTo(layer);
     }
 
-    if (!showHistory || !selectedVehicle) return;
+    if (vehicleData.length === 0) return;
 
-    // FULL points (unfiltered by status)
-    const fullPoints = vehicleData
-      .map((r) => [+r.lat, +r.lng])
-      .filter((p) => {
-        const [lat, lng] = p;
-        return (
-          typeof lat === "number" &&
-          typeof lng === "number" &&
-          lat >= -90 &&
-          lat <= 90 &&
-          lng >= -180 &&
-          lng <= 180
+    if (!originalPathRef.current.line) {
+      let points = vehicleData
+        .map((r) => ({ x: +r.lng, y: +r.lat, data: r }))
+        .filter(
+          (p) => !isNaN(p.x) && !isNaN(p.y) && p.y >= -90 && p.y <= 90 && p.x >= -180 && p.x <= 180
         );
-      });
 
-    // Draw the original polyline ONCE
-    if (!originalPathRef.current.line && fullPoints.length > 1) {
-      const line = L.polyline(fullPoints, {
-        color: "#00f",
-        weight: 5,
-        opacity: 0.7,
-      }).addTo(layer);
+      points = points.filter(
+        (p, i, arr) => i === 0 || p.x !== arr[i - 1].x || p.y !== arr[i - 1].y
+      );
+      if (points.length < 2) return;
 
+      const tolerance =
+        points.length > 10000
+          ? 0.001
+          : points.length > 5000
+          ? 0.0005
+          : points.length > 1000
+          ? 0.0002
+          : 0.0001;
+      const simplified = simplify(points, tolerance, true);
+      const latLngs = simplified.map((p) => [p.y, p.x]);
+
+      const line = L.polyline(latLngs, { color: "#3388ff", weight: 4, opacity: 0.85 }).addTo(layer);
       const decorator = L.polylineDecorator(line, {
         patterns: [
           {
-            offset: 25,
-            repeat: 100,
+            offset: "8%",
+            repeat: "15%",
             symbol: L.Symbol.arrowHead({
-              pixelSize: 10,
+              pixelSize: 12,
+              headAngle: 60,
               polygon: false,
-              pathOptions: { weight: 2 },
+              pathOptions: { color: "#3388ff", weight: 3 },
             }),
           },
         ],
       }).addTo(layer);
 
+      // Start Marker
+      const startLatLng = latLngs[0];
+      const startMarker = L.marker(startLatLng, { icon: startIcon })
+        // .bindTooltip("Start Point", { permanent: true, direction: "top", offset: [0, -10] })
+        .addTo(layer);
+
+      // End Marker
+      const endLatLng = latLngs[latLngs.length - 1];
+      const endMarker = L.marker(endLatLng, { icon: endIcon })
+        // .bindTooltip("End Point", { permanent: true, direction: "top", offset: [0, -10] })
+        .addTo(layer);
+
       originalPathRef.current = {
         line,
         decorator,
-        points: fullPoints.map((p) => L.latLng(p[0], p[1])),
+        points: simplified.map((p) => L.latLng(p.y, p.x)),
+        startMarker,
+        endMarker,
       };
 
-      const bounds = line.getBounds();
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [20, 20] });
-      }
-    } else if (originalPathRef.current.line) {
-      // Re-add the existing line (was cleared above)
+      map.fitBounds(line.getBounds(), { padding: [50, 50] });
+    } else if (!isAnimationActive) {
       originalPathRef.current.line.addTo(layer);
       originalPathRef.current.decorator?.addTo(layer);
-    } else if (fullPoints.length === 1) {
-      map.setView(fullPoints[0], 14);
+      originalPathRef.current.startMarker?.addTo(layer);
+      originalPathRef.current.endMarker?.addTo(layer);
+      map.fitBounds(originalPathRef.current.line.getBounds(), { padding: [50, 50] });
     }
 
-    // MARKERS: filtered by status
-    filteredData.forEach((rec, idx) => {
-      const { lat, lng, ts, speed, status } = rec;
-      if (!lat || !lng) return;
-
-      if (!showOnlyPath && statusFilter.includes(status)) {
-        let icon = status === "MOTION" ? greenIcon : status === "STOP" ? redIcon : yellowIcon;
-        if (idx === highlightedIndex) icon = blueIcon;
-
-        L.marker([+lat, +lng], { icon })
+    if (!isAnimationActive) {
+      filteredData.forEach((rec) => {
+        if (!rec.lat || !rec.lng) return;
+        const icon =
+          rec.status === "MOTION" ? greenIcon : rec.status === "STOP" ? redIcon : yellowIcon;
+        L.marker([+rec.lat, +rec.lng], { icon })
           .bindTooltip(
-            `Time: ${formatTimestamp(ts)}<br/>Speed: ${
-              speed ?? "N/A"
-            } km/h<br/>Lat: ${+lat}<br/>Lng: ${+lng}<br/>Status: ${status}`
+            `Time: ${formatTimestamp(rec.ts)}<br>Speed: ${rec.speed ?? "N/A"} km/h<br>Status: ${
+              rec.status
+            }`
           )
           .addTo(layer);
-      }
-    });
+      });
+    }
   }, [
     vehicleData,
     filteredData,
-    highlightedIndex,
     showHistory,
-    showOnlyPath,
-    statusFilter,
     selectedVehicle,
+    isPaused,
     greenIcon,
     redIcon,
     yellowIcon,
-    blueIcon,
+    startIcon,
+    endIcon,
   ]);
 
   /* ---------- render ---------- */
@@ -574,6 +706,8 @@ const LeafletControlsMap = () => {
               const veh = vehicleList.find((v) => v.value === e.target.value);
               setSelectedVehicle(veh);
               setShowHistory(false);
+              // Stop any ongoing animation when changing vehicle
+              fullStopAnimation();
               setStatusFilter(["MOTION", "STOP", "IDLE"]);
             }}
             fullWidth
@@ -719,23 +853,36 @@ const LeafletControlsMap = () => {
                 );
               })}
             </MDBox>
-
-            {/* Play / Stop */}
-            <MDBox display="flex" gap={1} mb={2}>
+            {/* Play / Pause / Stop Buttons - Improved Spacing & Icons */}
+            <MDBox display="flex" gap={2} justifyContent="space-between" mb={3}>
+              {/* Play / Pause Button */}
               <MDButton
                 variant="gradient"
-                color="success"
-                onClick={simulateMovement}
-                disabled={originalPathRef.current.points.length < 2}
-                sx={{ flex: 1 }}
+                color={animationTimeoutRef.current ? (isPaused ? "success" : "warning") : "success"}
+                startIcon={
+                  <Icon>{animationTimeoutRef.current && !isPaused ? "pause" : "play_arrow"}</Icon>
+                }
+                onClick={togglePlayPause}
+                disabled={!showHistory || vehicleData.length < 2}
+                sx={{ flex: 1, minWidth: 0 }}
+                size="medium"
               >
-                Play
+                {animationTimeoutRef.current ? (isPaused ? "Resume" : "Pause") : "Play Track"}
               </MDButton>
-              <MDButton variant="gradient" color="error" onClick={stopAnimation} sx={{ flex: 1 }}>
+
+              {/* Full Stop Button */}
+              <MDButton
+                variant="gradient"
+                color="error"
+                startIcon={<Icon>stop</Icon>}
+                onClick={fullStopAnimation}
+                disabled={!animationTimeoutRef.current && !isPaused}
+                sx={{ flex: 1, minWidth: 0 }}
+                size="medium"
+              >
                 Stop
               </MDButton>
             </MDBox>
-
             {/* History list */}
             <MDTypography
               variant="button"
@@ -781,7 +928,6 @@ const LeafletControlsMap = () => {
                 ))}
               </MDBox>
             )}
-
             {/* Download */}
             <MDTypography
               variant="button"
@@ -792,7 +938,6 @@ const LeafletControlsMap = () => {
             >
               {showDownload ? "Hide" : "Show"} Download
             </MDTypography>
-
             {showDownload && (
               <MDBox p={1} sx={{ border: "1px dashed #ccc", borderRadius: 1 }}>
                 <MDInput

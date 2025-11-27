@@ -19,7 +19,7 @@ import bgImage from "assets/images/bg-sign-in-basic.jpeg";
 
 // =================================================================
 // CORRECTED IMPORTS
-import apiService from "../../../services/ApiService";
+import apiService, { SERVICES } from "../../../services/ApiService";
 import { saveTokenInLocalStorage } from "../../../services/AuthService";
 import { callAlertConfirm } from "../../../services/CommonService";
 // =================================================================
@@ -63,7 +63,7 @@ function Basic() {
     setIsLoading(true);
 
     apiService
-      .postRequest("/users/signin", { username, password, signInHere: true }, false)
+      .postRequest("/users/signin", { username, password, signInHere: true }, false, SERVICES.main)
       .then((response) => {
         setIsLoading(false);
         if (response?.data.resultCode === 208) {
