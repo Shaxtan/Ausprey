@@ -41,7 +41,7 @@ import reportsLineChartData from "../dashboard/data/reportsLineChartData";
 
 // Dashboard components
 import Projects from "./components/DashboardTable";
-import OrdersOverview from "./components/TopPerformersData";
+// import OrdersOverview from "./components/TopPerformersData";
 
 // Placeholder for a Chatbot Icon URL
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
@@ -151,7 +151,34 @@ function Dashboard() {
         data: [online, offline, unreachable],
       },
     };
-  }, [summaryData]);
+  }, [pieData]);
+
+  const newPieData4 = {
+    labels: ["Category A", "Category B", "Category C"],
+    datasets: {
+      label: "Placeholder Data 4",
+      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"], // Example colors
+      data: [30, 40, 30], // Example percentages
+    },
+  };
+
+  const newPieData5 = {
+    labels: ["Violations", "Warnings", "Safe Zones"],
+    datasets: {
+      label: "Placeholder Data 5",
+      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
+      data: [15, 25, 60],
+    },
+  };
+
+  const newPieData6 = {
+    labels: ["Good", "Fair", "Poor"],
+    datasets: {
+      label: "Placeholder Data 6",
+      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
+      data: [70, 20, 10],
+    },
+  };
 
   // Updated: Detailed Device Status Pie Chart (3 slices as requested)
   const allDeviceStatusPieData = useMemo(() => {
@@ -364,7 +391,7 @@ function Dashboard() {
         {/* --- Complex Statistics Cards --- (UPDATED WITH LIVE DATA) */}
         <Grid container spacing={3}>
           {/* Total Devices */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="dark"
@@ -380,7 +407,7 @@ function Dashboard() {
             </MDBox>
           </Grid>
           {/* Online Motion */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 icon={<DirectionsRunIcon style={{ marginTop: "-15px" }} />}
@@ -395,7 +422,7 @@ function Dashboard() {
             </MDBox>
           </Grid>
           {/* Online Idle */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="primary"
@@ -411,7 +438,7 @@ function Dashboard() {
             </MDBox>
           </Grid>
           {/* Online stopped */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="info"
@@ -425,9 +452,9 @@ function Dashboard() {
                 }}
               />
             </MDBox>
-          </Grid>{" "}
+          </Grid>
           {/* Offline */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="error"
@@ -443,11 +470,11 @@ function Dashboard() {
             </MDBox>
           </Grid>
           {/* Unreachable */}
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="info"
-                icon={<StopIcon style={{ marginTop: "-15px" }} />}
+                color="secondary"
+                icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
                 title="Unreachable"
                 count={summaryData.unreachable.toLocaleString()}
                 percentage={{
@@ -461,65 +488,32 @@ function Dashboard() {
         </Grid>
 
         {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
-        <MDBox mt={4.5}>
+        <MDBox mt={4}>
           {/* Pie Charts on a separate row */}
-          <Grid container spacing={3}>
-            {/* Online vs Offline vs Unreachable Pie Chart */}
+          <Grid container spacing={2}>
+            {/* ROW 1: EXISTING Pie Chart 1 (Online vs. Offline) */}
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "320px !important" }}>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
                 <PieChart
                   icon={{ color: "success", component: <WifiIcon /> }}
-                  title="Online vs Offline vs Unreachable"
-                  description={
-                    <>
-                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br />
-                      Online:{" "}
-                      <strong>
-                        {(
-                          summaryData.onlineMotion +
-                          summaryData.onlineIdle +
-                          summaryData.onlineStopped
-                        ).toLocaleString()}
-                      </strong>{" "}
-                      | Offline: <strong>{summaryData.offline.toLocaleString()}</strong> |
-                      Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                    </>
-                  }
+                  title="Online vs. Offline"
+                  description={`Total devices: ${totalDevices.toLocaleString()} \n Online Devices: ${summaryData.onlineMotion.toLocaleString()} Offline Devices: ${summaryData.offline.toLocaleString()}`}
                   chart={onlineOfflinePieData}
                 />
               </MDBox>
             </Grid>
-
-            {/* Vehicle Running Status Pie Chart - Perfectly styled like the first one */}
+            {/* ROW 1: EXISTING Pie Chart 2 (All Device Statuses) */}
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "320px !important" }}>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
                 <PieChart
                   icon={{ color: "dark", component: <DonutLargeIcon /> }}
-                  title="Vehicle Running Status"
-                  description={
-                    <>
-                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br />
-                      In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
-                      Stopped:{" "}
-                      <strong>
-                        {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
-                      </strong>{" "}
-                      | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
-                      {summaryData.unreachable > 0 && (
-                        <>
-                          {" | "}Unreachable:{" "}
-                          <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                        </>
-                      )}
-                    </>
-                  }
+                  title="All Device Status"
+                  description="Distribution including Motion, Idle, and Stopped."
                   chart={allDeviceStatusPieData}
                 />
               </MDBox>
             </Grid>
-            {/* Alert Type Distribution Pie Chart (MOCK DATA) */}
+            {/* ROW 1: EXISTING Pie Chart 3 (Alert Type Distribution) */}
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} sx={{ height: "300px !important" }}>
                 <PieChart
@@ -530,18 +524,56 @@ function Dashboard() {
                 />
               </MDBox>
             </Grid>
+
+            {/* --- ROW 2: NEW Pie Charts --- */}
+
+            {/* NEW Pie Chart 4 (This will automatically wrap to the next line) */}
+            <Grid item xs={12} md={6} lg={4}>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                <PieChart
+                  icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+                  title="New Chart 4: Fuel Usage"
+                  description="Distribution of fuel consumption types."
+                  chart={newPieData4} // <--- REPLACE with your data
+                />
+              </MDBox>
+            </Grid>
+
+            {/* NEW Pie Chart 5 */}
+            <Grid item xs={12} md={6} lg={4}>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                <PieChart
+                  icon={{ color: "error", component: <Icon>security</Icon> }}
+                  title="New Chart 5: Geofence Violations"
+                  description="Breakdown of different types of violations."
+                  chart={newPieData5} // <--- REPLACE with your data
+                />
+              </MDBox>
+            </Grid>
+
+            {/* NEW Pie Chart 6 */}
+            <Grid item xs={12} md={6} lg={4}>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                <PieChart
+                  icon={{ color: "info", component: <Icon>healing</Icon> }}
+                  title="New Chart 6: Vehicle Health"
+                  description="Distribution of vehicle diagnostic statuses."
+                  chart={newPieData6} // <--- REPLACE with your data
+                />
+              </MDBox>
+            </Grid>
           </Grid>
         </MDBox>
 
         {/* --- Projects and Orders Overview Section --- */}
         <MDBox>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6} lg={8}>
+            <Grid item xs={16} md={14} lg={14}>
               <Projects />
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
+            {/* <Grid item xs={12} md={6} lg={4}>
               <OrdersOverview />
-            </Grid>
+            </Grid> */}
           </Grid>
         </MDBox>
       </MDBox>
