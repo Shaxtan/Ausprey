@@ -17,14 +17,12 @@ import Checkbox from "@mui/material/Checkbox";
 // Material Dashboard 2 React components
 import MDBox from "../../../../assets/components/MDBox";
 import MDTypography from "../../../../assets/components/MDTypography";
+import MDButton from "../../../../assets/components/MDButton";
 
 // Material Dashboard 2 React examples
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
-// =========================================================================
 // Helper Components
-// =========================================================================
-
 const DataCell = ({ text, color = "text", fontWeight = "medium" }) => (
   <MDTypography variant="caption" color={color} fontWeight={fontWeight}>
     {text}
@@ -108,7 +106,6 @@ LockUnlock.propTypes = {
   deviceStatus: PropTypes.string,
 };
 
-// Table Columns (with Lock & Checkbox)
 const tableColumns = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
@@ -125,9 +122,9 @@ const tableColumns = [
   { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
-// =========================================================================
-// Main Component
-// =========================================================================
+// =====================================================================================
+// MAIN COMPONENT
+// =====================================================================================
 
 function Projects() {
   const [menu, setMenu] = useState(null);
@@ -139,21 +136,16 @@ function Projects() {
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
 
-  // Bulk Unlock Handler
   const handleBulkUnlock = () => {
     closeMenu();
     const imeiToUnlock = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
 
     if (imeiToUnlock.length > 0) {
-      console.log(`Initiating bulk unlock for IMEIs: ${imeiToUnlock.join(", ")}`);
-      alert(`UNLOCK command sent for ${imeiToUnlock.length} trip(s). Status will update shortly.`);
-
-      // TODO: Uncomment when API is ready
-      // ApiService.unlockDevices(imeiToUnlock).then(...)
-
+      console.log(`Bulk unlock for: ${imeiToUnlock.join(", ")}`);
+      alert(`UNLOCK command sent for ${imeiToUnlock.length} trip(s).`);
       setSelectedRows({});
     } else {
-      alert("No trips selected for unlock.");
+      alert("No trips selected.");
     }
   };
 
@@ -161,32 +153,7 @@ function Projects() {
     setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
   }, []);
 
-  const handleToggleSelectAll = useCallback(() => {
-    const unlockableImeis = allRows
-      .filter((row) => {
-        const imei = row.imei?.props?.text;
-        const isLocked = row._isLockedInitial;
-        const deviceStatus = row._deviceStatus;
-        return imei && (isLocked || deviceStatus); // Can unlock if locked OR has alert
-      })
-      .map((row) => row.imei.props.text);
-
-    const allSelected = unlockableImeis.every((imei) => selectedRows[imei]);
-    const newSelection = unlockableImeis.reduce(
-      (acc, imei) => ({
-        ...acc,
-        [imei]: !allSelected,
-      }),
-      {}
-    );
-
-    setSelectedRows((prev) => ({
-      ...prev,
-      ...newSelection,
-    }));
-  }, [allRows, selectedRows]);
-
-  // Fetch Real Data from API
+  // Fetch API Data
   useEffect(() => {
     setLoading(true);
     ApiService.getDashboardData(
@@ -198,7 +165,6 @@ function Projects() {
           const fetchedRows = data.map((item, index) => {
             const gpsDisplay = item.gps === "A" ? "Active" : item.gps === "V" ? "Inactive" : "N/A";
 
-            // === Determine Device Status & Lock State ===
             let deviceStatus = null;
             let isLocked = false;
 
@@ -240,7 +206,7 @@ function Projects() {
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: <DataCell text={item.address || "N/A"} />,
-              avgSpeed: <DataCell text={item.avg !== null ? String(item.avg) : "N/A"} />,
+              avgSpeed: <DataCell text={item.avg !== null ? item.avg : "N/A"} />,
               currentSpeed: (
                 <DataCell
                   text={item.speed !== null ? `${item.speed} km/h` : "N/A"}
@@ -249,17 +215,14 @@ function Projects() {
                 />
               ),
               lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={deviceStatus} />,
-              checkbox: null, // Will be filled in filteredRows
+              checkbox: null,
               _isLockedInitial: isLocked,
               _deviceStatus: deviceStatus,
             };
           });
 
           setAllRows(fetchedRows);
-          setSelectedRows({}); // Reset selection
-        } else {
-          console.error("Failed to fetch trip data:", res);
-          setAllRows([]);
+          setSelectedRows({});
         }
         setLoading(false);
       },
@@ -268,100 +231,45 @@ function Projects() {
     );
   }, []);
 
-  // Filtered + Reactive Rows (with conditional checkbox)
   const filteredRows = useMemo(() => {
-    return allRows
-      .map((row) => {
-        const imei = row.imei?.props?.text;
-        if (!imei) return row;
+    return allRows.map((row) => {
+      const imei = row.imei?.props?.text;
+      if (!imei) return row;
 
-        const isStandardUnlocked = row._isLockedInitial === false && row._deviceStatus === null;
+      const isStandardUnlocked = row._isLockedInitial === false && row._deviceStatus === null;
 
-        const checkboxComponent = isStandardUnlocked ? (
-          <MDTypography variant="caption" color="text">
-            -
-          </MDTypography>
-        ) : (
-          <MDBox display="flex" justifyContent="center">
-            <Checkbox
-              checked={!!selectedRows[imei]}
-              onChange={() => handleToggleSelect(imei)}
-              color="info"
-            />
-          </MDBox>
-        );
-
-        return { ...row, checkbox: checkboxComponent };
-      })
-      .filter((row) => {
-        if (!searchTerm) return true;
-        const term = searchTerm.toLowerCase();
-        const fields = [
-          row.vehicleNo?.props?.text,
-          row.imei?.props?.text,
-          row.address?.props?.text,
-          row.gpsStatus?.props?.status,
-        ].filter(Boolean);
-
-        return fields.some((field) => String(field).toLowerCase().includes(term));
-      });
-  }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
-
-  // Dynamic Select All Header
-  const unlockableCount = allRows.filter((r) => {
-    const imei = r.imei?.props?.text;
-    return imei && (r._isLockedInitial || r._deviceStatus);
-  }).length;
-
-  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
-  const allSelected = unlockableCount > 0 && selectedCount === unlockableCount;
-
-  const dynamicColumns = useMemo(() => {
-    const headerCheckbox =
-      unlockableCount > 0 ? (
-        <Tooltip title={allSelected ? "Deselect All" : "Select All Unlockable Trips"}>
+      const checkboxComponent = isStandardUnlocked ? (
+        <MDTypography variant="caption" color="text">-</MDTypography>
+      ) : (
+        <MDBox display="flex" justifyContent="center">
           <Checkbox
-            checked={allSelected}
-            indeterminate={selectedCount > 0 && !allSelected}
-            onChange={handleToggleSelectAll}
+            checked={!!selectedRows[imei]}
+            onChange={() => handleToggleSelect(imei)}
             color="info"
           />
-        </Tooltip>
-      ) : (
-        <MDTypography variant="caption" color="text">
-          -
-        </MDTypography>
+        </MDBox>
       );
 
-    return tableColumns.map((col) =>
-      col.accessor === "checkbox" ? { ...col, Header: headerCheckbox } : col
-    );
-  }, [unlockableCount, selectedCount, allSelected, handleToggleSelectAll]);
+      return { ...row, checkbox: checkboxComponent };
+    }).filter((row) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      const fields = [
+        row.vehicleNo?.props?.text,
+        row.imei?.props?.text,
+        row.address?.props?.text,
+      ].filter(Boolean);
 
-  const renderMenu = (
-    <Menu
-      anchorEl={menu}
-      open={Boolean(menu)}
-      onClose={closeMenu}
-      anchorOrigin={{ vertical: "top", horizontal: "left" }}
-      transformOrigin={{ vertical: "top", horizontal: "right" }}
-    >
-      <MenuItem onClick={handleBulkUnlock} disabled={selectedCount === 0}>
-        Perform Bulk **UNLOCK** on **{selectedCount}** Trip{selectedCount !== 1 ? "s" : ""}
-      </MenuItem>
-      <MenuItem onClick={closeMenu}>Refresh Data</MenuItem>
-      <MenuItem onClick={closeMenu}>Export</MenuItem>
-    </Menu>
-  );
+      return fields.some((f) => String(f).toLowerCase().includes(term));
+    });
+  }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
 
   if (loading) {
     return (
       <Card>
         <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
-          <MDTypography variant="h6" ml={2}>
-            Fetching Live Trip Data...
-          </MDTypography>
+          <MDTypography variant="h6" ml={2}>Fetching Live Trip Data...</MDTypography>
         </MDBox>
       </Card>
     );
@@ -370,23 +278,47 @@ function Projects() {
   return (
     <Card>
       <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
+        
         <MDBox display="flex" alignItems="center" width="100%">
+
+          {/* TITLE */}
           <MDBox mr={3}>
-            <MDTypography variant="h6" gutterBottom>
-              Trip Report Table
-            </MDTypography>
-            <MDTypography variant="button" fontWeight="regular" color="text">
-              <strong>{filteredRows.length}</strong> trip{filteredRows.length !== 1 ? "s" : ""}{" "}
-              displayed
+            <MDTypography variant="h6" gutterBottom>Trip Report Table</MDTypography>
+            <MDTypography variant="button" color="text">
+              <strong>{filteredRows.length}</strong> trips displayed
             </MDTypography>
           </MDBox>
 
-          <MDBox ml="auto" mr={2} width="50%">
+          {/* ➕ NEW BUTTONS ADDED HERE */}
+          <MDBox display="flex" gap={1} ml={2}>
+            <MDButton
+              variant="gradient"
+              color="success"
+              size="small"
+              startIcon={<Icon>add</Icon>}
+              onClick={() => console.log("New Trip Clicked")}
+            >
+              New Trip
+            </MDButton>
+
+            <MDButton
+              variant="outlined"
+              color="info"
+              size="small"
+              startIcon={<Icon>map</Icon>}
+              onClick={() => console.log("Map View Clicked")}
+            >
+              Map View
+            </MDButton>
+          </MDBox>
+
+          {/* SEARCH BAR */}
+          <MDBox ml="auto" mr={2} width="40%">
             <TextField
               fullWidth
               size="small"
               variant="outlined"
-              placeholder="Search by Vehicle No., IMEI, Address..."
+              placeholder="Search by Vehicle, IMEI, Address..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -399,36 +331,30 @@ function Projects() {
             />
           </MDBox>
 
+          {/* MENU */}
           <MDBox>
-            <Icon
-              sx={{ cursor: "pointer", fontWeight: "bold" }}
-              fontSize="small"
-              onClick={openMenu}
-            >
+            <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
               more_vert
             </Icon>
           </MDBox>
+
         </MDBox>
-        {renderMenu}
+
+        {/* MENU DROPDOWN */}
+        <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
+          <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
+          <MenuItem onClick={closeMenu}>Refresh</MenuItem>
+          <MenuItem onClick={closeMenu}>Export</MenuItem>
+        </Menu>
+
       </MDBox>
 
       <MDBox>
-        {filteredRows.length === 0 ? (
-          <MDBox p={6} textAlign="center">
-            <Icon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }}>search_off</Icon>
-            <MDTypography variant="h6" color="text.secondary">
-              {searchTerm ? `No trips match "${searchTerm}"` : "No trip data available"}
-            </MDTypography>
-          </MDBox>
-        ) : (
-          <DataTable
-            table={{ columns: dynamicColumns, rows: filteredRows }}
-            showTotalEntries={false}
-            isSorted={false}
-            noEndBorder
-            entriesPerPage={false}
-          />
-        )}
+        <DataTable
+          table={{ columns: tableColumns, rows: filteredRows }}
+          isSorted={false}
+          entriesPerPage={false}
+        />
       </MDBox>
     </Card>
   );

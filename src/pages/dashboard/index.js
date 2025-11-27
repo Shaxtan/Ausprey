@@ -137,21 +137,18 @@ function Dashboard() {
   // =========================================================================
 
   // Helper to format pie chart data for MD PieChart component
-  // Updated: Online vs Offline vs Unreachable Pie Chart
   const onlineOfflinePieData = useMemo(() => {
-    const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
-    const offline = summaryData.offline;
-    const unreachable = summaryData.unreachable;
+    const onlineValue = pieData.find((item) => item.name === "Online")?.value || 0;
+    const offlineValue = pieData.find((item) => item.name === "Offline")?.value || 0;
 
     return {
-      labels: ["Online", "Offline", "Unreachable"],
+      labels: ["Online", "Offline"],
       datasets: {
         label: "Connection Status",
-        backgroundColors: ["success", "error", "info"], // Green, Red, Orange/Yellow
-        data: [online, offline, unreachable],
+        backgroundColors: ["success", "error"],
+        data: [onlineValue, offlineValue],
       },
     };
-  }, [summaryData]);
   }, [pieData]);
 
   const newPieData4 = {
@@ -181,18 +178,18 @@ const newPieData6 = {
   },
 };
 
-  // Updated: Detailed Device Status Pie Chart (3 slices as requested)
   const allDeviceStatusPieData = useMemo(() => {
-    const inMotion = summaryData.onlineMotion;
-    const stopped = summaryData.onlineStopped + summaryData.offline; // Stopped + Offline = "Not Moving"
-    const idle = summaryData.onlineIdle;
-
     return {
-      labels: ["In Motion", "Stopped", "Idle"],
+      labels: ["Motion", "Idle", "Stopped", "Offline"],
       datasets: {
-        label: "Vehicle Status",
-        backgroundColors: ["success", "error", "warning"], // Green = Moving, Red = Stopped/Offline, Orange = Idle
-        data: [inMotion, stopped, idle],
+        label: "Device Status",
+        backgroundColors: ["success", "primary", "info", "error"],
+        data: [
+          summaryData.onlineMotion,
+          summaryData.onlineIdle,
+          summaryData.onlineStopped,
+          summaryData.offline,
+        ],
       },
     };
   }, [summaryData]);
@@ -489,77 +486,6 @@ const newPieData6 = {
 </Grid>
 
         {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
-        <MDBox mt={4.5}>
-          {/* Pie Charts on a separate row */}
-          <Grid container spacing={3}>
-            {/* Online vs Offline vs Unreachable Pie Chart */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "320px !important" }}>
-                <PieChart
-                  icon={{ color: "success", component: <WifiIcon /> }}
-                  title="Online vs Offline vs Unreachable"
-                  description={
-                    <>
-                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br />
-                      Online:{" "}
-                      <strong>
-                        {(
-                          summaryData.onlineMotion +
-                          summaryData.onlineIdle +
-                          summaryData.onlineStopped
-                        ).toLocaleString()}
-                      </strong>{" "}
-                      | Offline: <strong>{summaryData.offline.toLocaleString()}</strong> |
-                      Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                    </>
-                  }
-                  chart={onlineOfflinePieData}
-                />
-              </MDBox>
-            </Grid>
-
-            {/* Vehicle Running Status Pie Chart - Perfectly styled like the first one */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "320px !important" }}>
-                <PieChart
-                  icon={{ color: "dark", component: <DonutLargeIcon /> }}
-                  title="Vehicle Running Status"
-                  description={
-                    <>
-                      Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br />
-                      In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
-                      Stopped:{" "}
-                      <strong>
-                        {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
-                      </strong>{" "}
-                      | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
-                      {summaryData.unreachable > 0 && (
-                        <>
-                          {" | "}Unreachable:{" "}
-                          <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                        </>
-                      )}
-                    </>
-                  }
-                  chart={allDeviceStatusPieData}
-                />
-              </MDBox>
-            </Grid>
-            {/* Alert Type Distribution Pie Chart (MOCK DATA) */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
-                  title="Alert Type Distribution"
-                  description="Breakdown of Critical, Warning, and Info alerts."
-                  chart={alertTypePieData} // Using mock data for alerts
-                />
-              </MDBox>
-            </Grid>
-          </Grid>
-        </MDBox>
        <MDBox mt={4}>
   {/* Pie Charts on a separate row */}
   <Grid container spacing={2}>
