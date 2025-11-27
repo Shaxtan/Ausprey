@@ -137,18 +137,16 @@ function Dashboard() {
   // =========================================================================
 
   // Helper to format pie chart data for MD PieChart component
-  // Updated: Online vs Offline vs Unreachable Pie Chart
   const onlineOfflinePieData = useMemo(() => {
-    const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
-    const offline = summaryData.offline;
-    const unreachable = summaryData.unreachable;
+    const onlineValue = pieData.find((item) => item.name === "Online")?.value || 0;
+    const offlineValue = pieData.find((item) => item.name === "Offline")?.value || 0;
 
     return {
-      labels: ["Online", "Offline", "Unreachable"],
+      labels: ["Online", "Offline"],
       datasets: {
         label: "Connection Status",
-        backgroundColors: ["success", "error", "info"], // Green, Red, Orange/Yellow
-        data: [online, offline, unreachable],
+        backgroundColors: ["success", "error"],
+        data: [onlineValue, offlineValue],
       },
     };
   }, [pieData]);
@@ -180,18 +178,18 @@ function Dashboard() {
     },
   };
 
-  // Updated: Detailed Device Status Pie Chart (3 slices as requested)
   const allDeviceStatusPieData = useMemo(() => {
-    const inMotion = summaryData.onlineMotion;
-    const stopped = summaryData.onlineStopped + summaryData.offline; // Stopped + Offline = "Not Moving"
-    const idle = summaryData.onlineIdle;
-
     return {
-      labels: ["In Motion", "Stopped", "Idle"],
+      labels: ["Motion", "Idle", "Stopped", "Offline"],
       datasets: {
-        label: "Vehicle Status",
-        backgroundColors: ["success", "error", "warning"], // Green = Moving, Red = Stopped/Offline, Orange = Idle
-        data: [inMotion, stopped, idle],
+        label: "Device Status",
+        backgroundColors: ["success", "primary", "info", "error"],
+        data: [
+          summaryData.onlineMotion,
+          summaryData.onlineIdle,
+          summaryData.onlineStopped,
+          summaryData.offline,
+        ],
       },
     };
   }, [summaryData]);
