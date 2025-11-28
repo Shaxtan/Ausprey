@@ -6,6 +6,7 @@ import ApiService from "services/ApiService";
 * Material Dashboard 2 React - v2.2.0
 =========================================================
 */
+import MenuItem from "@mui/material/MenuItem";
 
 // @mui icons
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
@@ -58,6 +59,9 @@ const alertTypePieData = {
 
 function Dashboard() {
   const { sales, tasks } = reportsLineChartData;
+const [tripFilterType, setTripFilterType] = useState("bts-elock"); // default active
+const [btsOption, setBtsOption] = useState("");
+const [unreachableOption, setUnreachableOption] = useState("");
 
   // =========================================================================
   // === API STATE & LOGIC EXTRACTED FROM OLD DASHBOARD ===
@@ -595,6 +599,7 @@ function Dashboard() {
             </Grid>
           </Grid>
         </MDBox>
+
 
         {/* --- Projects and Orders Overview Section --- */}
         <MDBox>

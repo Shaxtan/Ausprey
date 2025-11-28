@@ -132,6 +132,10 @@ function Projects() {
   const [loading, setLoading] = useState(true);
   const [allRows, setAllRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
+  const [tripFilterType, setTripFilterType] = useState("bts-elock"); // "bts-elock" | "unreachable"
+  const [btsOption, setBtsOption] = useState("option1");
+  const [unreachableOption, setUnreachableOption] = useState("option1");
+  const [activeTripTab, setActiveTripTab] = useState("trip1"); // "trip1" | "trip2" | "trip3"
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
@@ -232,36 +236,40 @@ function Projects() {
   }, []);
 
   const filteredRows = useMemo(() => {
-    return allRows.map((row) => {
-      const imei = row.imei?.props?.text;
-      if (!imei) return row;
+    return allRows
+      .map((row) => {
+        const imei = row.imei?.props?.text;
+        if (!imei) return row;
 
-      const isStandardUnlocked = row._isLockedInitial === false && row._deviceStatus === null;
+        const isStandardUnlocked = row._isLockedInitial === false && row._deviceStatus === null;
 
-      const checkboxComponent = isStandardUnlocked ? (
-        <MDTypography variant="caption" color="text">-</MDTypography>
-      ) : (
-        <MDBox display="flex" justifyContent="center">
-          <Checkbox
-            checked={!!selectedRows[imei]}
-            onChange={() => handleToggleSelect(imei)}
-            color="info"
-          />
-        </MDBox>
-      );
+        const checkboxComponent = isStandardUnlocked ? (
+          <MDTypography variant="caption" color="text">
+            -
+          </MDTypography>
+        ) : (
+          <MDBox display="flex" justifyContent="center">
+            <Checkbox
+              checked={!!selectedRows[imei]}
+              onChange={() => handleToggleSelect(imei)}
+              color="info"
+            />
+          </MDBox>
+        );
 
-      return { ...row, checkbox: checkboxComponent };
-    }).filter((row) => {
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      const fields = [
-        row.vehicleNo?.props?.text,
-        row.imei?.props?.text,
-        row.address?.props?.text,
-      ].filter(Boolean);
+        return { ...row, checkbox: checkboxComponent };
+      })
+      .filter((row) => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        const fields = [
+          row.vehicleNo?.props?.text,
+          row.imei?.props?.text,
+          row.address?.props?.text,
+        ].filter(Boolean);
 
-      return fields.some((f) => String(f).toLowerCase().includes(term));
-    });
+        return fields.some((f) => String(f).toLowerCase().includes(term));
+      });
   }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
 
   if (loading) {
@@ -269,7 +277,9 @@ function Projects() {
       <Card>
         <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
-          <MDTypography variant="h6" ml={2}>Fetching Live Trip Data...</MDTypography>
+          <MDTypography variant="h6" ml={2}>
+            Fetching Live Trip Data...
+          </MDTypography>
         </MDBox>
       </Card>
     );
@@ -277,78 +287,185 @@ function Projects() {
 
   return (
     <Card>
-      <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
-        
-        <MDBox display="flex" alignItems="center" width="100%">
+      {/* ---------------------- HEADER: ATTACHED BUTTONS + TITLE/SEARCH/MENU ---------------------- */}
+      <MDBox position="relative" px={3} pt={3} pb={1}>
+        {/* Floating group visually attached to card top */}
+        <MDBox
+          display="inline-flex"
+          sx={(theme) => ({
+            position: "absolute",
+            top: -18,
+            left: 24,
+            backgroundColor: theme.palette.background.paper,
+            borderRadius: "16px",
+            boxShadow: theme.shadows[3],
+            overflow: "hidden",
+          })}
+        >
+          {/* BTS / UNREACHABLE filter (mutually exclusive via tripFilterType) */}
+          <MDButton
+            variant={tripFilterType === "bts-elock" ? "contained" : "text"}
+            color={tripFilterType === "bts-elock" ? "info" : "dark"}
+            size="small"
+            onClick={() => setTripFilterType("bts-elock")}
+            sx={{
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              minWidth: "110px",
+              boxShadow: "none",
+            }}
+          >
+            BTS ELOCK
+          </MDButton>
 
-          {/* TITLE */}
-          <MDBox mr={3}>
-            <MDTypography variant="h6" gutterBottom>Trip Report Table</MDTypography>
-            <MDTypography variant="button" color="text">
-              <strong>{filteredRows.length}</strong> trips displayed
-            </MDTypography>
-          </MDBox>
+          <MDButton
+            variant={tripFilterType === "unreachable" ? "contained" : "text"}
+            color={tripFilterType === "unreachable" ? "warning" : "dark"}
+            size="small"
+            onClick={() => setTripFilterType("unreachable")}
+            sx={{
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              minWidth: "130px",
+              boxShadow: "none",
+            }}
+          >
+            UNREACHABLE
+          </MDButton>
 
-          {/* ➕ NEW BUTTONS ADDED HERE */}
-          <MDBox display="flex" gap={1} ml={2}>
-            <MDButton
-              variant="gradient"
-              color="success"
-              size="small"
-              startIcon={<Icon>add</Icon>}
-              onClick={() => console.log("New Trip Clicked")}
-            >
-              New Trip
-            </MDButton>
+          {/* Trip tabs (mutually exclusive via activeTripTab) */}
+          <MDButton
+            variant={activeTripTab === "trip1" ? "contained" : "text"}
+            color="dark"
+            size="small"
+            onClick={() => setActiveTripTab("trip1")}
+            sx={(theme) => ({
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              minWidth: "90px",
+              boxShadow: "none",
+              bgcolor:
+                activeTripTab === "trip1" ? theme.palette.info.main : "transparent",
+              "&:hover": {
+                bgcolor:
+                  activeTripTab === "trip1"
+                    ? theme.palette.info.dark
+                    : theme.palette.action.hover,
+              },
+            })}
+          >
+            Trip 1
+          </MDButton>
 
-            <MDButton
-              variant="outlined"
-              color="info"
-              size="small"
-              startIcon={<Icon>map</Icon>}
-              onClick={() => console.log("Map View Clicked")}
-            >
-              Map View
-            </MDButton>
-          </MDBox>
+          <MDButton
+            variant={activeTripTab === "trip2" ? "contained" : "text"}
+            color="dark"
+            size="small"
+            onClick={() => setActiveTripTab("trip2")}
+            sx={(theme) => ({
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              minWidth: "90px",
+              boxShadow: "none",
+              bgcolor:
+                activeTripTab === "trip2" ? theme.palette.success.main : "transparent",
+              "&:hover": {
+                bgcolor:
+                  activeTripTab === "trip2"
+                    ? theme.palette.success.dark
+                    : theme.palette.action.hover,
+              },
+            })}
+          >
+            Trip 2
+          </MDButton>
 
-          {/* SEARCH BAR */}
-          <MDBox ml="auto" mr={2} width="40%">
-            <TextField
-              fullWidth
-              size="small"
-              variant="outlined"
-              placeholder="Search by Vehicle, IMEI, Address..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Icon>search</Icon>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </MDBox>
-
-          {/* MENU */}
-          <MDBox>
-            <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
-              more_vert
-            </Icon>
-          </MDBox>
-
+          <MDButton
+            variant={activeTripTab === "trip3" ? "contained" : "text"}
+            color="dark"
+            size="small"
+            onClick={() => setActiveTripTab("trip3")}
+            sx={(theme) => ({
+              borderRadius: 0,
+              px: 2,
+              py: 1,
+              minWidth: "90px",
+              boxShadow: "none",
+              bgcolor:
+                activeTripTab === "trip3"
+                  ? theme.palette.secondary.main
+                  : "transparent",
+              "&:hover": {
+                bgcolor:
+                  activeTripTab === "trip3"
+                    ? theme.palette.secondary.dark
+                    : theme.palette.action.hover,
+              },
+            })}
+          >
+            Trip 3
+          </MDButton>
         </MDBox>
 
-        {/* MENU DROPDOWN */}
-        <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-          <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
-          <MenuItem onClick={closeMenu}>Refresh</MenuItem>
-          <MenuItem onClick={closeMenu}>Export</MenuItem>
-        </Menu>
+        {/* Row with title, count, search, menu */}
+        <MDBox display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
+          <MDBox display="flex" alignItems="center" width="100%">
+            {/* TITLE & COUNT */}
+            <MDBox mr={3}>
+              <MDTypography variant="h6">
+                Trip Report Table
+                <MDTypography variant="button" color="text" ml={1}>
+                  (<strong>{filteredRows.length}</strong> trips displayed)
+                </MDTypography>
+              </MDTypography>
+            </MDBox>
 
+            {/* SEARCH BAR */}
+            <MDBox ml="auto" mr={2} width="40%">
+              <TextField
+                fullWidth
+                size="small"
+                variant="outlined"
+                placeholder="Search by Vehicle, IMEI, Address..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Icon>search</Icon>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </MDBox>
+
+            {/* MENU */}
+            <MDBox>
+              <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
+                more_vert
+              </Icon>
+            </MDBox>
+          </MDBox>
+
+          {/* MENU DROPDOWN */}
+          <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
+            <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
+            <MenuItem onClick={closeMenu}>Refresh</MenuItem>
+            <MenuItem onClick={closeMenu}>Export</MenuItem>
+          </Menu>
+        </MDBox>
       </MDBox>
 
+      {/* ---------------------- FILTER CONTENT BOX (DROPDOWNS, ETC.) ---------------------- */}
+      <MDBox p={3} mb={0} mt={0}>
+        {/* Reserved for extra dropdowns/options, can use tripFilterType/activeTripTab later */}
+      </MDBox>
+
+      {/* ---------------------- TABLE ---------------------- */}
       <MDBox>
         <DataTable
           table={{ columns: tableColumns, rows: filteredRows }}
