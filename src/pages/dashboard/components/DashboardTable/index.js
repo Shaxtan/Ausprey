@@ -294,7 +294,7 @@ function Projects() {
             onClick={() => setTripFilterType("bts-elock")}
             sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
           >
-            BTS ELOCK
+            VTS
           </MDButton>
 
           <MDButton
@@ -306,7 +306,7 @@ function Projects() {
           >
             UNREACHABLE
           </MDButton>
-
+          {/* 
           <MDButton
             variant={activeTripTab === "trip1" ? "contained" : "text"}
             color="dark"
@@ -372,7 +372,7 @@ function Projects() {
             })}
           >
             Trip 3
-          </MDButton>
+          </MDButton> */}
         </MDBox>
 
         <MDBox display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
