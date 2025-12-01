@@ -409,25 +409,33 @@ const [unreachableOption, setUnreachableOption] = useState("");
             </MDBox>
           </Grid>
           {/* Online Motion */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                icon={<DirectionsRunIcon style={{ marginTop: "-15px" }} />}
-                title="Online Motion"
-                count={summaryData.onlineMotion.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  // amount: "+3%", // Placeholder %
-                  label: "Total Online Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
+<Grid item xs={12} md={6} lg={2}>
+  <MDBox mb={1.5}>
+    <ComplexStatisticsCard
+      color="success"   // Makes the card green
+      icon={
+        <DirectionsRunIcon
+          style={{
+            marginTop: "-15px",
+            color: "white"     // 🔥 Makes the icon/logo white
+          }}
+        />
+      }
+      title="Online Motion"
+      count={summaryData.onlineMotion.toLocaleString()}
+      percentage={{
+        color: "success",
+        label: "Total Online Fleet",
+      }}
+    />
+  </MDBox>
+</Grid>
+
           {/* Online Idle */}
           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="primary"
+                color="warning"
                 icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
                 title="Online Idle"
                 count={summaryData.onlineIdle.toLocaleString()}
@@ -443,7 +451,7 @@ const [unreachableOption, setUnreachableOption] = useState("");
           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="info"
+                color="error"
                 icon={<StopIcon style={{ marginTop: "-15px" }} />}
                 title="Online Stopped"
                 count={summaryData.onlineStopped.toLocaleString()}
@@ -459,7 +467,7 @@ const [unreachableOption, setUnreachableOption] = useState("");
           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="error"
+                color="primary"
                 icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
                 title="Offline"
                 count={summaryData.offline.toLocaleString()}

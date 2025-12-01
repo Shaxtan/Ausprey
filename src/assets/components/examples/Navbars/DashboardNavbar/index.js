@@ -8,7 +8,7 @@
 
 Coded by www.creative-tim.com
 
- =========================================================
+=========================================================
 
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
@@ -18,10 +18,10 @@ import { useState, useEffect } from "react";
 // react-router components
 import { useLocation, Link } from "react-router-dom";
 
-// prop-types is a library for typechecking of props.
+// prop-types
 import PropTypes from "prop-types";
 
-// @material-ui core components
+// @mui components
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
@@ -29,16 +29,15 @@ import Menu from "@mui/material/Menu";
 import Icon from "@mui/material/Icon";
 import MenuItem from "@mui/material/MenuItem";
 
-// Material Dashboard 2 React components
+// Material Dashboard components
 import MDBox from "../../../MDBox";
-// import MDInput from "components/MDInput";
 import MDTypography from "../../../MDTypography";
 
-// Material Dashboard 2 React example components
+// Example components
 import Breadcrumbs from "../../Breadcrumbs";
 import NotificationItem from "../../Items/NotificationItem";
 
-// Custom styles for DashboardNavbar
+// Custom styles
 import {
   navbar,
   navbarContainer,
@@ -47,7 +46,7 @@ import {
   navbarMobileMenu,
 } from "../DashboardNavbar/styles";
 
-// Material Dashboard 2 React context
+// Context
 import {
   useMaterialUIController,
   setTransparentNavbar,
@@ -60,51 +59,49 @@ function DashboardNavbar({ absolute, light, isMini }) {
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
 
-  // Existing state for Notifications Menu
+  // Notification menu state
   const [openMenu, setOpenMenu] = useState(false);
 
-  // NEW STATE FOR AUTHENTICATION MENU
+  // Authentication menu state
   const [openAuthMenu, setOpenAuthMenu] = useState(false);
+
+  // NEW — ACCOUNT SWITCH MENU STATE
+  const [openAccountMenu, setOpenAccountMenu] = useState(false);
 
   const route = useLocation().pathname.split("/").slice(1);
 
   useEffect(() => {
-    // Setting the navbar type
     if (fixedNavbar) {
       setNavbarType("sticky");
     } else {
       setNavbarType("static");
     }
 
-    // A function that sets the transparent state of the navbar.
     function handleTransparentNavbar() {
       setTransparentNavbar(dispatch, (fixedNavbar && window.scrollY === 0) || !fixedNavbar);
     }
 
-    /** The event listener that's calling the handleTransparentNavbar function when 
-      scrolling the window.
-    */
     window.addEventListener("scroll", handleTransparentNavbar);
 
-    // Call the handleTransparentNavbar function to set the state with the initial value.
     handleTransparentNavbar();
 
-    // Remove event listener on cleanup
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
 
+  // Handlers
   const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
   const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
 
-  // Handlers for Notifications Menu
   const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
   const handleCloseMenu = () => setOpenMenu(false);
 
-  // HANDLERS FOR AUTHENTICATION MENU
   const handleOpenAuthMenu = (event) => setOpenAuthMenu(event.currentTarget);
   const handleCloseAuthMenu = () => setOpenAuthMenu(false);
 
-  // Render the notifications menu
+  const handleOpenAccountMenu = (event) => setOpenAccountMenu(event.currentTarget);
+  const handleCloseAccountMenu = () => setOpenAccountMenu(false);
+
+  // Menus
   const renderMenu = () => (
     <Menu
       anchorEl={openMenu}
@@ -123,14 +120,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
     </Menu>
   );
 
-  // RENDER FUNCTION FOR AUTHENTICATION MENU (Correct Redirection Logic)
   const renderAuthMenu = () => (
     <Menu
       anchorEl={openAuthMenu}
-      anchorReference={null}
       anchorOrigin={{
         vertical: "bottom",
-        horizontal: "right", // Align to the right of the icon
+        horizontal: "right",
       }}
       transformOrigin={{
         vertical: "top",
@@ -140,13 +135,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
       onClose={handleCloseAuthMenu}
       sx={{ mt: 2 }}
     >
-      {/* Redirection to Sign In. Uses `component={Link}` and `to` from react-router-dom */}
       <MenuItem onClick={handleCloseAuthMenu} component={Link} to="/authentication/sign-in">
         <MDTypography variant="button" fontWeight="regular" color="dark">
           Sign In
         </MDTypography>
       </MenuItem>
-      {/* Redirection to Sign Up. Uses `component={Link}` and `to` from react-router-dom */}
+
       <MenuItem onClick={handleCloseAuthMenu} component={Link} to="/authentication/sign-up">
         <MDTypography variant="button" fontWeight="regular" color="dark">
           Sign Out
@@ -155,7 +149,37 @@ function DashboardNavbar({ absolute, light, isMini }) {
     </Menu>
   );
 
-  // Styles for the navbar icons
+  // NEW — ACCOUNT SWITCH MENU
+  const renderAccountMenu = () => (
+    <Menu
+      anchorEl={openAccountMenu}
+      anchorOrigin={{
+        vertical: "bottom",
+        horizontal: "right",
+      }}
+      transformOrigin={{
+        vertical: "top",
+        horizontal: "right",
+      }}
+      open={Boolean(openAccountMenu)}
+      onClose={handleCloseAccountMenu}
+      sx={{ mt: 2 }}
+    >
+      <MenuItem onClick={handleCloseAccountMenu}>
+        <MDTypography variant="button" fontWeight="regular" color="dark">
+          Account 1
+        </MDTypography>
+      </MenuItem>
+
+      <MenuItem onClick={handleCloseAccountMenu}>
+        <MDTypography variant="button" fontWeight="regular" color="dark">
+          Account 2
+        </MDTypography>
+      </MenuItem>
+    </Menu>
+  );
+
+  // Icon styling
   const iconsStyle = ({ palette: { dark, white, text }, functions: { rgba } }) => ({
     color: () => {
       let colorValue = light || darkMode ? white.main : dark.main;
@@ -178,13 +202,25 @@ function DashboardNavbar({ absolute, light, isMini }) {
         <MDBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>
           <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} />
         </MDBox>
-        {isMini ? null : (
+
+        {!isMini && (
           <MDBox sx={(theme) => navbarRow(theme, { isMini })}>
-            {/* <MDBox pr={1}>
-              <MDInput label="Search here" />
-            </MDBox> */}
             <MDBox color={light ? "white" : "inherit"}>
-              {/* Account Icon (Opens Auth Menu) */}
+
+              {/* NEW — ACCOUNT SWITCH ICON */}
+              <IconButton
+                sx={navbarIconButton}
+                size="small"
+                disableRipple
+                onClick={handleOpenAccountMenu}
+                aria-controls="account-menu"
+                aria-haspopup="true"
+              >
+                <Icon sx={iconsStyle}>supervisor_account</Icon>
+              </IconButton>
+              {renderAccountMenu()}
+
+              {/* Authentication icon */}
               <IconButton
                 sx={navbarIconButton}
                 size="small"
@@ -192,13 +228,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 onClick={handleOpenAuthMenu}
                 aria-controls="auth-menu"
                 aria-haspopup="true"
-                variant="contained"
               >
                 <Icon sx={iconsStyle}>account_circle</Icon>
               </IconButton>
               {renderAuthMenu()}
 
-              {/* Sidenav Mini Toggle Button (Uses correct style `navbarIconButton`) */}
+              {/* Mini sidenav toggle */}
               <IconButton
                 size="small"
                 disableRipple
@@ -211,7 +246,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 </Icon>
               </IconButton>
 
-              {/* Settings/Configurator Button */}
+              {/* Settings */}
               <IconButton
                 size="small"
                 disableRipple
@@ -222,15 +257,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 <Icon sx={iconsStyle}>settings</Icon>
               </IconButton>
 
-              {/* Notifications Button (FIXED JSX Syntax Error) */}
+              {/* Notifications */}
               <IconButton
                 size="small"
                 disableRipple
                 color="inherit"
                 sx={navbarIconButton}
-                aria-controls="notification-menu"
-                aria-haspopup="true"
-                variant="contained"
                 onClick={handleOpenMenu}
               >
                 <Icon sx={iconsStyle}>notifications</Icon>
@@ -244,14 +276,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
   );
 }
 
-// Setting default values for the props of DashboardNavbar
 DashboardNavbar.defaultProps = {
   absolute: false,
   light: false,
   isMini: false,
 };
 
-// Typechecking props for the DashboardNavbar
 DashboardNavbar.propTypes = {
   absolute: PropTypes.bool,
   light: PropTypes.bool,
