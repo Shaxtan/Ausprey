@@ -121,7 +121,7 @@ const tableColumns = [
   { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
   { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
-  { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
+  // { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
   // { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
