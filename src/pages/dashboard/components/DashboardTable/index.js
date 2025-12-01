@@ -109,8 +109,13 @@ LockUnlock.propTypes = {
   deviceStatus: PropTypes.string,
 };
 
+// =====================================================================================
+// TABLE COLUMNS — NOW WITH "Acc Name"
+// =====================================================================================
+
 const tableColumns = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
+  { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" }, // ← NEW COLUMN
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
   { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
@@ -168,10 +173,8 @@ function Projects() {
           const fetchedRows = devices.map((item, index) => {
             const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
             const imei = item.imei || "N/A";
-
-            // Temporary lock logic (replace when backend sends real flags)
-            const isLocked = Number(item.speed) === 0 && item.ign === "Y";
-            const deviceStatus = null; // Will be "ROPE_CUT", etc. later
+            const speed = Number(item.speed) || 0;
+            const isLocked = speed === 0 && item.ign === "Y";
 
             return {
               no: (
@@ -188,6 +191,7 @@ function Projects() {
                   </MDTypography>
                 </MDBox>
               ),
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />, // ← NEW
               vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
               gpsStatus: <Status status={gpsDisplay} />,
               ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
@@ -205,16 +209,15 @@ function Projects() {
               avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
               currentSpeed: (
                 <DataCell
-                  text={item.speed !== null ? `${item.speed} km/h` : "0 km/h"}
-                  color={Number(item.speed) > 0 ? "success" : "text"}
+                  text={`${speed} km/h`}
+                  color={speed > 0 ? "success" : "text"}
                   fontWeight="bold"
                 />
               ),
-              lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={deviceStatus} />,
+              lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
               checkbox: null,
               _imei: imei,
               _isLockedInitial: isLocked,
-              _deviceStatus: deviceStatus,
             };
           });
 
@@ -251,9 +254,12 @@ function Projects() {
       .filter((row) => {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
-        const fields = [row.vehicleNo?.props?.text, row._imei, row.address?.props?.text].filter(
-          Boolean
-        );
+        const fields = [
+          row.accountName?.props?.text, // ← Now searchable
+          row.vehicleNo?.props?.text,
+          row._imei,
+          row.address?.props?.text,
+        ].filter(Boolean);
         return fields.some((f) => String(f).toLowerCase().includes(term));
       });
   }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
