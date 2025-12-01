@@ -22,7 +22,10 @@ import MDButton from "../../../../assets/components/MDButton";
 // Material Dashboard 2 React examples
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
-// Helper Components
+// =====================================================================================
+// HELPER COMPONENTS (WITH FULL PROPTYPES — ESLINT CLEAN)
+// =====================================================================================
+
 const DataCell = ({ text, color = "text", fontWeight = "medium" }) => (
   <MDTypography variant="caption" color={color} fontWeight={fontWeight}>
     {text}
@@ -35,7 +38,7 @@ DataCell.propTypes = {
 };
 
 const Status = ({ status }) => {
-  let color = status === "Active" ? "success" : status === "Inactive" ? "error" : "warning";
+  const color = status === "Active" ? "success" : status === "Inactive" ? "error" : "warning";
   return (
     <MDBox lineHeight={1}>
       <MDTypography variant="caption" color={color} fontWeight="bold">
@@ -48,7 +51,7 @@ Status.propTypes = { status: PropTypes.string.isRequired };
 
 const Ignition = ({ status }) => {
   const ignitionStatus = status > 0 ? "On" : "Off";
-  let color = ignitionStatus === "On" ? "success" : "error";
+  const color = ignitionStatus === "On" ? "success" : "error";
   return (
     <MDTypography variant="caption" color={color} fontWeight="bold">
       {ignitionStatus}
@@ -119,11 +122,11 @@ const tableColumns = [
   { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
   { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
-  { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
+  // { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
 // =====================================================================================
-// MAIN COMPONENT
+// MAIN COMPONENT (SAME DESIGN, UPDATED DATA LOGIC)
 // =====================================================================================
 
 function Projects() {
@@ -132,10 +135,8 @@ function Projects() {
   const [loading, setLoading] = useState(true);
   const [allRows, setAllRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
-  const [tripFilterType, setTripFilterType] = useState("bts-elock"); // "bts-elock" | "unreachable"
-  const [btsOption, setBtsOption] = useState("option1");
-  const [unreachableOption, setUnreachableOption] = useState("option1");
-  const [activeTripTab, setActiveTripTab] = useState("trip1"); // "trip1" | "trip2" | "trip3"
+  const [tripFilterType, setTripFilterType] = useState("bts-elock");
+  const [activeTripTab, setActiveTripTab] = useState("trip1");
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
@@ -143,9 +144,7 @@ function Projects() {
   const handleBulkUnlock = () => {
     closeMenu();
     const imeiToUnlock = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
-
     if (imeiToUnlock.length > 0) {
-      console.log(`Bulk unlock for: ${imeiToUnlock.join(", ")}`);
       alert(`UNLOCK command sent for ${imeiToUnlock.length} trip(s).`);
       setSelectedRows({});
     } else {
@@ -157,35 +156,22 @@ function Projects() {
     setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
   }, []);
 
-  // Fetch API Data
+  // FETCH FROM NEW API: res.data.data.data.VTS.available
   useEffect(() => {
     setLoading(true);
     ApiService.getDashboardData(
       {},
       (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data) {
-          const { data } = res.data.data;
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
+          const devices = res.data.data.data.VTS.available;
 
-          const fetchedRows = data.map((item, index) => {
-            const gpsDisplay = item.gps === "A" ? "Active" : item.gps === "V" ? "Inactive" : "N/A";
-
-            let deviceStatus = null;
-            let isLocked = false;
-
-            if (item.rope_cut_only) {
-              deviceStatus = "ROPE_CUT";
-              isLocked = true;
-            } else if (item.case_tamper) {
-              deviceStatus = "CASE_TAMPER";
-              isLocked = true;
-            } else if (item.rope_insert_only) {
-              deviceStatus = "ROPE_INSERT";
-              isLocked = true;
-            } else if (item.is_locked !== undefined) {
-              isLocked = item.is_locked;
-            }
-
+          const fetchedRows = devices.map((item, index) => {
+            const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
             const imei = item.imei || "N/A";
+
+            // Temporary lock logic (replace when backend sends real flags)
+            const isLocked = Number(item.speed) === 0 && item.ign === "Y";
+            const deviceStatus = null; // Will be "ROPE_CUT", etc. later
 
             return {
               no: (
@@ -202,24 +188,31 @@ function Projects() {
                   </MDTypography>
                 </MDBox>
               ),
-              vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
+              vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
               gpsStatus: <Status status={gpsDisplay} />,
               ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
               imei: <DataCell text={imei} />,
-              date: <DataCell text={item.devTs || "N/A"} />,
+              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: <DataCell text={item.address || "N/A"} />,
-              avgSpeed: <DataCell text={item.avg !== null ? item.avg : "N/A"} />,
+              address: (
+                <DataCell
+                  text={
+                    item.address && item.address !== "NA" ? item.address : "Location Not Available"
+                  }
+                />
+              ),
+              avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
               currentSpeed: (
                 <DataCell
-                  text={item.speed !== null ? `${item.speed} km/h` : "N/A"}
-                  color={item.speed > 0 ? "success" : "text"}
+                  text={item.speed !== null ? `${item.speed} km/h` : "0 km/h"}
+                  color={Number(item.speed) > 0 ? "success" : "text"}
                   fontWeight="bold"
                 />
               ),
               lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={deviceStatus} />,
               checkbox: null,
+              _imei: imei,
               _isLockedInitial: isLocked,
               _deviceStatus: deviceStatus,
             };
@@ -238,16 +231,8 @@ function Projects() {
   const filteredRows = useMemo(() => {
     return allRows
       .map((row) => {
-        const imei = row.imei?.props?.text;
-        if (!imei) return row;
-
-        const isStandardUnlocked = row._isLockedInitial === false && row._deviceStatus === null;
-
-        const checkboxComponent = isStandardUnlocked ? (
-          <MDTypography variant="caption" color="text">
-            -
-          </MDTypography>
-        ) : (
+        const imei = row._imei;
+        const checkboxComponent = row._isLockedInitial ? (
           <MDBox display="flex" justifyContent="center">
             <Checkbox
               checked={!!selectedRows[imei]}
@@ -255,6 +240,10 @@ function Projects() {
               color="info"
             />
           </MDBox>
+        ) : (
+          <MDTypography variant="caption" color="text">
+            -
+          </MDTypography>
         );
 
         return { ...row, checkbox: checkboxComponent };
@@ -262,12 +251,9 @@ function Projects() {
       .filter((row) => {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
-        const fields = [
-          row.vehicleNo?.props?.text,
-          row.imei?.props?.text,
-          row.address?.props?.text,
-        ].filter(Boolean);
-
+        const fields = [row.vehicleNo?.props?.text, row._imei, row.address?.props?.text].filter(
+          Boolean
+        );
         return fields.some((f) => String(f).toLowerCase().includes(term));
       });
   }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
@@ -287,9 +273,8 @@ function Projects() {
 
   return (
     <Card>
-      {/* ---------------------- HEADER: ATTACHED BUTTONS + TITLE/SEARCH/MENU ---------------------- */}
+      {/* EXACT SAME HEADER & DESIGN */}
       <MDBox position="relative" px={3} pt={3} pb={1}>
-        {/* Floating group visually attached to card top */}
         <MDBox
           display="inline-flex"
           sx={(theme) => ({
@@ -302,19 +287,12 @@ function Projects() {
             overflow: "hidden",
           })}
         >
-          {/* BTS / UNREACHABLE filter (mutually exclusive via tripFilterType) */}
           <MDButton
             variant={tripFilterType === "bts-elock" ? "contained" : "text"}
             color={tripFilterType === "bts-elock" ? "info" : "dark"}
             size="small"
             onClick={() => setTripFilterType("bts-elock")}
-            sx={{
-              borderRadius: 0,
-              px: 2,
-              py: 1,
-              minWidth: "110px",
-              boxShadow: "none",
-            }}
+            sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
           >
             BTS ELOCK
           </MDButton>
@@ -324,18 +302,11 @@ function Projects() {
             color={tripFilterType === "unreachable" ? "warning" : "dark"}
             size="small"
             onClick={() => setTripFilterType("unreachable")}
-            sx={{
-              borderRadius: 0,
-              px: 2,
-              py: 1,
-              minWidth: "130px",
-              boxShadow: "none",
-            }}
+            sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "130px", boxShadow: "none" }}
           >
             UNREACHABLE
           </MDButton>
 
-          {/* Trip tabs (mutually exclusive via activeTripTab) */}
           <MDButton
             variant={activeTripTab === "trip1" ? "contained" : "text"}
             color="dark"
@@ -347,13 +318,10 @@ function Projects() {
               py: 1,
               minWidth: "90px",
               boxShadow: "none",
-              bgcolor:
-                activeTripTab === "trip1" ? theme.palette.info.main : "transparent",
+              bgcolor: activeTripTab === "trip1" ? theme.palette.info.main : "transparent",
               "&:hover": {
                 bgcolor:
-                  activeTripTab === "trip1"
-                    ? theme.palette.info.dark
-                    : theme.palette.action.hover,
+                  activeTripTab === "trip1" ? theme.palette.info.dark : theme.palette.action.hover,
               },
             })}
           >
@@ -371,8 +339,7 @@ function Projects() {
               py: 1,
               minWidth: "90px",
               boxShadow: "none",
-              bgcolor:
-                activeTripTab === "trip2" ? theme.palette.success.main : "transparent",
+              bgcolor: activeTripTab === "trip2" ? theme.palette.success.main : "transparent",
               "&:hover": {
                 bgcolor:
                   activeTripTab === "trip2"
@@ -395,10 +362,7 @@ function Projects() {
               py: 1,
               minWidth: "90px",
               boxShadow: "none",
-              bgcolor:
-                activeTripTab === "trip3"
-                  ? theme.palette.secondary.main
-                  : "transparent",
+              bgcolor: activeTripTab === "trip3" ? theme.palette.secondary.main : "transparent",
               "&:hover": {
                 bgcolor:
                   activeTripTab === "trip3"
@@ -411,10 +375,8 @@ function Projects() {
           </MDButton>
         </MDBox>
 
-        {/* Row with title, count, search, menu */}
         <MDBox display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
           <MDBox display="flex" alignItems="center" width="100%">
-            {/* TITLE & COUNT */}
             <MDBox mr={3}>
               <MDTypography variant="h6">
                 Trip Report Table
@@ -424,7 +386,6 @@ function Projects() {
               </MDTypography>
             </MDBox>
 
-            {/* SEARCH BAR */}
             <MDBox ml="auto" mr={2} width="40%">
               <TextField
                 fullWidth
@@ -443,7 +404,6 @@ function Projects() {
               />
             </MDBox>
 
-            {/* MENU */}
             <MDBox>
               <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
                 more_vert
@@ -451,7 +411,6 @@ function Projects() {
             </MDBox>
           </MDBox>
 
-          {/* MENU DROPDOWN */}
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
             <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
             <MenuItem onClick={closeMenu}>Refresh</MenuItem>
@@ -460,12 +419,8 @@ function Projects() {
         </MDBox>
       </MDBox>
 
-      {/* ---------------------- FILTER CONTENT BOX (DROPDOWNS, ETC.) ---------------------- */}
-      <MDBox p={3} mb={0} mt={0}>
-        {/* Reserved for extra dropdowns/options, can use tripFilterType/activeTripTab later */}
-      </MDBox>
+      <MDBox p={3} mb={0} mt={0} />
 
-      {/* ---------------------- TABLE ---------------------- */}
       <MDBox>
         <DataTable
           table={{ columns: tableColumns, rows: filteredRows }}

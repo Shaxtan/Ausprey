@@ -59,9 +59,9 @@ const alertTypePieData = {
 
 function Dashboard() {
   const { sales, tasks } = reportsLineChartData;
-const [tripFilterType, setTripFilterType] = useState("bts-elock"); // default active
-const [btsOption, setBtsOption] = useState("");
-const [unreachableOption, setUnreachableOption] = useState("");
+  const [tripFilterType, setTripFilterType] = useState("bts-elock"); // default active
+  const [btsOption, setBtsOption] = useState("");
+  const [unreachableOption, setUnreachableOption] = useState("");
 
   // =========================================================================
   // === API STATE & LOGIC EXTRACTED FROM OLD DASHBOARD ===
@@ -82,14 +82,14 @@ const [unreachableOption, setUnreachableOption] = useState("");
   });
 
   useEffect(() => {
-    // console.log("Fetching dashboard data...");
     ApiService.getDashboardData(
       {},
       (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data) {
-          const { summary, data } = res.data.data;
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
+          const apiData = res.data.data.data; // ← New nesting level
 
-          // 1. Set Summary Data (for Stat Cards)
+          // 1. Extract Summary (This is what changed!)
+          const summary = apiData.summary || {};
           const newSummary = {
             totalDevices: summary.totalDevices || 0,
             offline: summary.offline || 0,
@@ -100,38 +100,35 @@ const [unreachableOption, setUnreachableOption] = useState("");
           };
           setSummaryData(newSummary);
 
-          // 2. Calculate Totals and Pie Chart Data
+          // 2. Calculate derived values
           const online = newSummary.onlineIdle + newSummary.onlineStopped + newSummary.onlineMotion;
-          const offline = newSummary.offline;
-          const total = online + offline;
+          const totalWithUnreachable = newSummary.totalDevices + newSummary.unreachable;
 
-          setTotalDevices(total);
+          setTotalDevices(totalWithUnreachable);
           setOnlineDevices(online);
-          setOfflineDevices(offline);
+          setOfflineDevices(newSummary.offline);
 
-          // Data structure for Online vs. Offline Pie Chart
+          // 3. Pie Chart Data (Online/Offline/Unreachable)
           setPieData([
             { name: "Online", value: online },
-            { name: "Offline", value: offline },
+            { name: "Offline", value: newSummary.offline },
+            { name: "Unreachable", value: newSummary.unreachable },
           ]);
 
-          // Process and set other data (for chatbot and potential list use)
-          const fetchedDevices = data.map((item) => ({
+          // 4. Extract device list for chatbot IMEI validation
+          const devicesRaw = apiData.VTS?.available || [];
+          const fetchedDevices = devicesRaw.map((item) => ({
             imei: item.imei || "N/A",
-            accountId: item.vehnum || "N/A",
-            name: item.name || "N/A",
-            status: item.gps === "A" ? "active" : "inactive", // Simplified status for device list
+            name: item.vehnum || item.name || item.imei,
+            status: item.gps === "A" ? "active" : "inactive",
+            ign: item.ign,
+            speed: Number(item.speed) || 0,
           }));
-          setDevices(fetchedDevices);
 
-          // Trip data processing is skipped for brevity but kept in state logic
-          const fetchedTripData = data.map((item, index) => ({
-            id: index + 1,
-            // ... (rest of the trip data fields)
-          }));
-          setTripData(fetchedTripData);
+          setDevices(fetchedDevices);
         } else {
-          console.error("Dashboard data fetch failed:", res?.message || "Unknown error");
+          console.error("Invalid dashboard response:", res);
+          callAlert("Error", "Failed to load dashboard data");
         }
       },
       true,
@@ -409,27 +406,27 @@ const [unreachableOption, setUnreachableOption] = useState("");
             </MDBox>
           </Grid>
           {/* Online Motion */}
-<Grid item xs={12} md={6} lg={2}>
-  <MDBox mb={1.5}>
-    <ComplexStatisticsCard
-      color="success"   // Makes the card green
-      icon={
-        <DirectionsRunIcon
-          style={{
-            marginTop: "-15px",
-            color: "white"     // 🔥 Makes the icon/logo white
-          }}
-        />
-      }
-      title="Online Motion"
-      count={summaryData.onlineMotion.toLocaleString()}
-      percentage={{
-        color: "success",
-        label: "Total Online Fleet",
-      }}
-    />
-  </MDBox>
-</Grid>
+          <Grid item xs={12} md={6} lg={2}>
+            <MDBox mb={1.5}>
+              <ComplexStatisticsCard
+                color="success" // Makes the card green
+                icon={
+                  <DirectionsRunIcon
+                    style={{
+                      marginTop: "-15px",
+                      color: "white", // 🔥 Makes the icon/logo white
+                    }}
+                  />
+                }
+                title="Online Motion"
+                count={summaryData.onlineMotion.toLocaleString()}
+                percentage={{
+                  color: "success",
+                  label: "Total Online Fleet",
+                }}
+              />
+            </MDBox>
+          </Grid>
 
           {/* Online Idle */}
           <Grid item xs={12} md={6} lg={2}>
@@ -607,7 +604,6 @@ const [unreachableOption, setUnreachableOption] = useState("");
             </Grid>
           </Grid>
         </MDBox>
-
 
         {/* --- Projects and Orders Overview Section --- */}
         <MDBox>
