@@ -38,6 +38,7 @@ DataCell.propTypes = {
 };
 
 const Status = ({ status }) => {
+  // Use 'warning' color for the new 'Unreachable' status
   const color = status === "Active" ? "success" : status === "Inactive" ? "error" : "warning";
   return (
     <MDBox lineHeight={1}>
@@ -110,12 +111,12 @@ LockUnlock.propTypes = {
 };
 
 // =====================================================================================
-// TABLE COLUMNS — NOW WITH "Acc Name"
+// TABLE COLUMNS — Define columns for both tabs
 // =====================================================================================
 
-const tableColumns = [
+const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
-  { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" }, // ← NEW COLUMN
+  { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
   { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
@@ -130,6 +131,14 @@ const tableColumns = [
   // { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
+const UNREACHABLE_COLUMNS = [
+  { Header: "No", accessor: "no", width: "5%", align: "left" },
+  { Header: "Acc ID", accessor: "accountId", width: "10%", align: "left" },
+  { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "20%", align: "left" },
+  { Header: "IMEI", accessor: "imei", width: "25%", align: "center" },
+  { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
+];
+
 // =====================================================================================
 // MAIN COMPONENT (SAME DESIGN, UPDATED DATA LOGIC)
 // =====================================================================================
@@ -138,10 +147,11 @@ function Projects() {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [allRows, setAllRows] = useState([]);
+  const [allVtsRows, setAllVtsRows] = useState([]); // Renamed from allRows
+  const [unreachableRows, setUnreachableRows] = useState([]); // State for unreachable data
   const [selectedRows, setSelectedRows] = useState({});
-  const [tripFilterType, setTripFilterType] = useState("bts-elock");
-  const [activeTripTab, setActiveTripTab] = useState("trip1");
+  const [tripFilterType, setTripFilterType] = useState("vts"); // 'vts' or 'unreachable'
+  // const [activeTripTab, setActiveTripTab] = useState("trip1");
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
@@ -161,8 +171,12 @@ function Projects() {
     setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
   }, []);
 
-  // FETCH FROM NEW API: res.data.data.data.VTS.available
-  useEffect(() => {
+  // -----------------------------------------------------------------------------------
+  // 3. Data Fetching Functions
+  // -----------------------------------------------------------------------------------
+
+  // Fetch VTS Data (Dashboard API)
+  const fetchVtsData = useCallback(() => {
     setLoading(true);
     ApiService.getDashboardData(
       {},
@@ -174,6 +188,7 @@ function Projects() {
             const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
             const imei = item.imei || "N/A";
             const speed = Number(item.speed) || 0;
+            // Lock logic: speed == 0 (stopped) AND ignition == 'Y'
             const isLocked = speed === 0 && item.ign === "Y";
 
             return {
@@ -191,7 +206,7 @@ function Projects() {
                   </MDTypography>
                 </MDBox>
               ),
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />, // ← NEW
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
               gpsStatus: <Status status={gpsDisplay} />,
               ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
@@ -215,14 +230,16 @@ function Projects() {
                 />
               ),
               lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
-              checkbox: null,
+              checkbox: null, // Placeholder to be filled in useMemo
               _imei: imei,
               _isLockedInitial: isLocked,
             };
           });
 
-          setAllRows(fetchedRows);
+          setAllVtsRows(fetchedRows);
           setSelectedRows({});
+        } else {
+          setAllVtsRows([]);
         }
         setLoading(false);
       },
@@ -231,38 +248,118 @@ function Projects() {
     );
   }, []);
 
-  const filteredRows = useMemo(() => {
-    return allRows
-      .map((row) => {
-        const imei = row._imei;
-        const checkboxComponent = row._isLockedInitial ? (
-          <MDBox display="flex" justifyContent="center">
-            <Checkbox
-              checked={!!selectedRows[imei]}
-              onChange={() => handleToggleSelect(imei)}
-              color="info"
-            />
-          </MDBox>
-        ) : (
-          <MDTypography variant="caption" color="text">
-            -
-          </MDTypography>
-        );
+  // Fetch Unreachable Devices Data (New API)
+  const fetchUnreachableData = useCallback(() => {
+    setLoading(true);
+    // Assuming the API Service has the new method now
+    ApiService.getUnreachableDevices(
+      {}, // Empty data body, as per the request
+      (res) => {
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
+          const unreachableDevices = res.data.data.data;
 
-        return { ...row, checkbox: checkboxComponent };
-      })
-      .filter((row) => {
+          const fetchedRows = unreachableDevices.map((item, index) => ({
+            no: <DataCell text={index + 1} fontWeight="bold" />,
+            accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
+            vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
+            imei: <DataCell text={item.imei || "N/A"} />,
+            unreachableStatus: <Status status="Unreachable" />, // Use Status component for styling
+            // No location, speed, or lock status for unreachable devices
+          }));
+          setUnreachableRows(fetchedRows);
+        } else {
+          setUnreachableRows([]);
+        }
+        setLoading(false);
+      }
+    );
+  }, []);
+
+  // -----------------------------------------------------------------------------------
+  // 4. Conditional Data Loading
+  // -----------------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (tripFilterType === "vts") {
+      fetchVtsData();
+    } else if (tripFilterType === "unreachable") {
+      fetchUnreachableData();
+    }
+  }, [tripFilterType, fetchVtsData, fetchUnreachableData]);
+
+  // -----------------------------------------------------------------------------------
+  // 5. Conditional Data Filtering & Column Selection
+  // -----------------------------------------------------------------------------------
+
+  // Select the current dataset and columns
+  const currentRows = tripFilterType === "vts" ? allVtsRows : unreachableRows;
+  const currentColumns = tripFilterType === "vts" ? VTS_COLUMNS : UNREACHABLE_COLUMNS;
+
+  const filteredRows = useMemo(() => {
+    // --------------------------------- VTS Filter Logic ---------------------------------
+    if (tripFilterType === "vts") {
+      return currentRows
+        .map((row) => {
+          // Add Checkbox and Lock/Unlock columns back to the VTS table data
+          const imei = row._imei;
+          const checkboxComponent = row._isLockedInitial ? (
+            <MDBox display="flex" justifyContent="center">
+              <Checkbox
+                checked={!!selectedRows[imei]}
+                onChange={() => handleToggleSelect(imei)}
+                color="info"
+              />
+            </MDBox>
+          ) : (
+            <MDTypography variant="caption" color="text">
+              -
+            </MDTypography>
+          );
+
+          // VTS requires two extra columns: lockUnlock and checkbox, which must be mapped here.
+          return {
+            ...row,
+            lockUnlock: row.lockUnlock,
+            checkbox: checkboxComponent,
+          };
+        })
+        .filter((row) => {
+          // VTS Search Logic
+          if (!searchTerm) return true;
+          const term = searchTerm.toLowerCase();
+          const fields = [
+            row.accountName?.props?.text,
+            row.vehicleNo?.props?.text,
+            row._imei,
+            row.address?.props?.text,
+          ].filter(Boolean);
+          return fields.some((f) => String(f).toLowerCase().includes(term));
+        });
+    }
+
+    // ---------------------------- Unreachable Filter Logic ----------------------------
+    if (tripFilterType === "unreachable") {
+      return currentRows.filter((row) => {
+        // Unreachable Search Logic
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         const fields = [
-          row.accountName?.props?.text, // ← Now searchable
+          row.accountId?.props?.text,
           row.vehicleNo?.props?.text,
-          row._imei,
-          row.address?.props?.text,
+          row.imei?.props?.text,
         ].filter(Boolean);
         return fields.some((f) => String(f).toLowerCase().includes(term));
       });
-  }, [allRows, searchTerm, selectedRows, handleToggleSelect]);
+    }
+
+    return [];
+  }, [
+    currentRows, // Now depends on whichever array is active (allVtsRows or unreachableRows)
+    searchTerm,
+    selectedRows,
+    handleToggleSelect,
+    tripFilterType,
+  ]);
 
   if (loading) {
     return (
@@ -270,7 +367,10 @@ function Projects() {
         <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
           <MDTypography variant="h6" ml={2}>
-            Fetching Live Trip Data...
+            {/* Dynamic loading text */}
+            {tripFilterType === "vts"
+              ? "Fetching Live Trip Data..."
+              : "Fetching Unreachable Devices..."}
           </MDTypography>
         </MDBox>
       </Card>
@@ -279,7 +379,7 @@ function Projects() {
 
   return (
     <Card>
-      {/* EXACT SAME HEADER & DESIGN */}
+      {/* --------------------------------- HEADER (TABS) --------------------------------- */}
       <MDBox position="relative" px={3} pt={3} pb={1}>
         <MDBox
           display="inline-flex"
@@ -293,16 +393,18 @@ function Projects() {
             overflow: "hidden",
           })}
         >
+          {/* VTS Tab */}
           <MDButton
-            variant={tripFilterType === "bts-elock" ? "contained" : "text"}
-            color={tripFilterType === "bts-elock" ? "info" : "dark"}
+            variant={tripFilterType === "vts" ? "contained" : "text"}
+            color={tripFilterType === "vts" ? "info" : "dark"}
             size="small"
-            onClick={() => setTripFilterType("bts-elock")}
+            onClick={() => setTripFilterType("vts")}
             sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
           >
             VTS
           </MDButton>
 
+          {/* UNREACHABLE Tab */}
           <MDButton
             variant={tripFilterType === "unreachable" ? "contained" : "text"}
             color={tripFilterType === "unreachable" ? "warning" : "dark"}
@@ -312,6 +414,7 @@ function Projects() {
           >
             UNREACHABLE
           </MDButton>
+
           {/* 
           <MDButton
             variant={activeTripTab === "trip1" ? "contained" : "text"}
@@ -385,9 +488,11 @@ function Projects() {
           <MDBox display="flex" alignItems="center" width="100%">
             <MDBox mr={3}>
               <MDTypography variant="h6">
-                Trip Report Table
+                {/* Dynamic Title */}
+                {tripFilterType === "vts" ? "Live Trip Report Table" : "Unreachable Devices"}
                 <MDTypography variant="button" color="text" ml={1}>
-                  (<strong>{filteredRows.length}</strong> trips displayed)
+                  (<strong>{filteredRows.length}</strong>{" "}
+                  {tripFilterType === "vts" ? "trips" : "devices"} displayed)
                 </MDTypography>
               </MDTypography>
             </MDBox>
@@ -397,7 +502,11 @@ function Projects() {
                 fullWidth
                 size="small"
                 variant="outlined"
-                placeholder="Search by Vehicle, IMEI, Address..."
+                placeholder={`Search by ${
+                  tripFilterType === "vts"
+                    ? "Vehicle, IMEI, Address..."
+                    : "Vehicle, IMEI, Acc ID..."
+                }`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -418,7 +527,10 @@ function Projects() {
           </MDBox>
 
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-            <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
+            {/* Bulk Unlock only appears on the VTS tab */}
+            {tripFilterType === "vts" && (
+              <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
+            )}
             <MenuItem onClick={closeMenu}>Refresh</MenuItem>
             <MenuItem onClick={closeMenu}>Export</MenuItem>
           </Menu>
@@ -427,9 +539,10 @@ function Projects() {
 
       <MDBox p={3} mb={0} mt={0} />
 
+      {/* --------------------------------- TABLE --------------------------------- */}
       <MDBox>
         <DataTable
-          table={{ columns: tableColumns, rows: filteredRows }}
+          table={{ columns: currentColumns, rows: filteredRows }} // Dynamic columns and rows
           isSorted={false}
           entriesPerPage={false}
         />
