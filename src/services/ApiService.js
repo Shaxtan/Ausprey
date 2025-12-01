@@ -234,56 +234,72 @@ class ApiService {
         })
     );
   }
-  getAllDevices(accountId = 1) {
-    // You are using postRequest for getDashboardData, so we stick to that.
+  getAllDevices(accountId = null) {
+    // If no accountId passed, try to get from localStorage
+    if (!accountId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+        accountId = user?.accid || 1;
+      } catch {
+        accountId = 1;
+      }
+    }
+
     return this.postRequest(
       "/reports/report/dashboard",
-      { accid: accountId }, // Assuming accid is passed in the body
+      { accid: accountId },
       true,
       SERVICES.dashboard
     )
       .then((res) => {
-        const rawDevices = res?.data?.data?.data || [];
+        // CRITICAL: Correct path to devices
+        const availableDevices = res?.data?.data?.data?.VTS?.available || [];
 
-        // Normalize the raw API response into the structure needed by LiveTrack.js
-        const normalizedDevices = rawDevices.map((d) => {
+        if (!Array.isArray(availableDevices) || availableDevices.length === 0) {
+          console.warn("No devices found in dashboard response");
+          return [];
+        }
+
+        const normalizedDevices = availableDevices.map((d) => {
           const speedNum = Number(d.speed) || 0;
           const ign = (d.ign || "").toUpperCase();
+          const lat = parseFloat(d.lat);
+          const lng = parseFloat(d.lng);
 
-          let status;
+          let status = "Inactive";
           if (ign === "Y") {
             status = speedNum > 5 ? "Running" : "Idle";
           } else {
             status = speedNum === 0 ? "Stopped" : "Inactive";
           }
 
-          // Convert location string to Leaflet array format
-          const location = d.lat && d.lng ? `${d.lat},${d.lng}` : null;
+          const location = lat && lng ? `${lat},${lng}` : null;
+          const initialRoute = location ? [[lat, lng]] : [];
 
           return {
             id: d.imei,
-            name: d.vehnum || d.imei,
-            tripId: d.imei, // Using IMEI as a dummy tripId for live view
-            status: status,
+            name: d.vehnum || d.name || d.imei,
+            tripId: d.imei,
+            status,
             speed: speedNum,
-            battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50, // Mocked/calculated battery
+            battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50,
             ignition: ign === "Y",
-            lastUpdate: new Date(d.devTs).toLocaleTimeString(), // Use device timestamp
-            driverName: "N/A", // Placeholder: Needs proper API call if real
-            vehicleType: "Truck", // Placeholder
-            // Initialize route with the latest position for map rendering
-            route: location ? [[d.lat, d.lng]] : [],
-            location: location, // Store the lat/lng string
-            accountId: d.accid, // Store account ID for live track API call
+            lastUpdate: new Date(d.devTs || Date.now()).toLocaleTimeString(),
+            driverName: "N/A",
+            vehicleType: "Truck",
+            route: initialRoute,
+            location,
+            accountId: d.accid || accountId,
+            raw: d, // for debugging
           };
         });
 
-        // The LiveTrack component expects an array of normalized devices
         return normalizedDevices;
       })
       .catch((error) => {
-        callAlert("Error", error?.message || "Failed to fetch device list");
-        throw error;
+        callAlert("Error", "Failed to load devices");
+        console.error("getAllDevices error:", error);
+        return [];
       });
   }
   testData(accountId, imei, header = true) {
@@ -297,6 +313,22 @@ class ApiService {
       callAlert("Error", error?.message);
       throw error;
     });
+  }
+
+  getUnreachableDevices(data = {}, callback, header = true) {
+    return this.postRequest(
+      "/reports/report/unrechableDevices", // <-- New Endpoint
+      data,
+      header,
+      SERVICES.dashboard // Uses the :8075 dashboard base URL
+    )
+      .then((res) => {
+        if (callback) callback(res);
+      })
+      .catch((error) => {
+        if (callback) callback({ message: error?.message });
+        callAlert("Error", error?.message || "Failed to fetch unreachable devices");
+      });
   }
 }
 
