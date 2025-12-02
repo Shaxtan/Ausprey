@@ -133,17 +133,18 @@ const VTS_COLUMNS = [
 
 const UNREACHABLE_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
+  { Header: "Acc Name", accessor: "accountName", width: "10%", align: "left" },
   { Header: "Acc ID", accessor: "accountId", width: "10%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "20%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "25%", align: "center" },
-  { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
+  // { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
 ];
 
 // =====================================================================================
 // MAIN COMPONENT (SAME DESIGN, UPDATED DATA LOGIC)
 // =====================================================================================
 
-function Projects() {
+function Projects({ accountId }) {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -176,98 +177,112 @@ function Projects() {
   // -----------------------------------------------------------------------------------
 
   // Fetch VTS Data (Dashboard API)
-  const fetchVtsData = useCallback(() => {
-    setLoading(true);
-    ApiService.getDashboardData(
-      {},
-      (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
-          const devices = res.data.data.data.VTS.available;
+  const fetchVtsData = useCallback(
+    (currentAccountId) => {
+      setLoading(true);
+      ApiService.getDashboardData(
+        { accid: currentAccountId }, // <<< PASSED ACCOUNT ID HERE
+        (res) => {
+          if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
+            const devices = res.data.data.data.VTS.available;
 
-          const fetchedRows = devices.map((item, index) => {
-            const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
-            const imei = item.imei || "N/A";
-            const speed = Number(item.speed) || 0;
-            // Lock logic: speed == 0 (stopped) AND ignition == 'Y'
-            const isLocked = speed === 0 && item.ign === "Y";
+            const fetchedRows = devices.map((item, index) => {
+              const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
+              const imei = item.imei || "N/A";
+              const speed = Number(item.speed) || 0; // Lock logic: speed == 0 (stopped) AND ignition == 'Y'
+              const isLocked = speed === 0 && item.ign === "Y";
 
-            return {
-              no: (
-                <MDBox display="flex" alignItems="center" gap={0.5}>
-                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
-                  </Icon>
-                  <MDTypography
-                    variant="caption"
-                    fontWeight="bold"
-                    color={item.ign === "Y" ? "success" : "error"}
+              return {
+                no: (
+                  <MDBox
+                    display="flex"
+                    alignItems="center"
+                    gap={0.5}
+                    // 💡 ADD THIS LINE to ensure left alignment
+                    justifyContent="flex-start"
                   >
-                    {index + 1}
-                  </MDTypography>
-                </MDBox>
-              ),
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
-              gpsStatus: <Status status={gpsDisplay} />,
-              ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-              imei: <DataCell text={imei} />,
-              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: (
-                <DataCell
-                  text={
-                    item.address && item.address !== "NA" ? item.address : "Location Not Available"
-                  }
-                />
-              ),
-              avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
-              currentSpeed: (
-                <DataCell
-                  text={`${speed} km/h`}
-                  color={speed > 0 ? "success" : "text"}
-                  fontWeight="bold"
-                />
-              ),
-              lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
-              checkbox: null, // Placeholder to be filled in useMemo
-              _imei: imei,
-              _isLockedInitial: isLocked,
-            };
-          });
+                    <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
+                      {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                    </Icon>
+                    <MDTypography
+                      variant="caption"
+                      fontWeight="bold"
+                      color={item.ign === "Y" ? "success" : "error"}
+                    >
+                      {index + 1}
+                    </MDTypography>
+                  </MDBox>
+                ),
+                accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
+                gpsStatus: <Status status={gpsDisplay} />,
+                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+                imei: <DataCell text={imei} />,
+                date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+                latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+                longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+                address: (
+                  <DataCell
+                    text={
+                      item.address && item.address !== "NA"
+                        ? item.address
+                        : "Location Not Available"
+                    }
+                  />
+                ),
+                avgSpeed: (
+                  <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
+                ),
+                currentSpeed: (
+                  <DataCell
+                    text={`${speed} km/h`}
+                    color={speed > 0 ? "success" : "text"}
+                    fontWeight="bold"
+                  />
+                ),
+                lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
+                checkbox: null, // Placeholder to be filled in useMemo
+                _imei: imei,
+                _isLockedInitial: isLocked,
+              };
+            });
 
-          setAllVtsRows(fetchedRows);
-          setSelectedRows({});
-        } else {
-          setAllVtsRows([]);
-        }
-        setLoading(false);
-      },
-      true,
-      1
-    );
-  }, []);
+            setAllVtsRows(fetchedRows);
+            setSelectedRows({});
+          } else {
+            setAllVtsRows([]);
+          }
+          setLoading(false);
+        },
+        true,
+        1
+      );
+    },
+    [] // Dependencies are empty, as currentAccountId is passed as an argument
+  );
 
   // Fetch Unreachable Devices Data (New API)
-  const fetchUnreachableData = useCallback(() => {
+  const fetchUnreachableData = useCallback((currentAccountId) => {
     setLoading(true);
-    // Assuming the API Service has the new method now
     ApiService.getUnreachableDevices(
-      {}, // Empty data body, as per the request
+      { accid: currentAccountId }, // <<< PASSED ACCOUNT ID HERE
       (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
-          const unreachableDevices = res.data.data.data;
+        // 💡 FIX APPLIED HERE: Access data at res.data.data (assuming ApiService fix)
+        // If ApiService was NOT fixed, the old path was res?.data?.data?.data
+        const unreachableDevices = res?.data?.data || []; // Use || [] to ensure it's an array
 
+        if (res?.data?.resultCode === 1 && Array.isArray(unreachableDevices)) {
           const fetchedRows = unreachableDevices.map((item, index) => ({
             no: <DataCell text={index + 1} fontWeight="bold" />,
+            accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
             accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
             vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
             imei: <DataCell text={item.imei || "N/A"} />,
-            unreachableStatus: <Status status="Unreachable" />, // Use Status component for styling
-            // No location, speed, or lock status for unreachable devices
+            // unreachableStatus: <Status status="Unreachable" />,
           }));
           setUnreachableRows(fetchedRows);
         } else {
+          console.warn("Unreachable data structure invalid or resultCode not 1:", res);
           setUnreachableRows([]);
         }
         setLoading(false);
@@ -281,11 +296,11 @@ function Projects() {
 
   useEffect(() => {
     if (tripFilterType === "vts") {
-      fetchVtsData();
+      fetchVtsData(accountId);
     } else if (tripFilterType === "unreachable") {
-      fetchUnreachableData();
+      fetchUnreachableData(accountId);
     }
-  }, [tripFilterType, fetchVtsData, fetchUnreachableData]);
+  }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData]);
 
   // -----------------------------------------------------------------------------------
   // 5. Conditional Data Filtering & Column Selection
@@ -344,6 +359,7 @@ function Projects() {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         const fields = [
+          row.accountName?.props?.text,
           row.accountId?.props?.text,
           row.vehicleNo?.props?.text,
           row.imei?.props?.text,
@@ -550,5 +566,9 @@ function Projects() {
     </Card>
   );
 }
+Projects.propTypes = {
+  // Added propTypes for the new accountId prop
+  accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+};
 
 export default Projects;

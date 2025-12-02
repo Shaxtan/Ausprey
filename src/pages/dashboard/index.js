@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ApiService from "services/ApiService";
 
 /**
@@ -21,6 +21,10 @@ import StopIcon from "@mui/icons-material/Stop"; // Icon for Online Stopped
 
 // @mui material components
 import Grid from "@mui/material/Grid";
+// --- New Imports ---
+import Select from "@mui/material/Select";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 
 // Material Dashboard 2 React components
 import MDBox from "../../../src/assets/components/MDBox";
@@ -57,6 +61,16 @@ const alertTypePieData = {
   },
 };
 
+// Utility function to safely get the account ID from localStorage
+const getInitialAccountId = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+    return user?.accountId || 1; // Default to 1 if not found
+  } catch {
+    return 1;
+  }
+};
+
 function Dashboard() {
   const { sales, tasks } = reportsLineChartData;
   const [tripFilterType, setTripFilterType] = useState("bts-elock"); // default active
@@ -72,6 +86,8 @@ function Dashboard() {
   const [pieData, setPieData] = useState([]); // Used for Online/Offline PieChart
   const [devices, setDevices] = useState([]); // List of devices
   const [tripData, setTripData] = useState([]); // Data for the table (not rendered here)
+  const [accounts, setAccounts] = useState([]); // Stores the list from the dropdown API
+  const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId()); // Current active account ID
   const [summaryData, setSummaryData] = useState({
     totalDevices: 0,
     offline: 0,
@@ -81,15 +97,18 @@ function Dashboard() {
     unreachable: 0,
   });
 
-  useEffect(() => {
+  // ... (inside Dashboard function, before useEffect)
+
+  // Refactored data fetch function to accept accountId
+  const fetchDashboardData = useCallback((accountId) => {
     ApiService.getDashboardData(
-      {},
+      { accid: accountId }, // Pass the account ID in the data payload
       (res) => {
         if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
-          const apiData = res.data.data.data; // ← New nesting level
-
-          // 1. Extract Summary (This is what changed!)
+          const apiData = res.data.data.data;
           const summary = apiData.summary || {};
+
+          // 1. Extract Summary
           const newSummary = {
             totalDevices: summary.totalDevices || 0,
             offline: summary.offline || 0,
@@ -100,7 +119,7 @@ function Dashboard() {
           };
           setSummaryData(newSummary);
 
-          // 2. Calculate derived values
+          // 2. Calculate derived values and set pie data... (rest of logic)
           const online = newSummary.onlineIdle + newSummary.onlineStopped + newSummary.onlineMotion;
           const totalWithUnreachable = newSummary.totalDevices + newSummary.unreachable;
 
@@ -124,17 +143,44 @@ function Dashboard() {
             ign: item.ign,
             speed: Number(item.speed) || 0,
           }));
-
           setDevices(fetchedDevices);
         } else {
           console.error("Invalid dashboard response:", res);
-          callAlert("Error", "Failed to load dashboard data");
+          // callAlert("Error", "Failed to load dashboard data"); // Assuming callAlert exists globally
         }
       },
       true,
       1
     );
+  }, []); // Dependency array empty as it only uses state setters
+
+  // Function to fetch the account list
+  const fetchAccounts = useCallback(() => {
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        setAccounts(res.data.data);
+      } else {
+        console.error("Failed to load account dropdown:", res);
+      }
+    });
   }, []);
+
+  // ... (replacing the old useEffect)
+
+  useEffect(() => {
+    // 1. Fetch the list of accounts
+    fetchAccounts();
+
+    // 2. Fetch initial dashboard data using the logged-in user's account ID
+    // selectedAccountId is initialized from localStorage/default on component mount
+    fetchDashboardData(selectedAccountId);
+  }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
+
+  const handleAccountChange = (event) => {
+    const newAccountId = event.target.value;
+    setSelectedAccountId(newAccountId);
+    // The useEffect above will handle the data re-fetch.
+  };
   // =========================================================================
 
   // Helper to format pie chart data for MD PieChart component
@@ -386,7 +432,50 @@ function Dashboard() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox py={3}>
+
+      {/* --- START: ACCOUNT DROPDOWN SECTION --- */}
+      {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
+      <MDBox py={3} pt={1} pb={1}>
+        <Grid container justifyContent="flex-start" mb={2}>
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+            {/* Title for the Dropdown */}
+            <MDTypography variant="h6" mb={0.5} color="text">
+              Select Account
+            </MDTypography>
+
+            {/* The MUI Dropdown Component */}
+            <FormControl variant="outlined" size="small" fullWidth>
+              <InputLabel id="account-select-label">Account</InputLabel>
+              <Select
+                labelId="account-select-label"
+                id="account-select"
+                value={selectedAccountId}
+                label="Account"
+                onChange={handleAccountChange}
+                sx={{ minWidth: 200, height: 40 }}
+              >
+                {accounts.length > 0 ? (
+                  accounts.map((account) => (
+                    <MenuItem key={account.id} value={account.id}>
+                      {account.name}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value={selectedAccountId} disabled>
+                    Loading accounts...
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </MDBox>
+      {/* --- END: ACCOUNT DROPDOWN SECTION --- */}
+
+      {/* The rest of the content (Cards and Charts) will follow immediately below */}
+      <MDBox py={0}>
+        {/* The existing MDBox py={3} is now MDBox py={0} or removed if the main content starts here */}
+
         {/* --- Complex Statistics Cards --- (UPDATED WITH LIVE DATA) */}
         <Grid container spacing={3}>
           {/* Total Devices */}
@@ -399,7 +488,6 @@ function Dashboard() {
                 count={summaryData.totalDevices.toLocaleString()}
                 percentage={{
                   color: "success",
-                  // amount: "+55%", // Placeholder %
                   label: "Total Active Fleet",
                 }}
               />
@@ -438,7 +526,6 @@ function Dashboard() {
                 count={summaryData.onlineIdle.toLocaleString()}
                 percentage={{
                   color: "success",
-                  // amount: "", // Placeholder %
                   label: "Total Idle Fleet",
                 }}
               />
@@ -454,7 +541,6 @@ function Dashboard() {
                 count={summaryData.onlineStopped.toLocaleString()}
                 percentage={{
                   color: "success",
-                  // amount: "+0.5%", // Placeholder %
                   label: "Total Unreacble Fleet",
                 }}
               />
@@ -470,7 +556,6 @@ function Dashboard() {
                 count={summaryData.offline.toLocaleString()}
                 percentage={{
                   color: "error",
-                  // amount: "+1%", // Placeholder %
                   label: "Total Offline Fleet",
                 }}
               />
@@ -486,7 +571,6 @@ function Dashboard() {
                 count={summaryData.unreachable.toLocaleString()}
                 percentage={{
                   color: "success",
-                  // amount: "+0.5%", // Placeholder %
                   label: "Total Unreacble Fleet",
                 }}
               />
@@ -506,8 +590,6 @@ function Dashboard() {
                   title="Online vs Offline vs Unreachable"
                   description={
                     <>
-                      {/* Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br /> */}
                       Online:{" "}
                       <strong>
                         {(
@@ -533,8 +615,6 @@ function Dashboard() {
                   title="Vehicle Running Status"
                   description={
                     <>
-                      {/* Total: <strong>{summaryData.totalDevices.toLocaleString()}</strong>
-                      <br /> */}
                       In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
                       Stopped:{" "}
                       <strong>
@@ -609,17 +689,13 @@ function Dashboard() {
         <MDBox>
           <Grid container spacing={3}>
             <Grid item xs={16} md={14} lg={14}>
-              <Projects />
+              <Projects accountId={selectedAccountId} />
             </Grid>
-            {/* <Grid item xs={12} md={6} lg={4}>
-              <OrdersOverview />
-            </Grid> */}
           </Grid>
         </MDBox>
       </MDBox>
 
-      {/* --- START CHATBOT INTEGRATION SECTION (Modified for IMEI validation) --- */}
-
+      {/* --- START CHATBOT INTEGRATION SECTION (Unchanged) --- */}
       {/* ⭐️ CHATBOT ICON BUTTON */}
       <div style={iconStyle} onClick={toggleChatbot}>
         <img
