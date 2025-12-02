@@ -133,10 +133,11 @@ const VTS_COLUMNS = [
 
 const UNREACHABLE_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
+  { Header: "Acc Name", accessor: "accountName", width: "10%", align: "left" },
   { Header: "Acc ID", accessor: "accountId", width: "10%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "20%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "25%", align: "center" },
-  { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
+  // { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
 ];
 
 // =====================================================================================
@@ -193,21 +194,23 @@ function Projects({ accountId }) {
 
               return {
                 no: (
-                  <MDBox display="flex" alignItems="center" gap={0.5}>
-                                       {" "}
+                  <MDBox
+                    display="flex"
+                    alignItems="center"
+                    gap={0.5}
+                    // 💡 ADD THIS LINE to ensure left alignment
+                    justifyContent="flex-start"
+                  >
                     <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                                           {" "}
-                      {item.ign === "Y" ? "online_prediction" : "offline_bolt"}                   {" "}
+                      {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
                     </Icon>
-                                       {" "}
                     <MDTypography
                       variant="caption"
                       fontWeight="bold"
                       color={item.ign === "Y" ? "success" : "error"}
                     >
-                                            {index + 1}                   {" "}
+                      {index + 1}
                     </MDTypography>
-                                     {" "}
                   </MDBox>
                 ),
                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
@@ -271,10 +274,11 @@ function Projects({ accountId }) {
         if (res?.data?.resultCode === 1 && Array.isArray(unreachableDevices)) {
           const fetchedRows = unreachableDevices.map((item, index) => ({
             no: <DataCell text={index + 1} fontWeight="bold" />,
+            accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
             accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
             vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
             imei: <DataCell text={item.imei || "N/A"} />,
-            unreachableStatus: <Status status="Unreachable" />,
+            // unreachableStatus: <Status status="Unreachable" />,
           }));
           setUnreachableRows(fetchedRows);
         } else {
@@ -355,6 +359,7 @@ function Projects({ accountId }) {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         const fields = [
+          row.accountName?.props?.text,
           row.accountId?.props?.text,
           row.vehicleNo?.props?.text,
           row.imei?.props?.text,
