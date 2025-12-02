@@ -4,7 +4,7 @@ import { callAlert } from "./CommonService";
 
 const SERVICES = {
   main: process.env.REACT_APP_BASE_URL + ":8070",
-  // report: process.env.REACT_APP_BASE_URL + ":8099",
+  mainn: process.env.REACT_APP_BASE_URL + ":8071",
   report: process.env.REACT_APP_BASE_URL + ":8075",
   dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
 };
@@ -96,13 +96,41 @@ class ApiService {
     );
   }
 
+  getAccountDropdown(callback, header = true) {
+    // The URL provided is '/accounts/accountDropdown' and uses SERVICES.main
+    return this.getRequest(
+      "/accounts/accountDropdown",
+      null, // No local success callback passed here, handle in .then()
+      header,
+      SERVICES.mainn // Use the main service endpoint
+    )
+      .then((res) => {
+        // Check for resultCode and pass data to component callback if successful
+        if (res?.data?.resultCode === 1) {
+          if (callback) callback(res);
+          return res;
+        } else {
+          callAlert("Error", res?.data?.message || "Failed to fetch account list");
+          return res;
+        }
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch account dropdown");
+        throw error;
+      });
+  }
+
+  // Existing: getDashboardData
   getDashboardData(data = {}, callback, header = true) {
+    // 1. Destructure the accid from the data object
+    const { accid } = data;
+
     return this.postRequest(
       "/reports/report/dashboard",
-      data,
+      data, // Empty data or other body data (kept in case backend needs it)
       header,
-      SERVICES.dashboard
-      // { accid }
+      SERVICES.dashboard,
+      { accid } // 2. Pass accid as a URL query parameter using the 'params' argument
     )
       .then((res) => {
         if (callback) callback(res);
