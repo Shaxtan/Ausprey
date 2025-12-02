@@ -689,7 +689,7 @@ function Dashboard() {
         <MDBox>
           <Grid container spacing={3}>
             <Grid item xs={16} md={14} lg={14}>
-              <Projects />
+              <Projects accountId={selectedAccountId} />
             </Grid>
           </Grid>
         </MDBox>

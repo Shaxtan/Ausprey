@@ -344,11 +344,18 @@ class ApiService {
   }
 
   getUnreachableDevices(data = {}, callback, header = true) {
+    // 1. Destructure the accid from the data object passed from the component
+    const { accid } = data;
+
+    // 2. Use the accid to build a 'params' object for the URL query string
+    const urlParams = accid ? { accid } : {};
+
     return this.postRequest(
       "/reports/report/unrechableDevices", // <-- New Endpoint
-      data,
+      data, // Empty data or other body data (keep for POST structure)
       header,
-      SERVICES.dashboard // Uses the :8075 dashboard base URL
+      SERVICES.dashboard, // Uses the :8075 dashboard base URL
+      urlParams // <-- **THIS IS THE CRITICAL CHANGE**
     )
       .then((res) => {
         if (callback) callback(res);
