@@ -119,6 +119,7 @@ const VTS_COLUMNS = [
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
+  { Header: "SIM NO", accessor: "simNo", width: "12%", align: "center" },
   { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
@@ -133,11 +134,13 @@ const VTS_COLUMNS = [
 
 const UNREACHABLE_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
-  { Header: "Acc Name", accessor: "accountName", width: "10%", align: "left" },
+  { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
   { Header: "Acc ID", accessor: "accountId", width: "10%", align: "left" },
-  { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "20%", align: "left" },
-  { Header: "IMEI", accessor: "imei", width: "25%", align: "center" },
+  { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "12%", align: "left" },
+  { Header: "IMEI", accessor: "imei", width: "15%", align: "center" },
   // { Header: "STATUS", accessor: "unreachableStatus", width: "20%", align: "center" },
+  { Header: "Dev Type", accessor: "deviceType", width: "10%", align: "left" },
+  { Header: "Created On", accessor: "createdOn", width: "10%", align: "left" },
 ];
 
 // =====================================================================================
@@ -218,6 +221,7 @@ function Projects({ accountId }) {
                 gpsStatus: <Status status={gpsDisplay} />,
                 ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
                 imei: <DataCell text={imei} />,
+                simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
                 date: <DataCell text={item.devTs || item.cts || "N/A"} />,
                 latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
                 longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
@@ -279,6 +283,8 @@ function Projects({ accountId }) {
             vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
             imei: <DataCell text={item.imei || "N/A"} />,
             // unreachableStatus: <Status status="Unreachable" />,
+            deviceType: <DataCell text={item.deviceType || "N/A"} fontWeight="medium" />,
+            createdOn: <DataCell text={item.createdOn || "N/A"} fontWeight="medium" />,
           }));
           setUnreachableRows(fetchedRows);
         } else {
@@ -363,6 +369,7 @@ function Projects({ accountId }) {
           row.accountId?.props?.text,
           row.vehicleNo?.props?.text,
           row.imei?.props?.text,
+          row.deviceType?.props?.text,
         ].filter(Boolean);
         return fields.some((f) => String(f).toLowerCase().includes(term));
       });
