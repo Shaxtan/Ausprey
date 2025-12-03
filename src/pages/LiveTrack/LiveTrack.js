@@ -24,7 +24,7 @@ import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Avatar from "@mui/material/Avatar";
 import { useTheme } from "@mui/material/styles";
-
+import truckImage from '../../assets/images/truckImage.jpg'; // Example path
 // Layout
 import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
@@ -228,20 +228,35 @@ function VehicleHeaderBox({ device }) {
   return (
     <Card sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}>
       {/* Truck Image/Icon Placeholder - MODIFIED */}
-      <Avatar
-        sx={{
-          width: 70,
-          height: 70,
-          bgcolor: dummyImage ? "transparent" : `${color}.main`, // Transparent background if image is used
-          border: dummyImage ? `1px solid ${color}.main` : "none", // Optional border
-          p: dummyImage ? 0.5 : 0, // Optional padding
-          overflow: "hidden", // Ensure image stays inside
-        }}
-        src={dummyImage} // Set the dummy image URL
-      >
-        {/* If no dummyImage, show the Material Icon */}
-        {!dummyImage && <Icon sx={{ fontSize: 40, color: "white" }}>{icon}</Icon>}
-      </Avatar>
+
+{/* // 1. (Make sure you have imported the image: import truckImage from 'path/to/your/truck.png';) */}
+
+<Avatar
+  sx={{
+    width: 170,
+    height: 70,
+    // Key change: Set borderRadius to 0 to make it a rectangle
+    borderRadius: 0, 
+    // Set background to transparent since we are using an image
+    bgcolor: 'transparent',
+    // Optional: add a border for a defined frame
+    // border: '1px solid #ccc', 
+    p: 0, // Remove padding unless you want space inside the box
+    overflow: "hidden", // Ensure image stays inside the boundaries
+    
+    // Optional: Add objectFit to ensure the image fills the rectangle nicely.
+    // Use 'cover' to crop and cover, or 'contain' to fit without cropping.
+    '& img': { 
+        objectFit: 'cover', 
+    },
+  }}
+  // Set the imported truck image as the source
+  src={truckImage} 
+>
+  {/* The child Icon logic is now unnecessary if you only want the image, 
+      but it can be kept as a fallback if the image fails to load. */}
+  {/* {!truckImage && <Icon sx={{ fontSize: 40, color: "white" }}>{icon}</Icon>} */}
+</Avatar>
 
       {/* Details */}
       <Box flexGrow={1}>
@@ -251,7 +266,7 @@ function VehicleHeaderBox({ device }) {
         </Typography>
 
         {/* Status Chip */}
-        <Chip
+        {/* <Chip
           label={device.status}
           size="small"
           color={getStatusColor(device.status)}
@@ -260,11 +275,11 @@ function VehicleHeaderBox({ device }) {
             mt: 0.5,
             ...getCustomChipStyle(device.status),
           }}
-        />
+        /> */}
 
         {/* Driver Name */}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          <Icon sx={{ fontSize: 16, verticalAlign: "middle", mr: 0.5 }}>person</Icon>
+          {/* <Icon sx={{ fontSize: 16, verticalAlign: "middle", mr: 0.5 }}>person</Icon> */}
           **Driver:** {device.driverName || "N/A"}
         </Typography>
       </Box>
@@ -562,8 +577,13 @@ FlyToMarker.propTypes = {
   ============================ */
 export default function LiveTrack() {
   // left panel fixed width (desktop) - responsive for small screens
-  const LEFT_PANEL_WIDTH = 520;
+  const LEFT_PANEL_WIDTH = 350;
+const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const theme = useTheme();
 
+  const toggleLeftPanel = () => {
+    setIsLeftPanelOpen(!isLeftPanelOpen);
+  };
   // NEW MASTER STATE: Holds ALL devices fetched from getDashboardData
   const [allDevices, setAllDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -803,15 +823,16 @@ export default function LiveTrack() {
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   }, [selectedDevice]);
 
-  return (
+ return (
     <DashboardLayout>
-      <DashboardNavbar />
+      {/* <DashboardNavbar /> */}
 
       {/* Main area: left fixed panel + right map (flex layout). */}
       <Box
         sx={{
           display: "flex",
-          gap: 2,
+          // Conditionally remove gap when the panel is closed
+          gap: isLeftPanelOpen ? 2 : 0, 
           px: { xs: 1, sm: 2, md: 3 },
           pb: 2,
           pt: 2,
@@ -820,37 +841,40 @@ export default function LiveTrack() {
         }}
       >
         {/* LEFT: device list panel */}
-        <Box
-          sx={{
-            width: { xs: "100%", sm: `${LEFT_PANEL_WIDTH}px` },
-            flexShrink: 0,
-            display: { xs: "block", sm: "block" },
-            zIndex: 1500,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          {/* Status Filter Boxes */}
-          <Stack direction="row" spacing={1} sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}>
-            {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
-              <StatusBox
-                key={status}
-                status={status}
-                count={counts[status] || 0} // Safely use count
-                isSelected={filterStatus === status}
-                onClick={(s) => setFilterStatus(s)}
-              />
-            ))}
-          </Stack>
+        {/* 3. CONDITIONAL RENDERING */}
+        {isLeftPanelOpen && (
+          <Box
+            sx={{
+              width: { xs: "100%", sm: `${LEFT_PANEL_WIDTH}px` },
+              flexShrink: 0,
+              display: { xs: "block", sm: "block" },
+              zIndex: 1500,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            {/* Status Filter Boxes */}
+            <Stack direction="row" spacing={1} sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}>
+              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
+                <StatusBox
+                  key={status}
+                  status={status}
+                  count={counts[status] || 0} // Safely use count
+                  isSelected={filterStatus === status}
+                  onClick={(s) => setFilterStatus(s)}
+                />
+              ))}
+            </Stack>
 
-          {/* Device Table */}
-          <DeviceTable
-            devices={filteredDevices}
-            selectedId={selectedDevice?.id}
-            onSelect={setSelectedDevice}
-          />
-        </Box>
+            {/* Device Table */}
+            <DeviceTable
+              devices={filteredDevices}
+              selectedId={selectedDevice?.id}
+              onSelect={setSelectedDevice}
+            />
+          </Box>
+        )}
 
         {/* RIGHT: map area (flex-grow) */}
         <Box
@@ -863,7 +887,34 @@ export default function LiveTrack() {
             boxShadow: "0 6px 18px rgba(15,15,15,0.08) !important",
           }}
         >
-          {/* Leaflet MapContainer */}
+          {/* 2. ADD THE TOGGLE BUTTON HERE */}
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{
+              position: "absolute",
+              // Place button just outside the map box, to the left
+              left: -54, 
+              top: 10,
+              minWidth: 40,
+              height: 400,
+              padding: 0,
+              zIndex: 1700, // Above map content and overlays
+              display: { xs: 'none', sm: 'flex' }, // Hide on extra small screens
+              transform: `translateX(${isLeftPanelOpen ? (LEFT_PANEL_WIDTH + theme.spacing(2)) : 0}px)`, // Adjust position based on panel state and gap (2 = theme.spacing(2))
+              transition: theme.transitions.create(['transform'], {
+                  easing: theme.transitions.easing.sharp,
+                  duration: theme.transitions.duration.leavingScreen,
+              }),
+              borderRadius: '4px 0 0 4px', // Right-side corners should be sharp
+            }}
+            onClick={toggleLeftPanel}
+            aria-label={isLeftPanelOpen ? "Collapse device list" : "Expand device list"}
+          >
+            <Icon>{isLeftPanelOpen ? "chevron_left" : "chevron_right"}</Icon>
+          </Button>
+          
+          {/* Leaflet MapContainer (Map rendering code remains the same) */}
           <MapContainer
             center={mapCenter}
             zoom={13}
@@ -880,6 +931,7 @@ export default function LiveTrack() {
             {selectedDevice && selectedDevice.route?.length > 0 && (
               <Marker
                 position={selectedDevice.route[selectedDevice.route.length - 1]} // Latest position
+                // ... (rest of Marker/Popup code)
                 icon={L.divIcon({
                   className: "live-vehicle-marker",
                   html: `
@@ -952,6 +1004,7 @@ export default function LiveTrack() {
             {selectedTrip && markerPos && (
               <Marker
                 position={markerPos}
+                // ... (rest of Marker/Popup code)
                 icon={L.divIcon({
                   className: "playback-marker",
                   html: `<div style="background-color:purple; width:14px; height:14px; border-radius:50%; border:3px solid white; box-shadow: 0 0 8px rgba(128,0,128,1);"></div>`,
