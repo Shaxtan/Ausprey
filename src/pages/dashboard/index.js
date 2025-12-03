@@ -436,40 +436,48 @@ function Dashboard() {
       {/* --- START: ACCOUNT DROPDOWN SECTION --- */}
       {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
       <MDBox py={3} pt={1} pb={1}>
-        <Grid container justifyContent="flex-start" mb={2}>
-          <Grid item xs={12} sm={6} md={4} lg={3}>
-            {/* Title for the Dropdown */}
-            <MDTypography variant="h6" mb={0.5} color="text">
-              Select Account
-            </MDTypography>
+    <Grid container justifyContent="flex-end" mb={2}>
+      <Grid item xs={12} sm={6} md={4} lg={3}>
+        
+        {/* MODIFICATION START: Use MDBox with flex to align title and input horizontally */}
+        <MDBox display="flex" alignItems="center" gap={2}> {/* gap adds spacing between items */}
+        
+          {/* Title for the Dropdown */}
+          <MDTypography variant="h6" color="text" sx={{ whiteSpace: 'nowrap' }}>
+            Select Account
+          </MDTypography>
 
-            {/* The MUI Dropdown Component */}
-            <FormControl variant="outlined" size="small" fullWidth>
-              <InputLabel id="account-select-label">Account</InputLabel>
-              <Select
-                labelId="account-select-label"
-                id="account-select"
-                value={selectedAccountId}
-                label="Account"
-                onChange={handleAccountChange}
-                sx={{ minWidth: 200, height: 40 }}
-              >
-                {accounts.length > 0 ? (
-                  accounts.map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.name}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem value={selectedAccountId} disabled>
-                    Loading accounts...
+          {/* The MUI Dropdown Component */}
+          <FormControl variant="outlined" size="small" fullWidth>
+            <InputLabel id="account-select-label">Account</InputLabel>
+            <Select
+              labelId="account-select-label"
+              id="account-select"
+              value={selectedAccountId}
+              label="Account"
+              onChange={handleAccountChange}
+              sx={{ minWidth: 200, height: 40 }}
+            >
+              {accounts.length > 0 ? (
+                accounts.map((account) => (
+                  <MenuItem key={account.id} value={account.id}>
+                    {account.name}
                   </MenuItem>
-                )}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </MDBox>
+                ))
+              ) : (
+                <MenuItem value={selectedAccountId} disabled>
+                  Loading accounts...
+                </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+          
+        </MDBox>
+        {/* MODIFICATION END */}
+        
+      </Grid>
+    </Grid>
+</MDBox>
       {/* --- END: ACCOUNT DROPDOWN SECTION --- */}
 
       {/* The rest of the content (Cards and Charts) will follow immediately below */}
@@ -541,7 +549,7 @@ function Dashboard() {
                 count={summaryData.onlineStopped.toLocaleString()}
                 percentage={{
                   color: "success",
-                  label: "Total Unreacble Fleet",
+                  label: "Total Stopped Fleet",
                 }}
               />
             </MDBox>
@@ -550,7 +558,7 @@ function Dashboard() {
           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="primary"
+                color="warning"
                 icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
                 title="Offline"
                 count={summaryData.offline.toLocaleString()}
@@ -583,29 +591,32 @@ function Dashboard() {
           {/* Pie Charts on a separate row */}
           <Grid container spacing={2}>
             {/* Online vs Offline vs Unreachable */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "success", component: <WifiIcon /> }}
-                  title="Online vs Offline vs Unreachable"
-                  description={
-                    <>
-                      Online:{" "}
-                      <strong>
-                        {(
-                          summaryData.onlineMotion +
-                          summaryData.onlineIdle +
-                          summaryData.onlineStopped
-                        ).toLocaleString()}
-                      </strong>{" "}
-                      | Offline: <strong>{summaryData.offline.toLocaleString()}</strong> |
-                      Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                    </>
-                  }
-                  chart={onlineOfflinePieData}
-                />
-              </MDBox>
-            </Grid>
+           <Grid item xs={12} md={6} lg={4}>
+  <MDBox mb={3} sx={{ height: "300px !important" }}>
+    <PieChart
+      icon={{ color: "success", component: <WifiIcon /> }}
+      title="Online vs Offline vs Unreachable"
+      // description={
+      //   // Use <br /> to enforce the vertical stacking of the counts
+      //   <>
+      //     Online:{" "}
+      //     <strong>
+      //       {(
+      //         summaryData.onlineMotion +
+      //         summaryData.onlineIdle +
+      //         summaryData.onlineStopped
+      //       ).toLocaleString()}
+      //     </strong>
+      //     <br /> 
+      //     Offline: <strong>{summaryData.offline.toLocaleString()}</strong> 
+      //     <br /> 
+      //     Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+      //   </>
+      // }
+      chart={onlineOfflinePieData}
+    />
+  </MDBox>
+</Grid>
 
             {/* Vehicle Running Status */}
             <Grid item xs={12} md={6} lg={4}>
@@ -613,22 +624,22 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "dark", component: <DonutLargeIcon /> }}
                   title="Vehicle Running Status"
-                  description={
-                    <>
-                      In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
-                      Stopped:{" "}
-                      <strong>
-                        {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
-                      </strong>{" "}
-                      | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
-                      {summaryData.unreachable > 0 && (
-                        <>
-                          {" "}
-                          | Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                        </>
-                      )}
-                    </>
-                  }
+                  // description={
+                  //   <>
+                  //     In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
+                  //     Stopped:{" "}
+                  //     <strong>
+                  //       {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
+                  //     </strong>{" "}
+                  //     | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
+                  //     {summaryData.unreachable > 0 && (
+                  //       <>
+                  //         {" "}
+                  //         | Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                  //       </>
+                  //     )}
+                  //   </>
+                  // }
                   chart={allDeviceStatusPieData}
                 />
               </MDBox>

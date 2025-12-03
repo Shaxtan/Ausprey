@@ -3,7 +3,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Popup,
+  useMap,
+} from "react-leaflet";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -24,14 +31,17 @@ import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Avatar from "@mui/material/Avatar";
 import { useTheme } from "@mui/material/styles";
-import truckImage from '../../assets/images/truckImage.jpg'; // Example path
+import IconButton from "@mui/material/IconButton";
+import truckImage from "../../assets/images/truckImage.jpg"; // Example path
+
 // Layout
 import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
+// import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
 
 // MD Components
 import MDBox from "../../assets/components/MDBox";
 import ApiService from "../../services/ApiService";
+
 /* ============================
   MOCK DATA (ENHANCED)
   ============================ */
@@ -54,7 +64,8 @@ const MOCK_TRIP_BASE = {
   ============================ */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -104,7 +115,6 @@ InfoRow.defaultProps = { value: null, icon: null };
 
 /**
  * Returns a standard MUI color name (primary, error, warning, success, default)
- * This avoids non-standard theme colors that could cause the 'type' error.
  */
 function getStatusColor(status) {
   const normalizedStatus = String(status || "").trim();
@@ -117,7 +127,6 @@ function getStatusColor(status) {
     case "Idle":
       return "warning";
     case "Inactive":
-    // Use default color for any status that is not green, red, or amber
     default:
       return "default";
   }
@@ -125,28 +134,24 @@ function getStatusColor(status) {
 
 /**
  * Returns custom styling for "Inactive" and "No Data" Chips.
- * This is used when the default color prop fails.
  */
 function getCustomChipStyle(status) {
   const normalizedStatus = String(status || "").trim();
 
   if (normalizedStatus === "Inactive") {
-    // Custom style for 'Inactive' (e.g., dark background)
     return {
-      backgroundColor: "#344767", // Example Dark Grey color
+      backgroundColor: "#344767",
       color: "#FFFFFF",
     };
   }
 
   if (normalizedStatus === "No Data" || normalizedStatus === "") {
-    // Custom style for 'No Data' (e.g., light grey background)
     return {
-      backgroundColor: "#bdbdbd", // MUI Grey 400
+      backgroundColor: "#bdbdbd",
       color: "#FFFFFF",
     };
   }
 
-  // Return an empty object if a standard color (success, error, warning) is used
   return {};
 }
 
@@ -157,20 +162,13 @@ function getBatteryIcon(percentage) {
   return "battery_alert";
 }
 
-/**
- * Gets a placeholder image URL or icon for a vehicle type.
- * IMPORTANT: Added dummyImage property.
- */
 function getVehicleIconOrImage(vehicleType) {
   const type = (vehicleType || "").toLowerCase();
 
-  // Using the uploaded image as a dummy placeholder URL for a 'Truck' or similar heavy vehicle.
   const DUMMY_TRUCK_IMAGE =
     "http://googleusercontent.com/image_collection/image_retrieval/some_id_string";
-  // Placeholder image for construction/yellow vehicles
-  const DUMMY_CONSTRUCTION_IMAGE = "https://i.imgur.com/example/construction_v.png"; // Dummy URL
-  // Placeholder image for buses/vans
-  const DUMMY_VAN_IMAGE = "https://i.imgur.com/example/delivery_van.png"; // Dummy URL
+  const DUMMY_CONSTRUCTION_IMAGE = "https://i.imgur.com/example/construction_v.png";
+  const DUMMY_VAN_IMAGE = "https://i.imgur.com/example/delivery_van.png";
 
   if (
     type.includes("truck") ||
@@ -181,7 +179,6 @@ function getVehicleIconOrImage(vehicleType) {
     return {
       icon: "local_shipping",
       color: "info",
-      // *** IMPLEMENTATION: Use the actual image placeholder tag or a dummy URL ***
       dummyImage: DUMMY_TRUCK_IMAGE,
     };
   }
@@ -208,11 +205,11 @@ function getVehicleIconOrImage(vehicleType) {
   if (type.includes("ambulance")) {
     return { icon: "local_hospital", color: "error" };
   }
-  return { icon: "crop_square", color: "default" }; // Default/Other
+  return { icon: "crop_square", color: "default" };
 }
 
 /* ============================
-  VehicleHeaderBox (NEW COMPONENT)
+  VehicleHeaderBox
   ============================ */
 function VehicleHeaderBox({ device }) {
   if (!device) {
@@ -227,60 +224,26 @@ function VehicleHeaderBox({ device }) {
 
   return (
     <Card sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}>
-      {/* Truck Image/Icon Placeholder - MODIFIED */}
-
-{/* // 1. (Make sure you have imported the image: import truckImage from 'path/to/your/truck.png';) */}
-
-<Avatar
-  sx={{
-    width: 170,
-    height: 70,
-    // Key change: Set borderRadius to 0 to make it a rectangle
-    borderRadius: 0, 
-    // Set background to transparent since we are using an image
-    bgcolor: 'transparent',
-    // Optional: add a border for a defined frame
-    // border: '1px solid #ccc', 
-    p: 0, // Remove padding unless you want space inside the box
-    overflow: "hidden", // Ensure image stays inside the boundaries
-    
-    // Optional: Add objectFit to ensure the image fills the rectangle nicely.
-    // Use 'cover' to crop and cover, or 'contain' to fit without cropping.
-    '& img': { 
-        objectFit: 'cover', 
-    },
-  }}
-  // Set the imported truck image as the source
-  src={truckImage} 
->
-  {/* The child Icon logic is now unnecessary if you only want the image, 
-      but it can be kept as a fallback if the image fails to load. */}
-  {/* {!truckImage && <Icon sx={{ fontSize: 40, color: "white" }}>{icon}</Icon>} */}
-</Avatar>
-
-      {/* Details */}
+      <Avatar
+        sx={{
+          width: 170,
+          height: 70,
+          borderRadius: 0,
+          bgcolor: "transparent",
+          p: 0,
+          overflow: "hidden",
+          "& img": {
+            objectFit: "cover",
+          },
+        }}
+        src={truckImage}
+      />
       <Box flexGrow={1}>
-        {/* Device Name (Title) */}
         <Typography variant="h6" fontWeight={700} noWrap>
           {device.name}
         </Typography>
-
-        {/* Status Chip */}
-        {/* <Chip
-          label={device.status}
-          size="small"
-          color={getStatusColor(device.status)}
-          sx={{
-            fontWeight: 600,
-            mt: 0.5,
-            ...getCustomChipStyle(device.status),
-          }}
-        /> */}
-
-        {/* Driver Name */}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {/* <Icon sx={{ fontSize: 16, verticalAlign: "middle", mr: 0.5 }}>person</Icon> */}
-          **Driver:** {device.driverName || "N/A"}
+          <strong>Driver:</strong> {device.driverName || "N/A"}
         </Typography>
       </Box>
     </Card>
@@ -292,7 +255,7 @@ VehicleHeaderBox.propTypes = {
 VehicleHeaderBox.defaultProps = { device: null };
 
 /* ============================
-  StatusBox 
+  StatusBox
   ============================ */
 function StatusBox({ status, count, isSelected, onClick }) {
   const colorMap = {
@@ -304,9 +267,6 @@ function StatusBox({ status, count, isSelected, onClick }) {
     Total: "primary",
   };
   const color = colorMap[status] || "default";
-
-  // Use a custom color for the count text for Inactive/No Data to mimic the chip color
-  const countColor = status === "Inactive" ? "#344767" : status === "No Data" ? "#bdbdbd" : color;
 
   return (
     <Card
@@ -345,7 +305,7 @@ StatusBox.propTypes = {
 };
 
 /* ============================
-  DeviceTable 
+  DeviceTable
   ============================ */
 function DeviceTable({ devices, selectedId, onSelect }) {
   return (
@@ -359,7 +319,6 @@ function DeviceTable({ devices, selectedId, onSelect }) {
       <TableContainer
         component={Paper}
         sx={{
-          // Adjusted height due to new boxes
           maxHeight: "calc(100vh - 330px) !important",
           overflow: "auto !important",
           borderRadius: 0,
@@ -467,24 +426,17 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   <Chip
                     label={d.status}
                     size="small"
-                    // Use a standard, safe color prop
                     color={getStatusColor(d.status)}
                     sx={{
                       fontWeight: 600,
                       mb: 0.5,
                       display: "inline-block",
                       maxWidth: "100%",
-                      // Apply custom styles for non-standard colors
                       ...getCustomChipStyle(d.status),
                     }}
                   />
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
-                    <Typography
-                      variant="caption"
-                      display="block"
-                      color="text.secondary"
-                      sx={{ mt: 0.5 }}
-                    >
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
                       {d.lastUpdate}
                     </Typography>
                   </Tooltip>
@@ -526,10 +478,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     </Tooltip>
 
                     <Tooltip title={`Battery: ${d.battery}%`}>
-                      <Icon
-                        color={d.battery < 20 ? "error" : "success"}
-                        sx={{ fontSize: "1.4rem !important" }}
-                      >
+                      <Icon color={d.battery < 20 ? "error" : "success"} sx={{ fontSize: "1.4rem !important" }}>
                         {getBatteryIcon(d.battery)}
                       </Icon>
                     </Tooltip>
@@ -567,7 +516,6 @@ function FlyToMarker({ position }) {
 
   return null;
 }
-// props for flymarker
 FlyToMarker.propTypes = {
   position: PropTypes.arrayOf(PropTypes.number).isRequired,
 };
@@ -578,12 +526,13 @@ FlyToMarker.propTypes = {
 export default function LiveTrack() {
   // left panel fixed width (desktop) - responsive for small screens
   const LEFT_PANEL_WIDTH = 350;
-const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const theme = useTheme();
 
   const toggleLeftPanel = () => {
-    setIsLeftPanelOpen(!isLeftPanelOpen);
+    setIsLeftPanelOpen((v) => !v);
   };
+
   // NEW MASTER STATE: Holds ALL devices fetched from getDashboardData
   const [allDevices, setAllDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -591,7 +540,6 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [markerPos, setMarkerPos] = useState(null);
   const intervalRef = useRef(null);
-  // Add a state to hold the live metrics, decoupled from selectedDevice
   const [liveMetrics, setLiveMetrics] = useState({});
 
   // State for filtering
@@ -599,20 +547,17 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
   // --- INITIAL DATA FETCH: Get all devices once ---
   useEffect(() => {
-    // 1. Initial fetch of ALL devices from the dashboard API
     ApiService.getAllDevices()
       .then((devices) => {
         setAllDevices(devices);
 
-        // Auto-select the first device found
         if (devices.length > 0) {
           setSelectedDevice(devices[0]);
         }
       })
-      .catch(console.error); // Error handled by ApiService.callAlert
-  }, []); // Runs only once on mount
+      .catch(console.error);
+  }, []);
 
-  // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
   // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
   useEffect(() => {
     if (!selectedDevice || !selectedDevice.accountId || !selectedDevice.id) {
@@ -641,7 +586,6 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
           const newLocation = [rawData.lat, rawData.lng];
 
-          // --- UPDATE LOGIC (MODIFIED): Update the Master List & Live Metrics ---
           setAllDevices((prevDevices) => {
             const updatedDevices = prevDevices.map((d) => {
               if (d.id === imei) {
@@ -658,18 +602,12 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
                   route: accumulatedRoute,
                 };
 
-                // --- NEW: Update separate liveMetrics state ---
-                // This object only contains the latest live data
                 setLiveMetrics(updatedDevice);
 
                 return updatedDevice;
               }
               return d;
             });
-
-            // Sync selectedDevice with the latest object (if still selected)
-            // The old setSelectedDevice line is commented out to prevent triggering re-run
-            // setSelectedDevice(updatedDevices.find((d) => d.id === imei));
 
             return updatedDevices;
           });
@@ -679,13 +617,11 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
       }
     };
 
-    // 2. Initial call + Set up 30-second interval refresh
     fetchLiveUpdate();
     const liveInterval = setInterval(fetchLiveUpdate, 30000);
 
-    // 3. Cleanup on component unmount or when selectedDevice ID/Account changes
     return () => clearInterval(liveInterval);
-  }, [selectedDevice?.id, selectedDevice?.accountId]); // *** CRITICAL CHANGE: Depend only on ID/Account ***
+  }, [selectedDevice?.id, selectedDevice?.accountId]);
 
   // --- FILTERING LOGIC ---
   const { filteredDevices, counts } = useMemo(() => {
@@ -699,10 +635,8 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
     let total = 0;
 
     allDevices.forEach((d) => {
-      // CHANGE: Use allDevices
       total++;
 
-      // Use the logic from getStatusColor to categorize
       const statusKey =
         d.status && ["Running", "Stopped", "Idle", "Inactive"].includes(d.status)
           ? d.status
@@ -714,7 +648,6 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
     const counts = { ...statusMap, Total: total };
 
     const devicesToRender = allDevices.filter((d) => {
-      // CHANGE: Use allDevices
       if (filterStatus === "Total") return true;
 
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
@@ -725,13 +658,12 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
     });
 
     return { filteredDevices: devicesToRender, counts };
-  }, [filterStatus, allDevices]); // CHANGE: Dependency is allDevices
+  }, [filterStatus, allDevices]);
 
   // --- SELECTED TRIP (DERIVED DATA) ---
   const selectedTrip = useMemo(() => {
     if (!selectedDevice) return null;
 
-    // Find the selected device's latest object from liveMetrics state
     const liveData = selectedDevice.id === liveMetrics.id ? liveMetrics : selectedDevice;
 
     const base = { ...MOCK_TRIP_BASE };
@@ -740,7 +672,6 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
       id: liveData.tripId,
       vehicle: liveData.name,
       driverName: liveData.driverName,
-      // Use live data for speed, status, etc.
       currentSpeed: `${liveData.speed} km/h`,
       signalLevel: liveData.battery > 50 ? "High" : "Low",
       currentLocation: liveData.route?.length
@@ -748,23 +679,21 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
         : base.currentLocation,
       currentAddress: "Mock Address (Pune, India)",
       route: liveData.route,
-
-      // Pass the raw live data properties needed for the marker/header
       status: liveData.status,
       speed: liveData.speed,
       lastUpdate: liveData.lastUpdate,
       driverName: liveData.driverName,
     };
-  }, [liveMetrics, selectedDevice]); // DEPENDENCY CHANGE
+  }, [liveMetrics, selectedDevice]);
+
   // --- MAP CENTER ---
   const mapCenter = useMemo(() => {
     const r = selectedTrip?.route;
-    // Center on the latest point if available, otherwise use a default
     if (r?.length) return r[r.length - 1];
     return [18.5204, 73.8567]; // Pune, India
   }, [selectedTrip]);
 
-  // --- PLAYBACK LOGIC (Unchanged, but now runs on accumulated route) ---
+  // --- PLAYBACK LOGIC ---
   const startPlayback = (speedMultiplier = 1) => {
     if (!selectedTrip?.route?.length) return;
 
@@ -806,15 +735,13 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
   // --- UI Filter/Selection Sync ---
   useEffect(() => {
-    // If the currently selected device is filtered out, clear selection or select first visible
     const isSelectedFilteredOut =
       selectedDevice && !filteredDevices.some((d) => d.id === selectedDevice.id);
 
     if (isSelectedFilteredOut || filteredDevices.length === 0) {
-      // Clear selection or select the first device in the new filtered list
       setSelectedDevice(filteredDevices[0] || null);
     }
-  }, [filterStatus, filteredDevices]); // Only check when filters or the list of all devices changes
+  }, [filterStatus, filteredDevices]);
 
   // Reset playback when a new device is selected
   useEffect(() => {
@@ -823,16 +750,12 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   }, [selectedDevice]);
 
- return (
+  return (
     <DashboardLayout>
-      {/* <DashboardNavbar /> */}
-
-      {/* Main area: left fixed panel + right map (flex layout). */}
       <Box
         sx={{
           display: "flex",
-          // Conditionally remove gap when the panel is closed
-          gap: isLeftPanelOpen ? 2 : 0, 
+          gap: isLeftPanelOpen ? 2 : 0,
           px: { xs: 1, sm: 2, md: 3 },
           pb: 2,
           pt: 2,
@@ -841,7 +764,7 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
         }}
       >
         {/* LEFT: device list panel */}
-        {/* 3. CONDITIONAL RENDERING */}
+        {/* Always render the left panel container to allow the header toggle to exist (when closed we show the small open handle) */}
         {isLeftPanelOpen && (
           <Box
             sx={{
@@ -852,19 +775,63 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               display: "flex",
               flexDirection: "column",
               gap: 2,
+              position: "relative", // for the header button absolute placement
+              transition: "width 200ms ease",
             }}
           >
+            {/* Sidebar Header (Contains the toggle button at top-right) */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 2,
+                py: 1,
+                background: "transparent",
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                Devices
+              </Typography>
+
+              {/* TOGGLE BUTTON: inside sidebar header (top-right) */}
+              <Tooltip title={isLeftPanelOpen ? "Collapse sidebar" : "Open sidebar"}>
+                <IconButton
+                  onClick={toggleLeftPanel}
+                  size="small"
+                  sx={{
+                    borderRadius: 1,
+                    ml: 1,
+                    bgcolor: "rgba(0,0,0,0.04)",
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.06)" },
+                  }}
+                  aria-label={isLeftPanelOpen ? "Collapse sidebar" : "Open sidebar"}
+                >
+                  {/* Arrow style: chevron_left when open, chevron_right when closed */}
+                  <Icon sx={{ fontSize: 20 }}>
+                    {isLeftPanelOpen ? "chevron_left" : "chevron_right"}
+                  </Icon>
+                </IconButton>
+              </Tooltip>
+            </Box>
+
             {/* Status Filter Boxes */}
-            <Stack direction="row" spacing={1} sx={{ width: "100%", overflowX: "auto", pb: 0.5 }}>
-              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
-                <StatusBox
-                  key={status}
-                  status={status}
-                  count={counts[status] || 0} // Safely use count
-                  isSelected={filterStatus === status}
-                  onClick={(s) => setFilterStatus(s)}
-                />
-              ))}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ width: "100%", overflowX: "auto", pb: 0.5, px: 1 }}
+            >
+              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map(
+                (status) => (
+                  <StatusBox
+                    key={status}
+                    status={status}
+                    count={counts[status] || 0}
+                    isSelected={filterStatus === status}
+                    onClick={(s) => setFilterStatus(s)}
+                  />
+                )
+              )}
             </Stack>
 
             {/* Device Table */}
@@ -873,6 +840,34 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               selectedId={selectedDevice?.id}
               onSelect={setSelectedDevice}
             />
+          </Box>
+        )}
+
+        {/* Small open-handle when the sidebar is closed */}
+        {!isLeftPanelOpen && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 16,
+              left: 12,
+              zIndex: 1700,
+              // keep it small so it doesn't block map interactions
+            }}
+          >
+            <Tooltip title="Open sidebar">
+              <IconButton
+                onClick={() => setIsLeftPanelOpen(true)}
+                size="small"
+                sx={{
+                  bgcolor: "rgba(0,0,0,0.06)",
+                  "&:hover": { bgcolor: "rgba(0,0,0,0.09)" },
+                  boxShadow: 1,
+                }}
+                aria-label="Open sidebar"
+              >
+                <Icon sx={{ fontSize: 20 }}>chevron_right</Icon>
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
 
@@ -885,36 +880,9 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
             borderRadius: 1,
             overflow: "hidden",
             boxShadow: "0 6px 18px rgba(15,15,15,0.08) !important",
+            transition: "all 200ms ease",
           }}
         >
-          {/* 2. ADD THE TOGGLE BUTTON HERE */}
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{
-              position: "absolute",
-              // Place button just outside the map box, to the left
-              left: -54, 
-              top: 10,
-              minWidth: 40,
-              height: 400,
-              padding: 0,
-              zIndex: 1700, // Above map content and overlays
-              display: { xs: 'none', sm: 'flex' }, // Hide on extra small screens
-              transform: `translateX(${isLeftPanelOpen ? (LEFT_PANEL_WIDTH + theme.spacing(2)) : 0}px)`, // Adjust position based on panel state and gap (2 = theme.spacing(2))
-              transition: theme.transitions.create(['transform'], {
-                  easing: theme.transitions.easing.sharp,
-                  duration: theme.transitions.duration.leavingScreen,
-              }),
-              borderRadius: '4px 0 0 4px', // Right-side corners should be sharp
-            }}
-            onClick={toggleLeftPanel}
-            aria-label={isLeftPanelOpen ? "Collapse device list" : "Expand device list"}
-          >
-            <Icon>{isLeftPanelOpen ? "chevron_left" : "chevron_right"}</Icon>
-          </Button>
-          
-          {/* Leaflet MapContainer (Map rendering code remains the same) */}
           <MapContainer
             center={mapCenter}
             zoom={13}
@@ -927,11 +895,10 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {/* LIVE MOVING MARKER - Only for the selected (or only) live device */}
+            {/* LIVE MOVING MARKER */}
             {selectedDevice && selectedDevice.route?.length > 0 && (
               <Marker
-                position={selectedDevice.route[selectedDevice.route.length - 1]} // Latest position
-                // ... (rest of Marker/Popup code)
+                position={selectedDevice.route[selectedDevice.route.length - 1]}
                 icon={L.divIcon({
                   className: "live-vehicle-marker",
                   html: `
@@ -990,21 +957,19 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               </Marker>
             )}
 
-            {/* THIS IS WHERE YOU PUT IT - Right here! */}
             {selectedDevice && selectedDevice.route?.length > 0 && (
               <FlyToMarker position={selectedDevice.route[selectedDevice.route.length - 1]} />
             )}
 
-            {/* Render the selected trip's historical route */}
+            {/* Polyline for selected trip route */}
             {selectedTrip?.route?.length > 0 && (
               <Polyline positions={selectedTrip.route} color="blue" weight={5} opacity={0.7} />
             )}
 
-            {/* Render the playback marker for the selected device */}
+            {/* Playback marker */}
             {selectedTrip && markerPos && (
               <Marker
                 position={markerPos}
-                // ... (rest of Marker/Popup code)
                 icon={L.divIcon({
                   className: "playback-marker",
                   html: `<div style="background-color:purple; width:14px; height:14px; border-radius:50%; border:3px solid white; box-shadow: 0 0 8px rgba(128,0,128,1);"></div>`,
@@ -1035,14 +1000,11 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               gap: 1,
               width: { xs: "95%", sm: 320 },
               zIndex: 1600,
-              // small blur + glass effect
               backdropFilter: "saturate(140%) blur(6px)",
             }}
           >
-            {/* NEW: Vehicle Header Box */}
             <VehicleHeaderBox device={selectedDevice} />
 
-            {/* Existing: Trip Summary Card */}
             <Card sx={{ p: 2, mb: 0.5 }}>
               <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                 Trip Summary
@@ -1054,7 +1016,6 @@ const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
               <InfoRow label="Distance" value={selectedTrip?.totalDistance} icon="map" />
             </Card>
 
-            {/* Existing: Live Metrics Card */}
             <Card sx={{ p: 2 }}>
               <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                 Live Metrics

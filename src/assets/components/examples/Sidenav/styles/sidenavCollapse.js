@@ -33,7 +33,7 @@ function collapseItem(theme, ownerState) {
     alignItems: "center",
     width: "100%",
     padding: `${pxToRem(8)} ${pxToRem(10)}`,
-    margin: `${pxToRem(1.5)} ${pxToRem(16)}`,
+    margin: `${pxToRem(1.5)} ${pxToRem(10)}`,
     borderRadius: borderRadius.md,
     cursor: "pointer",
     userSelect: "none",
@@ -72,8 +72,8 @@ function collapseIconBox(theme, ownerState) {
   const { pxToRem } = functions;
 
   return {
-    minWidth: pxToRem(32),
-    minHeight: pxToRem(32),
+    minWidth: pxToRem(50),
+    minHeight: pxToRem(50),
     color:
       (transparentSidenav && !darkMode && !active) || (whiteSidenav && !active)
         ? dark.main
