@@ -3,14 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Polyline,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -64,8 +57,7 @@ const MOCK_TRIP_BASE = {
   ============================ */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -436,7 +428,12 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     }}
                   />
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
-                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      color="text.secondary"
+                      sx={{ mt: 0.5 }}
+                    >
                       {d.lastUpdate}
                     </Typography>
                   </Tooltip>
@@ -478,7 +475,10 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     </Tooltip>
 
                     <Tooltip title={`Battery: ${d.battery}%`}>
-                      <Icon color={d.battery < 20 ? "error" : "success"} sx={{ fontSize: "1.4rem !important" }}>
+                      <Icon
+                        color={d.battery < 20 ? "error" : "success"}
+                        sx={{ fontSize: "1.4rem !important" }}
+                      >
                         {getBatteryIcon(d.battery)}
                       </Icon>
                     </Tooltip>
@@ -547,16 +547,29 @@ export default function LiveTrack() {
 
   // --- INITIAL DATA FETCH: Get all devices once ---
   useEffect(() => {
-    ApiService.getAllDevices()
-      .then((devices) => {
-        setAllDevices(devices);
+    const fetchAllDevices = () => {
+      ApiService.getAllDevices()
+        .then((devices) => {
+          setAllDevices(devices);
 
-        if (devices.length > 0) {
-          setSelectedDevice(devices[0]);
-        }
-      })
-      .catch(console.error);
-  }, []);
+          // If no device is currently selected, select the first one.
+          // If a device is already selected, keep it selected.
+          if (!selectedDevice && devices.length > 0) {
+            setSelectedDevice(devices[0]);
+          }
+        })
+        .catch(console.error);
+    };
+
+    // 1. Fetch immediately on mount
+    fetchAllDevices();
+
+    // 2. Set up interval for refreshing every 5 minutes (300,000 ms)
+    const refreshInterval = setInterval(fetchAllDevices, 300000); // 5 minutes
+
+    // 3. Clean up interval on component unmount
+    return () => clearInterval(refreshInterval);
+  }, [selectedDevice]); // Include selectedDevice to prevent it from being overwritten unnecessarily on initial fetch.
 
   // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
   useEffect(() => {
@@ -821,17 +834,15 @@ export default function LiveTrack() {
               spacing={1}
               sx={{ width: "100%", overflowX: "auto", pb: 0.5, px: 1 }}
             >
-              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map(
-                (status) => (
-                  <StatusBox
-                    key={status}
-                    status={status}
-                    count={counts[status] || 0}
-                    isSelected={filterStatus === status}
-                    onClick={(s) => setFilterStatus(s)}
-                  />
-                )
-              )}
+              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
+                <StatusBox
+                  key={status}
+                  status={status}
+                  count={counts[status] || 0}
+                  isSelected={filterStatus === status}
+                  onClick={(s) => setFilterStatus(s)}
+                />
+              ))}
             </Stack>
 
             {/* Device Table */}
@@ -894,19 +905,19 @@ export default function LiveTrack() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-
             {/* LIVE MOVING MARKER */}
-            {selectedDevice && selectedDevice.route?.length > 0 && (
+
+            {selectedTrip?.route?.length > 0 && (
               <Marker
-                position={selectedDevice.route[selectedDevice.route.length - 1]}
+                position={selectedTrip.route[selectedTrip.route.length - 1]} // Use the last point from the derived trip
                 icon={L.divIcon({
                   className: "live-vehicle-marker",
                   html: `
         <div style="
           background-color: ${
-            selectedDevice.status === "Running"
+            selectedTrip.status === "Running" // Use selectedTrip status
               ? "#4caf50"
-              : selectedDevice.status === "Stopped"
+              : selectedTrip.status === "Stopped"
               ? "#f44336"
               : "#ff9800"
           };
@@ -936,36 +947,34 @@ export default function LiveTrack() {
                 <Popup>
                   <Box sx={{ minWidth: 180 }}>
                     <Typography variant="subtitle2" fontWeight="bold">
-                      {selectedDevice.name}
+                      {selectedTrip.vehicle} {/* Use selectedTrip details */}
                     </Typography>
                     <Typography variant="body2">
-                      Status: <strong>{selectedDevice.status}</strong>
+                      Status: <strong>{selectedTrip.status}</strong>
                     </Typography>
                     <Typography variant="body2">
-                      Speed: <strong>{selectedDevice.speed} km/h</strong>
+                      Speed: <strong>{selectedTrip.speed} km/h</strong>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Last Update: {selectedDevice.lastUpdate}
+                      Last Update: {selectedTrip.lastUpdate}
                     </Typography>
-                    {selectedDevice.driverName && (
+                    {selectedTrip.driverName && (
                       <Typography variant="body2" sx={{ mt: 1 }}>
-                        Driver: {selectedDevice.driverName}
+                        Driver: {selectedTrip.driverName}
                       </Typography>
                     )}
                   </Box>
                 </Popup>
               </Marker>
             )}
-
-            {selectedDevice && selectedDevice.route?.length > 0 && (
-              <FlyToMarker position={selectedDevice.route[selectedDevice.route.length - 1]} />
+            {/* Fly to latest position on load */}
+            {selectedTrip?.route?.length > 0 && (
+              <FlyToMarker position={selectedTrip.route[selectedTrip.route.length - 1]} />
             )}
-
             {/* Polyline for selected trip route */}
             {selectedTrip?.route?.length > 0 && (
               <Polyline positions={selectedTrip.route} color="blue" weight={5} opacity={0.7} />
             )}
-
             {/* Playback marker */}
             {selectedTrip && markerPos && (
               <Marker
