@@ -35,6 +35,11 @@ axios.interceptors.response.use(
       localStorage.removeItem("userDetails");
       window.location.replace("/authentication/sign-in");
     }
+    if (res?.status === 403) {
+      console.warn("⚠️ HTTP 401 detected, redirecting...");
+      localStorage.removeItem("userDetails");
+      window.location.replace("/authentication/sign-in");
+    }
 
     return Promise.reject(error);
   }
