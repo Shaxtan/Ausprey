@@ -562,6 +562,10 @@ export default function LiveTrack() {
         if (response?.data?.resultCode === 1 && rawData) {
           const speedNum = Number(rawData.speed) || 0;
           const ign = (rawData.ign || "").toUpperCase();
+          // battery address odometer
+          const odometerValue = rawData.misc?.odometer ?? "0";
+          const batteryPercent = rawData.misc?.batteryPercentage ?? "50";
+          const addressString = rawData.address ?? "Address not available";
 
           let status;
           if (ign === "Y") {
@@ -581,7 +585,10 @@ export default function LiveTrack() {
                   status,
                   speed: speedNum,
                   ignition: ign === "Y",
-                  battery: rawData.anl ? Math.round((Number(rawData.anl) / 4.2) * 100) : 50,
+                  // battery: rawData.anl ? Math.round((Number(rawData.anl) / 4.2) * 100) : 50,
+                  battery: Number(batteryPercent), // Use the specific field for percentage
+                  odometer: Number(odometerValue),
+                  address: addressString, // Store the address
                   lastUpdate: new Date().toLocaleTimeString(),
                   location: `${rawData.lat},${rawData.lng}`,
                   route: accumulatedRoute,
@@ -649,14 +656,16 @@ export default function LiveTrack() {
       currentLocation: liveData.route?.length
         ? liveData.route[liveData.route.length - 1].join(",")
         : base.currentLocation,
-      currentAddress: "Mock Address (Pune, India)",
+      //  Use API Data for these fields ***
+      currentAddress: liveData.address || "Fetching address...", // Use API Address
+      address: liveData.address || "Location address not available", // Used in the dedicated Address Card
+      odometer: liveData.odometer,
+      batteryVoltage: liveData.battery, // Represents percentage now
       route: liveData.route,
       status: liveData.status,
       speed: liveData.speed,
       lastUpdate: liveData.lastUpdate,
       ignitionStatus: liveData.ignition,
-      batteryVoltage: liveData.battery,
-      odometer: liveData.odometer || 0,
       engineHours: liveData.engineHours || "00:00",
     };
   }, [liveMetrics, selectedDevice]);
