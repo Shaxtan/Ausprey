@@ -104,21 +104,21 @@ InfoRow.propTypes = {
 };
 InfoRow.defaultProps = { value: null, icon: null };
 
-function getStatusColor(status) {
-  const normalizedStatus = String(status || "").trim();
+// function getStatusColor(status) {
+//   const normalizedStatus = String(status || "").trim();
 
-  switch (normalizedStatus) {
-    case "Running":
-      return "success";
-    case "Stopped":
-      return "error";
-    case "Idle":
-      return "warning";
-    case "Inactive":
-    default:
-      return "default";
-  }
-}
+//   switch (normalizedStatus) {
+//     case "Running":
+//       return "success";
+//     case "Stopped":
+//       return "error";
+//     case "Idle":
+//       return "warning";
+//     case "Inactive":
+//     default:
+//       return "default";
+//   }
+// }
 
 function getCustomChipStyle(status) {
   const normalizedStatus = String(status || "").trim();
@@ -140,12 +140,12 @@ function getCustomChipStyle(status) {
   return {};
 }
 
-function getBatteryIcon(percentage) {
-  if (percentage > 75) return "battery_full";
-  if (percentage > 50) return "battery_70";
-  if (percentage > 20) return "battery_40";
-  return "battery_alert";
-}
+// function getBatteryIcon(percentage) {
+//   if (percentage > 75) return "battery_full";
+//   if (percentage > 50) return "battery_70";
+//   if (percentage > 20) return "battery_40";
+//   return "battery_alert";
+// }
 
 function getVehicleIconOrImage(vehicleType) {
   const type = (vehicleType || "").toLowerCase();
@@ -407,7 +407,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     whiteSpace: "normal",
                   }}
                 >
-                  <Chip
+                  {/* <Chip
                     label={d.status}
                     size="small"
                     color={getStatusColor(d.status)}
@@ -418,7 +418,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                       maxWidth: "100%",
                       ...getCustomChipStyle(d.status),
                     }}
-                  />
+                  /> */}
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
                     <Typography
                       variant="caption"
@@ -466,14 +466,14 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                       </Icon>
                     </Tooltip>
 
-                    <Tooltip title={`Battery: ${d.battery}%`}>
+                    {/* <Tooltip title={`Battery: ${d.battery}%`}>
                       <Icon
                         color={d.battery < 20 ? "error" : "success"}
                         sx={{ fontSize: "1.4rem !important" }}
                       >
                         {getBatteryIcon(d.battery)}
                       </Icon>
-                    </Tooltip>
+                    </Tooltip> */}
                   </Stack>
                 </TableCell>
               </TableRow>

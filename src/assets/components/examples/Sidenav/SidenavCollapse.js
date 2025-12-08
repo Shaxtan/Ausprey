@@ -1,8 +1,7 @@
 import PropTypes from "prop-types";
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
-// @mui material components
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
@@ -10,11 +9,9 @@ import Icon from "@mui/material/Icon";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 
-// 🔥 FIXED IMPORTS (Relative paths)
 import MDBox from "../../MDBox";
 import MDTypography from "../../MDTypography";
 
-// Custom styles for the SidenavCollapse
 import {
   collapseItem,
   collapseIconBox,
@@ -22,42 +19,58 @@ import {
   collapseText,
 } from "./styles/sidenavCollapse";
 
-// Material Dashboard 2 React context
 import { useMaterialUIController } from "context";
 
 function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
   const [controller] = useMaterialUIController();
   const { miniSidenav, transparentSidenav, whiteSidenav, darkMode, sidenavColor } = controller;
 
-  // 🔥 STATE FOR MENU
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
-  // 🔥 OPEN MENU ON HOVER (Only if miniSidenav is active)
+  // Ref to hold the timer ID
+  const closeTimerRef = useRef(null);
+
+  const delayedClose = () => {
+    closeTimerRef.current = setTimeout(() => {
+      setAnchorEl(null);
+    }, 150); // Increased slightly to 150ms for smoother bridge
+  };
+
+  const cancelClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
   const handleOpen = (event) => {
+    cancelClose();
     if (miniSidenav && subRoutes) {
       setAnchorEl(event.currentTarget);
     }
   };
 
-  // 🔥 CLOSE MENU
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => cancelClose();
+  }, []);
+
+  const isSubRouteActive = subRoutes?.some((route) => location.pathname === route.route);
 
   return (
     <>
       <ListItem
         component="li"
-        // 🔥 Trigger Menu on Mouse Enter of the Icon/Item
         onMouseEnter={handleOpen}
-        onMouseLeave={handleClose}
+        onMouseLeave={delayedClose}
       >
         <MDBox
           {...rest}
           sx={(theme) => ({
             ...collapseItem(theme, {
-              active,
+              active: active || isSubRouteActive,
               transparentSidenav,
               whiteSidenav,
               darkMode,
@@ -68,11 +81,6 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
               flexDirection: "column !important",
               alignItems: "center !important",
               justifyContent: "center !important",
-              width: "100% !important",
-              height: "auto !important",
-              minHeight: "4.5rem !important",
-              padding: `${theme.spacing(1)} ${theme.spacing(0.5)} !important`,
-              whiteSpace: "normal !important",
             }),
           })}
         >
@@ -81,10 +89,7 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
               ...collapseIconBox(theme, { transparentSidenav, whiteSidenav, darkMode, active }),
               ...(miniSidenav && {
                 marginRight: "0 !important",
-                padding: "0 !important",
                 minWidth: "auto !important",
-                marginBottom: "0 !important",
-                justifyContent: "center !important",
               }),
             })}
           >
@@ -96,90 +101,87 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
           </ListItemIcon>
 
           <ListItemText
-            primary={
-              miniSidenav ? (
-                <MDTypography
-                  variant="caption"
-                  fontWeight="regular"
-                  color={active ? "white" : darkMode ? "white" : "dark"}
-                  sx={{
-                    display: "block !important",
-                    textAlign: "center !important",
-                    lineHeight: "1.2 !important",
-                    marginTop: "0.5rem !important",
-                    paddingLeft: "0.25rem !important",
-                    paddingRight: "0.25rem !important",
-                    overflow: "hidden !important",
-                    textOverflow: "ellipsis !important",
-                    whiteSpace: "normal !important",
-                  }}
-                >
-                  {name}
-                </MDTypography>
-              ) : (
-                name
-              )
-            }
-            sx={(theme) => {
-              const baseStyles = collapseText(theme, {
-                miniSidenav,
-                transparentSidenav,
-                whiteSidenav,
-                active,
-              });
-
-              if (miniSidenav) {
-                return {
-                  ...baseStyles,
-                  display: "block !important",
-                  flex: "0 0 auto !important",
+            primary={miniSidenav ? (
+              <MDTypography
+                variant="caption"
+                fontWeight="regular"
+                color={active ? "white" : darkMode ? "white" : "dark"}
+                sx={{
                   textAlign: "center !important",
-                  margin: "0 !important",
-                  padding: "0 !important",
-                  opacity: "1 !important",
-                  "& > span": {
-                    display: "none !important",
-                  },
-                };
-              }
-
-              return baseStyles;
-            }}
+                  marginTop: "0.5rem !important",
+                }}
+              >
+                {name}
+              </MDTypography>
+            ) : name}
+            sx={(theme) => collapseText(theme, { miniSidenav, active })}
           />
         </MDBox>
       </ListItem>
 
-      {/* 🔥 THE MENU COMPONENT (Solves clipping issues) */}
+      {/* --- MENU COMPONENT --- */}
       {subRoutes && (
         <Menu
           anchorEl={anchorEl}
           open={open}
-          onClose={handleClose}
-          // 🔥 Keep menu open when hovering over the menu itself
-          MenuListProps={{
-            onMouseEnter: () => setAnchorEl(anchorEl),
-            onMouseLeave: handleClose,
-          }}
+          onClose={delayedClose}
+          
+          // 1. Force the position to the Right of the Anchor
           anchorOrigin={{
-            vertical: "top",
-            horizontal: "right",
+            vertical: "top",    // Align top of menu...
+            horizontal: "right", // ...to the RIGHT edge of the sidebar item
           }}
           transformOrigin={{
-            vertical: "top",
-            horizontal: "left",
+            vertical: "top",    // Align top of menu...
+            horizontal: "left",  // ...to the LEFT edge of the menu box
           }}
-          sx={{ marginLeft: 1 }} // Add slight gap from sidebar
+          
+          // 2. Prevent auto-focus and scroll locking for smoother hover feel
+          disableAutoFocusItem
+          disableScrollLock
+          
+          MenuListProps={{
+            onMouseEnter: cancelClose, 
+            onMouseLeave: delayedClose,
+          }}
+          
+          // 3. Styling the Menu Box (Paper)
+          PaperProps={{
+            sx: {
+              mt: 0,         // Ensure it aligns exactly with the top
+              ml: 1.5,       // Add gap so it doesn't overlap the icon
+              minWidth: "150px", // Optional: prevent it from being too thin
+              pointerEvents: 'auto',
+            },
+          }}
+          
+          // 4. Ensure the menu overlay doesn't block mouse movement
+          style={{ pointerEvents: 'none' }}
         >
-          {subRoutes.map((route) => (
-            <NavLink key={route.key} to={route.route} style={{ textDecoration: "none", color: "inherit" }}>
-              <MenuItem onClick={handleClose}>
-                 <Icon fontSize="small" sx={{ mr: 1 }}>{route.icon || "arrow_right"}</Icon>
-                 <MDTypography variant="button" fontWeight="regular" color="text">
+          {subRoutes.map((route) => {
+            const renderIcon =
+              typeof route.icon === "string" ? (
+                <Icon sx={{ mr: 1 }}>{route.icon}</Icon>
+              ) : (
+                <MDBox sx={{ mr: 1 }}>{route.icon}</MDBox>
+              );
+
+            return (
+              <NavLink
+                key={route.key}
+                to={route.route}
+                style={{ textDecoration: "none", color: "inherit", pointerEvents: "auto" }}
+                onClick={() => setAnchorEl(null)}
+              >
+                <MenuItem sx={{ display: "flex", alignItems: "center" }}>
+                  {renderIcon}
+                  <MDTypography variant="button" fontWeight="regular" color="text">
                     {route.name}
-                 </MDTypography>
-              </MenuItem>
-            </NavLink>
-          ))}
+                  </MDTypography>
+                </MenuItem>
+              </NavLink>
+            );
+          })}
         </Menu>
       )}
     </>

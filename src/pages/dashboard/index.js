@@ -170,12 +170,19 @@ function Dashboard() {
   // ... (replacing the old useEffect)
 
   useEffect(() => {
-    // 1. Fetch the list of accounts
+    // 1. Fetch initial data immediately
     fetchAccounts();
-
-    // 2. Fetch initial dashboard data using the logged-in user's account ID
-    // selectedAccountId is initialized from localStorage/default on component mount
     fetchDashboardData(selectedAccountId);
+
+    // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
+    const intervalId = setInterval(() => {
+      console.log("Auto-refreshing dashboard data...");
+      fetchDashboardData(selectedAccountId);
+    }, 300000); 
+
+    // 3. Cleanup interval on component unmount or if selectedAccountId changes
+    return () => clearInterval(intervalId);
+
   }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
 
   const handleAccountChange = (event) => {
@@ -461,7 +468,7 @@ function Dashboard() {
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <MDBox display="flex" alignItems="center" gap={2}>
               {" "}
-             
+              
               <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
                 Select Account
               </MDTypography>

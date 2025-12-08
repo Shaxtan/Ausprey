@@ -514,7 +514,7 @@ function Projects({ accountId }) {
                 </MDBox>
             </MDBox>
 
-            <MDBox p={3} mb={0} mt={0} />
+            {/* <MDBox p={3} mb={0} mt={0} /> */}
 
             {/* --------------------------------- TABLE --------------------------------- */}
             <MDBox>
