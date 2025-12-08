@@ -29,7 +29,6 @@ import truckImage from "../../assets/images/truckImage.jpg"; // Example path
 
 // Layout
 import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
-// import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
 
 // MD Components
 import MDBox from "../../assets/components/MDBox";
@@ -105,9 +104,6 @@ InfoRow.propTypes = {
 };
 InfoRow.defaultProps = { value: null, icon: null };
 
-/**
- * Returns a standard MUI color name (primary, error, warning, success, default)
- */
 function getStatusColor(status) {
   const normalizedStatus = String(status || "").trim();
 
@@ -124,9 +120,6 @@ function getStatusColor(status) {
   }
 }
 
-/**
- * Returns custom styling for "Inactive" and "No Data" Chips.
- */
 function getCustomChipStyle(status) {
   const normalizedStatus = String(status || "").trim();
 
@@ -156,7 +149,6 @@ function getBatteryIcon(percentage) {
 
 function getVehicleIconOrImage(vehicleType) {
   const type = (vehicleType || "").toLowerCase();
-
   const DUMMY_TRUCK_IMAGE =
     "http://googleusercontent.com/image_collection/image_retrieval/some_id_string";
   const DUMMY_CONSTRUCTION_IMAGE = "https://i.imgur.com/example/construction_v.png";
@@ -524,7 +516,6 @@ FlyToMarker.propTypes = {
   MAIN COMPONENT
   ============================ */
 export default function LiveTrack() {
-  // left panel fixed width (desktop) - responsive for small screens
   const LEFT_PANEL_WIDTH = 350;
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const theme = useTheme();
@@ -533,7 +524,6 @@ export default function LiveTrack() {
     setIsLeftPanelOpen((v) => !v);
   };
 
-  // NEW MASTER STATE: Holds ALL devices fetched from getDashboardData
   const [allDevices, setAllDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -542,36 +532,19 @@ export default function LiveTrack() {
   const intervalRef = useRef(null);
   const [liveMetrics, setLiveMetrics] = useState({});
 
-  // State for filtering
   const [filterStatus, setFilterStatus] = useState("Total");
 
-  // --- INITIAL DATA FETCH: Get all devices once ---
   useEffect(() => {
-    const fetchAllDevices = () => {
-      ApiService.getAllDevices()
-        .then((devices) => {
-          setAllDevices(devices);
+    ApiService.getAllDevices()
+      .then((devices) => {
+        setAllDevices(devices);
+        if (devices.length > 0) {
+          setSelectedDevice(devices[0]);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
-          // If no device is currently selected, select the first one.
-          // If a device is already selected, keep it selected.
-          if (!selectedDevice && devices.length > 0) {
-            setSelectedDevice(devices[0]);
-          }
-        })
-        .catch(console.error);
-    };
-
-    // 1. Fetch immediately on mount
-    fetchAllDevices();
-
-    // 2. Set up interval for refreshing every 5 minutes (300,000 ms)
-    const refreshInterval = setInterval(fetchAllDevices, 300000); // 5 minutes
-
-    // 3. Clean up interval on component unmount
-    return () => clearInterval(refreshInterval);
-  }, [selectedDevice]); // Include selectedDevice to prevent it from being overwritten unnecessarily on initial fetch.
-
-  // --- LIVE DATA POLLING: Polls ONLY for the selected device ---
   useEffect(() => {
     if (!selectedDevice || !selectedDevice.accountId || !selectedDevice.id) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -603,7 +576,6 @@ export default function LiveTrack() {
             const updatedDevices = prevDevices.map((d) => {
               if (d.id === imei) {
                 const accumulatedRoute = [...(d.route || []), newLocation].slice(-100);
-
                 const updatedDevice = {
                   ...d,
                   status,
@@ -614,14 +586,11 @@ export default function LiveTrack() {
                   location: `${rawData.lat},${rawData.lng}`,
                   route: accumulatedRoute,
                 };
-
                 setLiveMetrics(updatedDevice);
-
                 return updatedDevice;
               }
               return d;
             });
-
             return updatedDevices;
           });
         }
@@ -632,11 +601,9 @@ export default function LiveTrack() {
 
     fetchLiveUpdate();
     const liveInterval = setInterval(fetchLiveUpdate, 30000);
-
     return () => clearInterval(liveInterval);
   }, [selectedDevice?.id, selectedDevice?.accountId]);
 
-  // --- FILTERING LOGIC ---
   const { filteredDevices, counts } = useMemo(() => {
     const statusMap = {
       Running: 0,
@@ -649,12 +616,10 @@ export default function LiveTrack() {
 
     allDevices.forEach((d) => {
       total++;
-
       const statusKey =
         d.status && ["Running", "Stopped", "Idle", "Inactive"].includes(d.status)
           ? d.status
           : "No Data";
-
       statusMap[statusKey]++;
     });
 
@@ -662,23 +627,17 @@ export default function LiveTrack() {
 
     const devicesToRender = allDevices.filter((d) => {
       if (filterStatus === "Total") return true;
-
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
-
       if (filterStatus === "No Data") return isNoData;
-
       return d.status === filterStatus;
     });
 
     return { filteredDevices: devicesToRender, counts };
   }, [filterStatus, allDevices]);
 
-  // --- SELECTED TRIP (DERIVED DATA) ---
   const selectedTrip = useMemo(() => {
     if (!selectedDevice) return null;
-
     const liveData = selectedDevice.id === liveMetrics.id ? liveMetrics : selectedDevice;
-
     const base = { ...MOCK_TRIP_BASE };
     return {
       ...base,
@@ -695,29 +654,26 @@ export default function LiveTrack() {
       status: liveData.status,
       speed: liveData.speed,
       lastUpdate: liveData.lastUpdate,
-      driverName: liveData.driverName,
+      ignitionStatus: liveData.ignition,
+      batteryVoltage: liveData.battery,
+      odometer: liveData.odometer || 0,
+      engineHours: liveData.engineHours || "00:00",
     };
   }, [liveMetrics, selectedDevice]);
 
-  // --- MAP CENTER ---
   const mapCenter = useMemo(() => {
     const r = selectedTrip?.route;
     if (r?.length) return r[r.length - 1];
     return [18.5204, 73.8567]; // Pune, India
   }, [selectedTrip]);
 
-  // --- PLAYBACK LOGIC ---
   const startPlayback = (speedMultiplier = 1) => {
     if (!selectedTrip?.route?.length) return;
-
     setIsPlaying(true);
     setCurrentStep(0);
     setMarkerPos(selectedTrip.route[0]);
-
     if (intervalRef.current) clearInterval(intervalRef.current);
-
     const intervalTime = Math.max(100, 500 / speedMultiplier);
-
     intervalRef.current = setInterval(() => {
       setCurrentStep((prev) => {
         const next = prev + 1;
@@ -746,17 +702,14 @@ export default function LiveTrack() {
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   };
 
-  // --- UI Filter/Selection Sync ---
   useEffect(() => {
     const isSelectedFilteredOut =
       selectedDevice && !filteredDevices.some((d) => d.id === selectedDevice.id);
-
     if (isSelectedFilteredOut || filteredDevices.length === 0) {
       setSelectedDevice(filteredDevices[0] || null);
     }
   }, [filterStatus, filteredDevices]);
 
-  // Reset playback when a new device is selected
   useEffect(() => {
     pausePlayback();
     setCurrentStep(0);
@@ -776,8 +729,7 @@ export default function LiveTrack() {
           alignItems: "stretch",
         }}
       >
-        {/* LEFT: device list panel */}
-        {/* Always render the left panel container to allow the header toggle to exist (when closed we show the small open handle) */}
+        {/* LEFT PANEL */}
         {isLeftPanelOpen && (
           <Box
             sx={{
@@ -788,11 +740,11 @@ export default function LiveTrack() {
               display: "flex",
               flexDirection: "column",
               gap: 2,
-              position: "relative", // for the header button absolute placement
+              position: "relative",
               transition: "width 200ms ease",
+              height: "100%",
             }}
           >
-            {/* Sidebar Header (Contains the toggle button at top-right) */}
             <Box
               sx={{
                 display: "flex",
@@ -806,8 +758,6 @@ export default function LiveTrack() {
               <Typography variant="subtitle1" fontWeight={700}>
                 Devices
               </Typography>
-
-              {/* TOGGLE BUTTON: inside sidebar header (top-right) */}
               <Tooltip title={isLeftPanelOpen ? "Collapse sidebar" : "Open sidebar"}>
                 <IconButton
                   onClick={toggleLeftPanel}
@@ -820,7 +770,6 @@ export default function LiveTrack() {
                   }}
                   aria-label={isLeftPanelOpen ? "Collapse sidebar" : "Open sidebar"}
                 >
-                  {/* Arrow style: chevron_left when open, chevron_right when closed */}
                   <Icon sx={{ fontSize: 20 }}>
                     {isLeftPanelOpen ? "chevron_left" : "chevron_right"}
                   </Icon>
@@ -828,7 +777,6 @@ export default function LiveTrack() {
               </Tooltip>
             </Box>
 
-            {/* Status Filter Boxes */}
             <Stack
               direction="row"
               spacing={1}
@@ -840,12 +788,11 @@ export default function LiveTrack() {
                   status={status}
                   count={counts[status] || 0}
                   isSelected={filterStatus === status}
-                  onClick={(s) => setFilterStatus(s)}
+                  onClick={setFilterStatus}
                 />
               ))}
             </Stack>
 
-            {/* Device Table */}
             <DeviceTable
               devices={filteredDevices}
               selectedId={selectedDevice?.id}
@@ -854,7 +801,7 @@ export default function LiveTrack() {
           </Box>
         )}
 
-        {/* Small open-handle when the sidebar is closed */}
+        {/* Closed Sidebar Handle */}
         {!isLeftPanelOpen && (
           <Box
             sx={{
@@ -862,7 +809,6 @@ export default function LiveTrack() {
               top: 16,
               left: 12,
               zIndex: 1700,
-              // keep it small so it doesn't block map interactions
             }}
           >
             <Tooltip title="Open sidebar">
@@ -882,7 +828,7 @@ export default function LiveTrack() {
           </Box>
         )}
 
-        {/* RIGHT: map area (flex-grow) */}
+        {/* RIGHT: MAP AREA */}
         <Box
           sx={{
             position: "relative",
@@ -902,12 +848,10 @@ export default function LiveTrack() {
           >
             <MapFixer />
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* LIVE MOVING MARKER */}
-
-            {selectedTrip?.route?.length > 0 && (
+            {selectedDevice && selectedDevice.route?.length > 0 && (
               <Marker
                 position={selectedTrip.route[selectedTrip.route.length - 1]} // Use the last point from the derived trip
                 icon={L.divIcon({
@@ -955,14 +899,6 @@ export default function LiveTrack() {
                     <Typography variant="body2">
                       Speed: <strong>{selectedTrip.speed} km/h</strong>
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Last Update: {selectedTrip.lastUpdate}
-                    </Typography>
-                    {selectedTrip.driverName && (
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        Driver: {selectedTrip.driverName}
-                      </Typography>
-                    )}
                   </Box>
                 </Popup>
               </Marker>
@@ -971,11 +907,11 @@ export default function LiveTrack() {
             {selectedTrip?.route?.length > 0 && (
               <FlyToMarker position={selectedTrip.route[selectedTrip.route.length - 1]} />
             )}
-            {/* Polyline for selected trip route */}
+
             {selectedTrip?.route?.length > 0 && (
               <Polyline positions={selectedTrip.route} color="blue" weight={5} opacity={0.7} />
             )}
-            {/* Playback marker */}
+
             {selectedTrip && markerPos && (
               <Marker
                 position={markerPos}
@@ -990,15 +926,12 @@ export default function LiveTrack() {
                   <Typography variant="body2" fontWeight={700}>
                     Playback Position
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Step: {currentStep + 1} / {selectedTrip.route.length}
-                  </Typography>
                 </Popup>
               </Marker>
             )}
           </MapContainer>
 
-          {/* Overlay cards at top-right inside this box */}
+          {/* RIGHT OVERLAY PANEL */}
           <Box
             sx={{
               position: "absolute",
@@ -1006,15 +939,32 @@ export default function LiveTrack() {
               right: 12,
               display: "flex",
               flexDirection: "column",
-              gap: 1,
+              gap: 1.5,
               width: { xs: "95%", sm: 320 },
-              zIndex: 1600,
+              zIndex: 2000,
+              maxHeight: "calc(100% - 24px)",
+              overflowY: "auto",
               backdropFilter: "saturate(140%) blur(6px)",
+              paddingRight: "4px",
+              "&::-webkit-scrollbar": {
+                width: "8px", // Made slightly wider for visibility
+              },
+              "&::-webkit-scrollbar-track": {
+                background: "transparent",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                background: "rgba(0, 0, 0, 0.4)", // Darker scrollbar for visibility
+                borderRadius: "10px",
+              },
+              "&::-webkit-scrollbar-thumb:hover": {
+                background: "rgba(0, 0, 0, 0.6)",
+              },
             }}
           >
             <VehicleHeaderBox device={selectedDevice} />
 
-            <Card sx={{ p: 2, mb: 0.5 }}>
+            {/* 1. Trip Summary */}
+            <Card sx={{ p: 2 }}>
               <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                 Trip Summary
               </Typography>
@@ -1025,6 +975,7 @@ export default function LiveTrack() {
               <InfoRow label="Distance" value={selectedTrip?.totalDistance} icon="map" />
             </Card>
 
+            {/* 2. Live Metrics */}
             <Card sx={{ p: 2 }}>
               <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                 Live Metrics
@@ -1055,6 +1006,48 @@ export default function LiveTrack() {
                   </Button>
                 </Stack>
               </Box>
+            </Card>
+
+            {/* 3. Address (MOVED BELOW LIVE METRICS) */}
+            <Card sx={{ p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                Address
+              </Typography>
+              <Divider sx={{ mb: 1 }} />
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Icon sx={{ color: "text.secondary", fontSize: 20 }}>place</Icon>
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
+                  {selectedTrip?.address || "Location address not available"}
+                </Typography>
+              </Box>
+            </Card>
+
+            {/* 4. Other Data (MOVED BELOW LIVE METRICS) */}
+            <Card sx={{ p: 2, mb: 1 }}>
+              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                Other Data
+              </Typography>
+              <Divider sx={{ mb: 1 }} />
+              <InfoRow
+                label="Ignition"
+                value={selectedTrip?.ignitionStatus ? "On" : "Off"}
+                icon="power_settings_new"
+              />
+              <InfoRow
+                label="Battery"
+                value={selectedTrip?.batteryVoltage ? `${selectedTrip.batteryVoltage} V` : "N/A"}
+                icon="battery_charging_full"
+              />
+              <InfoRow
+                label="Odometer"
+                value={selectedTrip?.odometer ? `${selectedTrip.odometer} km` : "N/A"}
+                icon="confirmation_number"
+              />
+              <InfoRow
+                label="Engine Hours"
+                value={selectedTrip?.engineHours || "N/A"}
+                icon="schedule"
+              />
             </Card>
           </Box>
         </Box>

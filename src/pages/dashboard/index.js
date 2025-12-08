@@ -7,7 +7,7 @@ import ApiService from "services/ApiService";
 =========================================================
 */
 import MenuItem from "@mui/material/MenuItem";
-
+import { useNavigate } from "react-router-dom";
 // @mui icons
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
@@ -18,7 +18,8 @@ import DonutLargeIcon from "@mui/icons-material/DonutLarge"; // Icon for Pie Cha
 import Icon from "@mui/material/Icon"; // Import Icon for general use
 import SendIcon from "@mui/icons-material/Send"; // Icon for send button
 import StopIcon from "@mui/icons-material/Stop"; // Icon for Online Stopped
-
+import Alerts from "pages/Alerts/Alerts";
+import LiveTrack from "pages/LiveTrack/LiveTrack";
 // @mui material components
 import Grid from "@mui/material/Grid";
 // --- New Imports ---
@@ -72,6 +73,7 @@ const getInitialAccountId = () => {
 };
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { sales, tasks } = reportsLineChartData;
   const [tripFilterType, setTripFilterType] = useState("bts-elock"); // default active
   const [btsOption, setBtsOption] = useState("");
@@ -320,27 +322,47 @@ function Dashboard() {
     const newUserMessage = { type: "user", text: option };
     setMessages((prev) => [...prev, newUserMessage]);
 
-    // 2. Simulate action and close conversation
+    // 2. Simulate action and prepare navigation
     setTimeout(() => {
-      let botResponseText = "";
-      if (option === "Alert Logs") {
-        botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. I can navigate you to the appropriate section or provide a direct link to the log data.`;
-      } else {
-        botResponseText = `You selected **${option}** for IMEI **${activeImei}**. I will now open the corresponding dashboard view for this device.`;
-      }
+        let botResponseText = "";
+        let targetPath = null; // Variable to store the destination path
 
-      const botResponse = {
-        type: "bot",
-        text: `${botResponseText} This conversation is now complete. You can close the widget.`,
-      };
-      setMessages((prev) => [...prev, botResponse]);
-      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
-      // Scroll to bottom (simulated)
-      const body = document.getElementById("chatbot-body-content");
-      if (body) body.scrollTop = body.scrollHeight;
+        if (option === "Alert Logs") {
+            botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
+            // Redirect to the Alerts page, optionally passing IMEI as a query parameter
+            targetPath = `/alerts?imei=${activeImei}`; 
+        } else if (option === "Track/Play") {
+            botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
+            // Redirect to the Live Track page, optionally passing IMEI as a query parameter
+            targetPath = `/live-track?imei=${activeImei}`; 
+        } else if (option === "Trip Report") {
+            botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
+            // Assuming you have a reports route
+            targetPath = `/reports/trip?imei=${activeImei}`;
+        } else {
+             // Fallback for unexpected options
+             botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
+        }
+        
+        const botResponse = {
+            type: "bot",
+            text: `${botResponseText} This conversation is now complete. You can close the widget.`,
+        };
+        setMessages((prev) => [...prev, botResponse]);
+        setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
+
+        // 🔥🔥🔥 ADDED REDIRECTION LOGIC 🔥🔥🔥
+        if (targetPath) {
+            navigate(targetPath);
+            // Optionally, close the chatbot immediately upon navigation
+            setIsChatbotOpen(false); 
+        }
+
+        // Scroll to bottom (simulated)
+        const body = document.getElementById("chatbot-body-content");
+        if (body) body.scrollTop = body.scrollHeight;
     }, 1000);
-  };
-
+};
   // --- INLINE STYLE OBJECTS FOR CHATBOT (Unmodified) ---
 
   const iconStyle = {
@@ -433,51 +455,43 @@ function Dashboard() {
     <DashboardLayout>
       <DashboardNavbar />
 
-      {/* --- START: ACCOUNT DROPDOWN SECTION --- */}
       {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
       <MDBox py={3} pt={1} pb={1}>
-    <Grid container justifyContent="flex-end" mb={2}>
-      <Grid item xs={12} sm={6} md={4} lg={3}>
-        
-        {/* MODIFICATION START: Use MDBox with flex to align title and input horizontally */}
-        <MDBox display="flex" alignItems="center" gap={2}> {/* gap adds spacing between items */}
-        
-          {/* Title for the Dropdown */}
-          <MDTypography variant="h6" color="text" sx={{ whiteSpace: 'nowrap' }}>
-            Select Account
-          </MDTypography>
-
-          {/* The MUI Dropdown Component */}
-          <FormControl variant="outlined" size="small" fullWidth>
-            <InputLabel id="account-select-label">Account</InputLabel>
-            <Select
-              labelId="account-select-label"
-              id="account-select"
-              value={selectedAccountId}
-              label="Account"
-              onChange={handleAccountChange}
-              sx={{ minWidth: 200, height: 40 }}
-            >
-              {accounts.length > 0 ? (
-                accounts.map((account) => (
-                  <MenuItem key={account.id} value={account.id}>
-                    {account.name}
-                  </MenuItem>
-                ))
-              ) : (
-                <MenuItem value={selectedAccountId} disabled>
-                  Loading accounts...
-                </MenuItem>
-              )}
-            </Select>
-          </FormControl>
-          
-        </MDBox>
-        {/* MODIFICATION END */}
-        
-      </Grid>
-    </Grid>
-</MDBox>
+        {/* <Grid container justifyContent="flex-end" mb={2}>
+          <Grid item xs={12} sm={6} md={4} lg={3}>
+            <MDBox display="flex" alignItems="center" gap={2}>
+              {" "}
+             
+              <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
+                Select Account
+              </MDTypography>
+              <FormControl variant="outlined" size="small" fullWidth>
+                <InputLabel id="account-select-label">Account</InputLabel>
+                <Select
+                  labelId="account-select-label"
+                  id="account-select"
+                  value={selectedAccountId}
+                  label="Account"
+                  onChange={handleAccountChange}
+                  sx={{ minWidth: 200, height: 40 }}
+                >
+                  {accounts.length > 0 ? (
+                    accounts.map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem value={selectedAccountId} disabled>
+                      Loading accounts...
+                    </MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            </MDBox>
+          </Grid>
+        </Grid> */}
+      </MDBox>
       {/* --- END: ACCOUNT DROPDOWN SECTION --- */}
 
       {/* The rest of the content (Cards and Charts) will follow immediately below */}
@@ -591,32 +605,32 @@ function Dashboard() {
           {/* Pie Charts on a separate row */}
           <Grid container spacing={2}>
             {/* Online vs Offline vs Unreachable */}
-           <Grid item xs={12} md={6} lg={4}>
-  <MDBox mb={3} sx={{ height: "300px !important" }}>
-    <PieChart
-      icon={{ color: "success", component: <WifiIcon /> }}
-      title="Online vs Offline vs Unreachable"
-      // description={
-      //   // Use <br /> to enforce the vertical stacking of the counts
-      //   <>
-      //     Online:{" "}
-      //     <strong>
-      //       {(
-      //         summaryData.onlineMotion +
-      //         summaryData.onlineIdle +
-      //         summaryData.onlineStopped
-      //       ).toLocaleString()}
-      //     </strong>
-      //     <br /> 
-      //     Offline: <strong>{summaryData.offline.toLocaleString()}</strong> 
-      //     <br /> 
-      //     Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-      //   </>
-      // }
-      chart={onlineOfflinePieData}
-    />
-  </MDBox>
-</Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
+                <PieChart
+                  icon={{ color: "success", component: <WifiIcon /> }}
+                  title="Online vs Offline vs Unreachable"
+                  // description={
+                  //   // Use <br /> to enforce the vertical stacking of the counts
+                  //   <>
+                  //     Online:{" "}
+                  //     <strong>
+                  //       {(
+                  //         summaryData.onlineMotion +
+                  //         summaryData.onlineIdle +
+                  //         summaryData.onlineStopped
+                  //       ).toLocaleString()}
+                  //     </strong>
+                  //     <br />
+                  //     Offline: <strong>{summaryData.offline.toLocaleString()}</strong>
+                  //     <br />
+                  //     Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                  //   </>
+                  // }
+                  chart={onlineOfflinePieData}
+                />
+              </MDBox>
+            </Grid>
 
             {/* Vehicle Running Status */}
             <Grid item xs={12} md={6} lg={4}>

@@ -13,7 +13,7 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; 
 
 // react-router components
 import { useLocation, Link } from "react-router-dom";
@@ -28,6 +28,10 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import Icon from "@mui/material/Icon";
 import MenuItem from "@mui/material/MenuItem";
+import Grid from "@mui/material/Grid"; 
+import FormControl from "@mui/material/FormControl"; 
+import InputLabel from "@mui/material/InputLabel"; 
+import Select from "@mui/material/Select"; 
 
 // Material Dashboard components
 import MDBox from "../../../MDBox";
@@ -54,22 +58,51 @@ import {
   setOpenConfigurator,
 } from "context";
 
+// API Service Import 
+import ApiService from "services/ApiService"; 
+
+// ==============================================================================
+// Placeholder functions (Ensure these are defined/imported in your actual project)
+const getInitialAccountId = () => {
+    return ""; 
+};
+// ==============================================================================
+
+
 function DashboardNavbar({ absolute, light, isMini }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
 
-  // Notification menu state
   const [openMenu, setOpenMenu] = useState(false);
-
-  // Authentication menu state
   const [openAuthMenu, setOpenAuthMenu] = useState(false);
-
-  // NEW — ACCOUNT SWITCH MENU STATE
   const [openAccountMenu, setOpenAccountMenu] = useState(false);
+  
+  // --- ACCOUNT DROPDOWN STATE ---
+  const [accounts, setAccounts] = useState([]); 
+  const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+  // --- END ACCOUNT DROPDOWN STATE ---
+
 
   const route = useLocation().pathname.split("/").slice(1);
 
+  // Function to fetch the account list (Memoized with useCallback)
+  const fetchAccounts = useCallback(() => {
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        setAccounts(res.data.data);
+        
+        if (!selectedAccountId && res.data.data.length > 0) {
+            setSelectedAccountId(res.data.data[0].id);
+        }
+
+      } else {
+        console.error("Failed to load account dropdown:", res);
+      }
+    });
+  }, [selectedAccountId]); 
+
+  // --- STANDARD NAVBAR EFFECTS ---
   useEffect(() => {
     if (fixedNavbar) {
       setNavbarType("sticky");
@@ -87,6 +120,14 @@ function DashboardNavbar({ absolute, light, isMini }) {
 
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
+  // --- END STANDARD NAVBAR EFFECTS ---
+
+  // --- ACCOUNT DATA FETCH EFFECT ---
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]); 
+  // --- END ACCOUNT DATA FETCH EFFECT ---
+
 
   // Handlers
   const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
@@ -101,15 +142,19 @@ function DashboardNavbar({ absolute, light, isMini }) {
   const handleOpenAccountMenu = (event) => setOpenAccountMenu(event.currentTarget);
   const handleCloseAccountMenu = () => setOpenAccountMenu(false);
 
-  // Menus
-  const renderMenu = () => (
-    <Menu
+  // --- ACCOUNT DROPDOWN HANDLER ---
+  const handleAccountChange = (event) => {
+    const newAccountId = event.target.value;
+    setSelectedAccountId(newAccountId);
+  };
+  // --- END ACCOUNT DROPDOWN HANDLER ---
+
+
+  // Menus (kept condensed for brevity)
+  const renderMenu = () => (/* ... */ <Menu
       anchorEl={openMenu}
       anchorReference={null}
-      anchorOrigin={{
-        vertical: "bottom",
-        horizontal: "left",
-      }}
+      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
       open={Boolean(openMenu)}
       onClose={handleCloseMenu}
       sx={{ mt: 2 }}
@@ -117,67 +162,37 @@ function DashboardNavbar({ absolute, light, isMini }) {
       <NotificationItem icon={<Icon>email</Icon>} title="Check new messages" />
       <NotificationItem icon={<Icon>podcasts</Icon>} title="Manage Podcast sessions" />
       <NotificationItem icon={<Icon>shopping_cart</Icon>} title="Payment successfully completed" />
-    </Menu>
-  );
-
-  const renderAuthMenu = () => (
-    <Menu
+    </Menu>);
+  const renderAuthMenu = () => (/* ... */ <Menu
       anchorEl={openAuthMenu}
-      anchorOrigin={{
-        vertical: "bottom",
-        horizontal: "right",
-      }}
-      transformOrigin={{
-        vertical: "top",
-        horizontal: "right",
-      }}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      transformOrigin={{ vertical: "top", horizontal: "right" }}
       open={Boolean(openAuthMenu)}
       onClose={handleCloseAuthMenu}
       sx={{ mt: 2 }}
     >
       <MenuItem onClick={handleCloseAuthMenu} component={Link} to="/authentication/sign-in">
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Sign In
-        </MDTypography>
+        <MDTypography variant="button" fontWeight="regular" color="dark">Sign In</MDTypography>
       </MenuItem>
-
       <MenuItem onClick={handleCloseAuthMenu} component={Link} to="/authentication/sign-up">
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Sign Out
-        </MDTypography>
+        <MDTypography variant="button" fontWeight="regular" color="dark">Sign Out</MDTypography>
       </MenuItem>
-    </Menu>
-  );
-
-  // NEW — ACCOUNT SWITCH MENU
-  const renderAccountMenu = () => (
-    <Menu
+    </Menu>);
+  const renderAccountMenu = () => (/* ... */ <Menu
       anchorEl={openAccountMenu}
-      anchorOrigin={{
-        vertical: "bottom",
-        horizontal: "right",
-      }}
-      transformOrigin={{
-        vertical: "top",
-        horizontal: "right",
-      }}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      transformOrigin={{ vertical: "top", horizontal: "right" }}
       open={Boolean(openAccountMenu)}
       onClose={handleCloseAccountMenu}
       sx={{ mt: 2 }}
     >
       <MenuItem onClick={handleCloseAccountMenu}>
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Account 1
-        </MDTypography>
+        <MDTypography variant="button" fontWeight="regular" color="dark">Account 1</MDTypography>
       </MenuItem>
-
       <MenuItem onClick={handleCloseAccountMenu}>
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Account 2
-        </MDTypography>
+        <MDTypography variant="button" fontWeight="regular" color="dark">Account 2</MDTypography>
       </MenuItem>
-    </Menu>
-  );
+    </Menu>);
 
   // Icon styling
   const iconsStyle = ({ palette: { dark, white, text }, functions: { rgba } }) => ({
@@ -199,16 +214,65 @@ function DashboardNavbar({ absolute, light, isMini }) {
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light, darkMode })}
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
+        {/* Left Side: Breadcrumbs */}
         <MDBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>
           <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} />
         </MDBox>
 
         {!isMini && (
+          // Right Side: Dropdown and Icons
           <MDBox sx={(theme) => navbarRow(theme, { isMini })}>
-            <MDBox color={light ? "white" : "inherit"}>
+            
+            {/* =======================================================
+              MODIFICATION START: Account Dropdown (Moved to precede Icons)
+              =======================================================
+            */}
+            {/* The wrapper MDBox provides the needed spacing (mr={2}) from the icon cluster */}
+            <MDBox mr={3}> 
+              <MDBox display="flex" alignItems="center" gap={2}>
+                
+                {/* Title for the Dropdown */}
+                <MDTypography variant="h6" color="text" sx={{ whiteSpace: 'nowrap' }}>
+                  Select Account
+                </MDTypography>
 
-              {/* NEW — ACCOUNT SWITCH ICON */}
-              <IconButton
+                {/* The MUI Dropdown Component */}
+                <FormControl variant="outlined" size="small" sx={{ minWidth: 200, height: 40 }}> 
+                  <InputLabel id="account-select-label">Account</InputLabel>
+                  <Select
+                    labelId="account-select-label"
+                    id="account-select"
+                    value={selectedAccountId}
+                    label="Account"
+                    onChange={handleAccountChange}
+                    sx={{ height: '100%' }}
+                  >
+                    {accounts.length > 0 ? (
+                      accounts.map((account) => (
+                        <MenuItem key={account.id} value={account.id}>
+                          {account.name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem value={selectedAccountId} disabled>
+                        Loading accounts...
+                      </MenuItem>
+                    )}
+                  </Select>
+                </FormControl>
+                
+              </MDBox>
+            </MDBox>
+            {/* =======================================================
+              MODIFICATION END: Account Dropdown
+              =======================================================
+            */}
+
+            <MDBox color={light ? "white" : "inherit"}>
+              {/* Icon Cluster starts here */}
+
+              {/* NEW — ACCOUNT SWITCH ICON (Secondary to Dropdown) */}
+              {/* <IconButton
                 sx={navbarIconButton}
                 size="small"
                 disableRipple
@@ -217,7 +281,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 aria-haspopup="true"
               >
                 <Icon sx={iconsStyle}>supervisor_account</Icon>
-              </IconButton>
+              </IconButton> */}
               {renderAccountMenu()}
 
               {/* Authentication icon */}
@@ -234,7 +298,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
               {renderAuthMenu()}
 
               {/* Mini sidenav toggle */}
-              <IconButton
+              {/* <IconButton
                 size="small"
                 disableRipple
                 color="inherit"
@@ -244,7 +308,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 <Icon sx={iconsStyle} fontSize="medium">
                   {miniSidenav ? "menu_open" : "menu"}
                 </Icon>
-              </IconButton>
+              </IconButton> */}
 
               {/* Settings */}
               <IconButton
@@ -258,7 +322,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
               </IconButton>
 
               {/* Notifications */}
-              <IconButton
+              {/* <IconButton
                 size="small"
                 disableRipple
                 color="inherit"
@@ -266,7 +330,7 @@ function DashboardNavbar({ absolute, light, isMini }) {
                 onClick={handleOpenMenu}
               >
                 <Icon sx={iconsStyle}>notifications</Icon>
-              </IconButton>
+              </IconButton> */}
               {renderMenu()}
             </MDBox>
           </MDBox>
