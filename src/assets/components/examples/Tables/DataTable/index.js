@@ -151,7 +151,7 @@ function DataTable({
         <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
           {entriesPerPage && (
             <MDBox display="flex" alignItems="center">
-              <Autocomplete
+              {/* <Autocomplete
                 disableClearable
                 value={pageSize.toString()}
                 options={entries}
@@ -161,10 +161,10 @@ function DataTable({
                 size="small"
                 sx={{ width: "5rem" }}
                 renderInput={(params) => <MDInput {...params} />}
-              />
-              <MDTypography variant="caption" color="secondary">
+              /> */}
+              {/* <MDTypography variant="caption" color="secondary">
                 &nbsp;&nbsp;entries per page
-              </MDTypography>
+              </MDTypography> */}
             </MDBox>
           )}
           {canSearch && (
