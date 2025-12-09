@@ -29,13 +29,12 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
-  // Ref to hold the timer ID
   const closeTimerRef = useRef(null);
 
   const delayedClose = () => {
     closeTimerRef.current = setTimeout(() => {
       setAnchorEl(null);
-    }, 150); // Increased slightly to 150ms for smoother bridge
+    }, 150);
   };
 
   const cancelClose = () => {
@@ -52,7 +51,6 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => cancelClose();
   }, []);
@@ -61,11 +59,7 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
 
   return (
     <>
-      <ListItem
-        component="li"
-        onMouseEnter={handleOpen}
-        onMouseLeave={delayedClose}
-      >
+      <ListItem component="li" onMouseEnter={handleOpen} onMouseLeave={delayedClose}>
         <MDBox
           {...rest}
           sx={(theme) => ({
@@ -101,62 +95,56 @@ function SidenavCollapse({ icon, name, active, subRoutes, ...rest }) {
           </ListItemIcon>
 
           <ListItemText
-            primary={miniSidenav ? (
-              <MDTypography
-                variant="caption"
-                fontWeight="regular"
-                color={active ? "white" : darkMode ? "white" : "dark"}
-                sx={{
-                  textAlign: "center !important",
-                  marginTop: "0.5rem !important",
-                }}
-              >
-                {name}
-              </MDTypography>
-            ) : name}
+            primary={
+              miniSidenav ? (
+                <MDTypography
+                  variant="caption"
+                  fontWeight="regular"
+                  color="white"     // ✅ ALWAYS WHITE
+                  sx={{
+                    textAlign: "center !important",
+                    marginTop: "0.5rem !important",
+                  }}
+                >
+                  {name}
+                </MDTypography>
+              ) : (
+                name
+              )
+            }
             sx={(theme) => collapseText(theme, { miniSidenav, active })}
           />
         </MDBox>
       </ListItem>
 
-      {/* --- MENU COMPONENT --- */}
       {subRoutes && (
         <Menu
           anchorEl={anchorEl}
           open={open}
           onClose={delayedClose}
-          
-          // 1. Force the position to the Right of the Anchor
           anchorOrigin={{
-            vertical: "top",    // Align top of menu...
-            horizontal: "right", // ...to the RIGHT edge of the sidebar item
+            vertical: "top",
+            horizontal: "right",
           }}
           transformOrigin={{
-            vertical: "top",    // Align top of menu...
-            horizontal: "left",  // ...to the LEFT edge of the menu box
+            vertical: "top",
+            horizontal: "left",
           }}
-          
-          // 2. Prevent auto-focus and scroll locking for smoother hover feel
           disableAutoFocusItem
           disableScrollLock
-          
           MenuListProps={{
-            onMouseEnter: cancelClose, 
+            onMouseEnter: cancelClose,
             onMouseLeave: delayedClose,
           }}
-          
-          // 3. Styling the Menu Box (Paper)
           PaperProps={{
             sx: {
-              mt: 0,         // Ensure it aligns exactly with the top
-              ml: 1.5,       // Add gap so it doesn't overlap the icon
-              minWidth: "150px", // Optional: prevent it from being too thin
-              pointerEvents: 'auto',
+              mt: 0,
+              ml: 1.5,
+              minWidth: "150px",
+              pointerEvents: "auto",
             },
           }}
-          
-          // 4. Ensure the menu overlay doesn't block mouse movement
-          style={{ pointerEvents: 'none' }}
+          style={{ pointerEvents: "none" }}
         >
           {subRoutes.map((route) => {
             const renderIcon =

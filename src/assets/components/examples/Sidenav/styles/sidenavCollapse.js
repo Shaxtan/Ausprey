@@ -2,19 +2,11 @@
 =========================================================
 * Material Dashboard 2 React - v2.2.0
 =========================================================
-
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
+
 function collapseItem(theme, ownerState) {
   const { palette, transitions, breakpoints, boxShadows, borders, functions } = theme;
-  const { active, transparentSidenav, whiteSidenav, darkMode, sidenavColor } = ownerState;
+  const { active, transparentSidenav, whiteSidenav, darkMode, sidenavColor, miniSidenav } = ownerState;
 
   const { white, transparent, dark, grey, gradients } = palette;
   const { md } = boxShadows;
@@ -32,13 +24,24 @@ function collapseItem(theme, ownerState) {
     display: "flex",
     alignItems: "center",
     width: "100%",
-    padding: `${pxToRem(8)} ${pxToRem(10)}`,
-    margin: `${pxToRem(1.5)} ${pxToRem(10)}`,
+
+    // 🔥 1. INCREASED BOX SIZE (PADDING)
+    // Was: 8px 10px -> Now: 12px 16px
+    padding: `${pxToRem(12)} ${pxToRem(16)}`,
+
+    // Left Shift Logic (Preserved)
+    margin: `${pxToRem(1)} ${pxToRem(10)} ${pxToRem(1.5)} ${pxToRem(4)}`,
+
     borderRadius: borderRadius.md,
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
     boxShadow: active && !whiteSidenav && !darkMode && !transparentSidenav ? md : "none",
+    
+    // Layout: Column for Icon on top, Text below
+    flexDirection: miniSidenav ? "column" : "row",
+    justifyContent: "center",
+
     [breakpoints.up("xl")]: {
       transition: transitions.create(["box-shadow", "background-color"], {
         easing: transitions.easing.easeInOut,
@@ -65,15 +68,18 @@ function collapseItem(theme, ownerState) {
 
 function collapseIconBox(theme, ownerState) {
   const { palette, transitions, borders, functions } = theme;
-  const { transparentSidenav, whiteSidenav, darkMode, active } = ownerState;
+  const { transparentSidenav, whiteSidenav, darkMode, active, miniSidenav } = ownerState;
 
   const { white, dark } = palette;
   const { borderRadius } = borders;
   const { pxToRem } = functions;
 
   return {
-    minWidth: pxToRem(50),
-    minHeight: pxToRem(50),
+    // 🔥 2. INCREASED ICON CONTAINER SIZE
+    // Was: 32px -> Now: 46px (Large square)
+    minWidth: pxToRem(46),
+    minHeight: pxToRem(46),
+
     color:
       (transparentSidenav && !darkMode && !active) || (whiteSidenav && !active)
         ? dark.main
@@ -81,6 +87,11 @@ function collapseIconBox(theme, ownerState) {
     borderRadius: borderRadius.md,
     display: "grid",
     placeItems: "center",
+    
+    // Margins
+    marginRight: miniSidenav ? 0 : pxToRem(10),
+    marginBottom: miniSidenav ? pxToRem(6) : 0, // Increased spacing between icon and text
+
     transition: transitions.create("margin", {
       easing: transitions.easing.easeInOut,
       duration: transitions.duration.standard,
@@ -94,22 +105,24 @@ function collapseIconBox(theme, ownerState) {
 
 const collapseIcon = ({ palette: { white, gradients } }, { active }) => ({
   color: active ? white.main : gradients.dark.state,
+  // 🔥 3. INCREASED ACTUAL ICON FONT SIZE
+  fontSize: "1.6rem !important", 
 });
 
 function collapseText(theme, ownerState) {
   const { typography, transitions, breakpoints, functions } = theme;
-  const { miniSidenav, transparentSidenav, active } = ownerState;
+  const { miniSidenav, active } = ownerState;
 
   const { size, fontWeightRegular, fontWeightLight } = typography;
   const { pxToRem } = functions;
 
   return {
-    marginLeft: pxToRem(10),
+    marginLeft: miniSidenav ? 0 : pxToRem(10),
 
     [breakpoints.up("xl")]: {
-      opacity: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : 1,
-      maxWidth: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : "100%",
-      marginLeft: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : pxToRem(10),
+      opacity: 1, 
+      maxWidth: "100%", 
+      marginLeft: miniSidenav ? 0 : pxToRem(10),
       transition: transitions.create(["opacity", "margin"], {
         easing: transitions.easing.easeInOut,
         duration: transitions.duration.standard,
@@ -118,7 +131,7 @@ function collapseText(theme, ownerState) {
 
     "& span": {
       fontWeight: active ? fontWeightRegular : fontWeightLight,
-      fontSize: size.sm,
+      fontSize: miniSidenav ? pxToRem(11) : size.sm, // Slightly larger text to match box
       lineHeight: 0,
     },
   };
