@@ -414,40 +414,42 @@ function Projects({ accountId }) {
     }
 
     return (
-        <Card>
-            {/* --------------------------------- HEADER (TABS) --------------------------------- */}
-            <MDBox position="relative" px={3} pt={3} pb={1}>
-                <MDBox
-                    display="inline-flex"
-                    sx={(theme) => ({
-                        position: "absolute",
-                        top: -18,
-                        left: 24,
-                        backgroundColor: theme.palette.background.paper,
-                        borderRadius: "16px",
-                        boxShadow: theme.shadows[3],
-                        overflow: "hidden",
-                    })}
+       <Card sx={{ height: "100%", mt: 3, overflow: "visible" }}>
+        
+        {/* --------------------------------- HEADER (TABS) --------------------------------- */}
+        <MDBox position="relative" px={3} pt={3} pb={1}>
+            <MDBox
+                display="inline-flex"
+                sx={(theme) => ({
+                    position: "absolute",
+                    top: -18, // This moves the tabs up. The mt: 3 on Card ensures space for this.
+                    left: 24,
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: "16px",
+                    boxShadow: theme.shadows[3],
+                    overflow: "hidden",
+                })}
+            >
+                {/* ... existing buttons ... */}
+                <MDButton
+                    variant={tripFilterType === "vts" ? "contained" : "text"}
+                    color={tripFilterType === "vts" ? "info" : "dark"}
+                    size="small"
+                    onClick={() => setTripFilterType("vts")}
+                    sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
                 >
-                    <MDButton
-                        variant={tripFilterType === "vts" ? "contained" : "text"}
-                        color={tripFilterType === "vts" ? "info" : "dark"}
-                        size="small"
-                        onClick={() => setTripFilterType("vts")}
-                        sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
-                    >
-                        VTS
-                    </MDButton>
-                    <MDButton
-                        variant={tripFilterType === "unreachable" ? "contained" : "text"}
-                        color={tripFilterType === "unreachable" ? "warning" : "dark"}
-                        size="small"
-                        onClick={() => setTripFilterType("unreachable")}
-                        sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "130px", boxShadow: "none" }}
-                    >
-                        UNREACHABLE
-                    </MDButton>
-                </MDBox>
+                    VTS
+                </MDButton>
+                <MDButton
+                    variant={tripFilterType === "unreachable" ? "contained" : "text"}
+                    color={tripFilterType === "unreachable" ? "warning" : "dark"}
+                    size="small"
+                    onClick={() => setTripFilterType("unreachable")}
+                    sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "130px", boxShadow: "none" }}
+                >
+                    UNREACHABLE
+                </MDButton>
+            </MDBox>
 
                 <MDBox display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
                     <MDBox display="flex" alignItems="center" width="100%">

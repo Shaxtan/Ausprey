@@ -718,10 +718,20 @@ function Dashboard() {
         </MDBox>
 
         {/* --- Projects and Orders Overview Section --- */}
+       {/* --- Projects and Orders Overview Section --- */}
         <MDBox>
           <Grid container spacing={3}>
-            <Grid item xs={16} md={14} lg={14}>
-              <Projects accountId={selectedAccountId} />
+            {/* 🔥 FIX: Changed xs={16}, md={14}, lg={14} to xs={12}.
+               The maximum value in Material UI Grid is 12. 
+               Any value higher triggers a full-page scrollbar.
+            */}
+            <Grid item xs={12}>
+              {/* 🔥 ADDED: A wrapper to enforce internal scrolling.
+                 This ensures that if the table is huge, only this box scrolls.
+              */}
+              <MDBox sx={{ width: "100%", overflowX: "auto" }}>
+                 <Projects accountId={selectedAccountId} />
+              </MDBox>
             </Grid>
           </Grid>
         </MDBox>
