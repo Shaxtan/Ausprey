@@ -671,7 +671,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
                   title="Alert Type Distribution"
-                  description="Breakdown of Critical, Warning, and Info alerts."
+                  // description="Breakdown of Critical, Warning, and Info alerts."
                   chart={alertTypePieData} // Using mock data for alerts
                 />
               </MDBox>
