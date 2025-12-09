@@ -226,9 +226,9 @@ function VehicleHeaderBox({ device }) {
         <Typography variant="h6" fontWeight={700} noWrap>
           {device.name}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           <strong>Driver:</strong> {device.driverName || "N/A"}
-        </Typography>
+        </Typography> */}
       </Box>
     </Card>
   );
@@ -978,7 +978,7 @@ export default function LiveTrack() {
                 Trip Summary
               </Typography>
               <Divider sx={{ mb: 1 }} />
-              <InfoRow label="Trip ID" value={selectedTrip?.id} icon="badge" />
+              <InfoRow label="IMEI" value={selectedTrip?.id} icon="badge" />
               <InfoRow label="Vehicle" value={selectedTrip?.vehicle} icon="local_shipping" />
               <InfoRow label="Driver" value={selectedTrip?.driverName} icon="person" />
               <InfoRow label="Distance" value={selectedTrip?.totalDistance} icon="map" />
