@@ -460,7 +460,7 @@ function Dashboard() {
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      <DashboardNavbar handleAccountChange={handleAccountChange} selectedAccountId={selectedAccountId}/>
 
       {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
       <MDBox py={3} pt={1} pb={1}>

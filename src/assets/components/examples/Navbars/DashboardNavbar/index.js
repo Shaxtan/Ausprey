@@ -69,7 +69,7 @@ const getInitialAccountId = () => {
 // ==============================================================================
 
 
-function DashboardNavbar({ absolute, light, isMini }) {
+function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selectedAccountId}) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
@@ -80,9 +80,9 @@ function DashboardNavbar({ absolute, light, isMini }) {
   
   // --- ACCOUNT DROPDOWN STATE ---
   const [accounts, setAccounts] = useState([]); 
-  const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+  // const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   // --- END ACCOUNT DROPDOWN STATE ---
-
+  
 
   const route = useLocation().pathname.split("/").slice(1);
 
@@ -142,12 +142,6 @@ function DashboardNavbar({ absolute, light, isMini }) {
   const handleOpenAccountMenu = (event) => setOpenAccountMenu(event.currentTarget);
   const handleCloseAccountMenu = () => setOpenAccountMenu(false);
 
-  // --- ACCOUNT DROPDOWN HANDLER ---
-  const handleAccountChange = (event) => {
-    const newAccountId = event.target.value;
-    setSelectedAccountId(newAccountId);
-  };
-  // --- END ACCOUNT DROPDOWN HANDLER ---
 
 
   // Menus (kept condensed for brevity)
@@ -344,12 +338,16 @@ DashboardNavbar.defaultProps = {
   absolute: false,
   light: false,
   isMini: false,
+  handleAccountChange: PropTypes.func.isRequired,
+  selectedAccountId: PropTypes.value.isRequired,
 };
 
 DashboardNavbar.propTypes = {
   absolute: PropTypes.bool,
   light: PropTypes.bool,
   isMini: PropTypes.bool,
+  handleAccountChange: PropTypes.func, 
+  selectedAccountId: PropTypes.value, 
 };
 
 export default DashboardNavbar;
