@@ -102,7 +102,8 @@ function Dashboard() {
   // ... (inside Dashboard function, before useEffect)
 
   // Refactored data fetch function to accept accountId
-  const fetchDashboardData = useCallback((accountId) => {
+  // const fetchDashboardData = useCallback((accountId) => {
+  const fetchDashboardData = (accountId) => {
     ApiService.getDashboardData(
       { accid: accountId }, // Pass the account ID in the data payload
       (res) => {
@@ -154,10 +155,11 @@ function Dashboard() {
       true,
       1
     );
-  }, []); // Dependency array empty as it only uses state setters
+  }; // Dependency array empty as it only uses state setters
 
   // Function to fetch the account list
-  const fetchAccounts = useCallback(() => {
+  // const fetchAccounts = useCallback(() => {
+  const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
         setAccounts(res.data.data);
@@ -165,25 +167,41 @@ function Dashboard() {
         console.error("Failed to load account dropdown:", res);
       }
     });
-  }, []);
+  };
+  // }, []);
 
   // ... (replacing the old useEffect)
 
+  // useEffect(() => {
+  //   // 1. Fetch initial data immediately
+  //   fetchAccounts();
+  //   fetchDashboardData(selectedAccountId);
+
+  //   // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
+  //   const intervalId = setInterval(() => {
+  //     console.log("Auto-refreshing dashboard data...");
+  //     fetchDashboardData(selectedAccountId);
+  //   }, 300000);
+
+  //   // 3. Cleanup interval on component unmount or if selectedAccountId changes
+  //   return () => clearInterval(intervalId);
+
+  // }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
   useEffect(() => {
     // 1. Fetch initial data immediately
     fetchAccounts();
     fetchDashboardData(selectedAccountId);
 
     // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
-    const intervalId = setInterval(() => {
-      console.log("Auto-refreshing dashboard data...");
-      fetchDashboardData(selectedAccountId);
-    }, 300000); 
+    // const intervalId = setInterval(() => {
+    //   console.log("Auto-refreshing dashboard data...");
+    //   fetchDashboardData(selectedAccountId);
+    // }, 300000);
 
     // 3. Cleanup interval on component unmount or if selectedAccountId changes
-    return () => clearInterval(intervalId);
+    // return () => clearInterval(intervalId);
 
-  }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
+  }, []);
 
   const handleAccountChange = (event) => {
     const newAccountId = event.target.value;
@@ -299,9 +317,8 @@ function Dashboard() {
         // Success path: Device found
         botResponse = {
           type: "bot",
-          text: `Thank you. Device **${
-            foundDevice.name
-          }** (IMEI: ${enteredImei}) has been successfully identified. Its current status is **${foundDevice.status.toUpperCase()}**. What would you like to do next?`,
+          text: `Thank you. Device **${foundDevice.name
+            }** (IMEI: ${enteredImei}) has been successfully identified. Its current status is **${foundDevice.status.toUpperCase()}**. What would you like to do next?`,
         };
         setActiveImei(enteredImei);
         nextStep = CHAT_STEP.SHOW_OPTIONS;
@@ -331,45 +348,45 @@ function Dashboard() {
 
     // 2. Simulate action and prepare navigation
     setTimeout(() => {
-        let botResponseText = "";
-        let targetPath = null; // Variable to store the destination path
+      let botResponseText = "";
+      let targetPath = null; // Variable to store the destination path
 
-        if (option === "Alert Logs") {
-            botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
-            // Redirect to the Alerts page, optionally passing IMEI as a query parameter
-            targetPath = `/alerts?imei=${activeImei}`; 
-        } else if (option === "Track/Play") {
-            botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
-            // Redirect to the Live Track page, optionally passing IMEI as a query parameter
-            targetPath = `/live-track?imei=${activeImei}`; 
-        } else if (option === "Trip Report") {
-            botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
-            // Assuming you have a reports route
-            targetPath = `/reports/trip?imei=${activeImei}`;
-        } else {
-             // Fallback for unexpected options
-             botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
-        }
-        
-        const botResponse = {
-            type: "bot",
-            text: `${botResponseText} This conversation is now complete. You can close the widget.`,
-        };
-        setMessages((prev) => [...prev, botResponse]);
-        setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
+      if (option === "Alert Logs") {
+        botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
+        // Redirect to the Alerts page, optionally passing IMEI as a query parameter
+        targetPath = `/alerts?imei=${activeImei}`;
+      } else if (option === "Track/Play") {
+        botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
+        // Redirect to the Live Track page, optionally passing IMEI as a query parameter
+        targetPath = `/live-track?imei=${activeImei}`;
+      } else if (option === "Trip Report") {
+        botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
+        // Assuming you have a reports route
+        targetPath = `/reports/trip?imei=${activeImei}`;
+      } else {
+        // Fallback for unexpected options
+        botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
+      }
 
-        // 🔥🔥🔥 ADDED REDIRECTION LOGIC 🔥🔥🔥
-        if (targetPath) {
-            navigate(targetPath);
-            // Optionally, close the chatbot immediately upon navigation
-            setIsChatbotOpen(false); 
-        }
+      const botResponse = {
+        type: "bot",
+        text: `${botResponseText} This conversation is now complete. You can close the widget.`,
+      };
+      setMessages((prev) => [...prev, botResponse]);
+      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
 
-        // Scroll to bottom (simulated)
-        const body = document.getElementById("chatbot-body-content");
-        if (body) body.scrollTop = body.scrollHeight;
+      // 🔥🔥🔥 ADDED REDIRECTION LOGIC 🔥🔥🔥
+      if (targetPath) {
+        navigate(targetPath);
+        // Optionally, close the chatbot immediately upon navigation
+        setIsChatbotOpen(false);
+      }
+
+      // Scroll to bottom (simulated)
+      const body = document.getElementById("chatbot-body-content");
+      if (body) body.scrollTop = body.scrollHeight;
     }, 1000);
-};
+  };
   // --- INLINE STYLE OBJECTS FOR CHATBOT (Unmodified) ---
 
   const iconStyle = {
@@ -458,9 +475,9 @@ function Dashboard() {
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
 
-  return (
+  return  accounts && (
     <DashboardLayout>
-      <DashboardNavbar handleAccountChange={handleAccountChange} selectedAccountId={selectedAccountId}/>
+      <DashboardNavbar handleAccountChange={handleAccountChange} selectedAccountId={selectedAccountId} fetchAccounts={fetchAccounts} accounts={accounts} />
 
       {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
       <MDBox py={3} pt={1} pb={1}>
@@ -671,7 +688,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
                   title="Alert Type Distribution"
-                  description="Breakdown of Critical, Warning, and Info alerts."
+                  // description="Breakdown of Critical alerts."
                   chart={alertTypePieData} // Using mock data for alerts
                 />
               </MDBox>
@@ -685,7 +702,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
                   title="New Chart 4: Fuel Usage"
-                  description="Distribution of fuel consumption types."
+                  // description="Distribution of fuel consumption types."
                   chart={newPieData4} // <--- REPLACE with your data
                 />
               </MDBox>
@@ -697,7 +714,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "error", component: <Icon>security</Icon> }}
                   title="New Chart 5: Geofence Violations"
-                  description="Breakdown of different types of violations."
+                  // description="Breakdown of different types of violations."
                   chart={newPieData5} // <--- REPLACE with your data
                 />
               </MDBox>
@@ -709,7 +726,7 @@ function Dashboard() {
                 <PieChart
                   icon={{ color: "info", component: <Icon>healing</Icon> }}
                   title="New Chart 6: Vehicle Health"
-                  description="Distribution of vehicle diagnostic statuses."
+                  // description="Distribution of vehicle diagnostic statuses."
                   chart={newPieData6} // <--- REPLACE with your data
                 />
               </MDBox>
@@ -718,7 +735,7 @@ function Dashboard() {
         </MDBox>
 
         {/* --- Projects and Orders Overview Section --- */}
-       {/* --- Projects and Orders Overview Section --- */}
+        {/* --- Projects and Orders Overview Section --- */}
         <MDBox>
           <Grid container spacing={3}>
             {/* 🔥 FIX: Changed xs={16}, md={14}, lg={14} to xs={12}.
@@ -730,7 +747,7 @@ function Dashboard() {
                  This ensures that if the table is huge, only this box scrolls.
               */}
               <MDBox sx={{ width: "100%", overflowX: "auto" }}>
-                 <Projects accountId={selectedAccountId} />
+                <Projects accountId={selectedAccountId} />
               </MDBox>
             </Grid>
           </Grid>
