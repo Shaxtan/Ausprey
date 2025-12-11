@@ -146,6 +146,14 @@ function Dashboard() {
             ign: item.ign,
             speed: Number(item.speed) || 0,
           }));
+          const devicesRawELK = apiData.VTS?.available || [];
+          const fetchedELKDevices = devicesRawELK.map((item) => ({
+            imei: item.imei || "N/A",
+            name: item.vehnum || item.name || item.imei,
+            status: item.gps === "A" ? "active" : "inactive",
+            ign: item.ign,
+            speed: Number(item.speed) || 0,
+          }));
           setDevices(fetchedDevices);
         } else {
           console.error("Invalid dashboard response:", res);
@@ -201,7 +209,7 @@ function Dashboard() {
     // 3. Cleanup interval on component unmount or if selectedAccountId changes
     // return () => clearInterval(intervalId);
 
-  }, []);
+  }, [selectedAccountId]);
 
   const handleAccountChange = (event) => {
     const newAccountId = event.target.value;
