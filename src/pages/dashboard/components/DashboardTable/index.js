@@ -148,6 +148,23 @@ const VTS_COLUMNS = [
     { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
     { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
 ];
+const ELK_COLUMNS = [
+    { Header: "No", accessor: "no", width: "5%", align: "left" },
+    { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
+    { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
+    { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
+    { Header: "SIM NO", accessor: "simNo", width: "12%", align: "center" },
+    { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
+    { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
+    { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
+    { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
+    { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
+    { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
+    { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
+    { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
+    { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
+    { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" }
+];
 
 const UNREACHABLE_COLUMNS = [
     { Header: "No", accessor: "no", width: "5%", align: "left" },
@@ -170,6 +187,7 @@ function Projects({ accountId }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
     const [allVtsRows, setAllVtsRows] = useState([]);
+    const [allElkRows, setAllElkRows] = useState([]);
     const [unreachableRows, setUnreachableRows] = useState([]);
     const [selectedRows, setSelectedRows] = useState({});
     const [tripFilterType, setTripFilterType] = useState("vts");
@@ -246,15 +264,7 @@ function Projects({ accountId }) {
                                     </MDBox>
                                 ),
                                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                                // 🔥 UPDATED: Clickable Vehicle No
-                                vehicleNo: (
-                                    <DataCell
-                                        text={item.vehnum || item.name || "N/A"}
-                                        fontWeight="bold"
-                                        isClickable={true}
-                                        onClick={() => handleImeiClick(imei)}
-                                    />
-                                ),
+                                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
                                 gpsStatus: <Status status={gpsDisplay} />,
                                 ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
                                 imei: (
@@ -306,6 +316,93 @@ function Projects({ accountId }) {
         },
         [handleImeiClick]
     );
+    const fetchElkData = useCallback(
+        (currentAccountId) => {
+            setLoading(true);
+            ApiService.getDashboardData(
+                { accid: currentAccountId },
+                (res) => {
+                    if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
+                        const devices = res.data.data.data.ELK.available;
+                        const fetchedRows = devices.map((item, index) => {
+                            const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
+                            const imei = item.imei || "N/A";
+                            const speed = Number(item.speed) || 0;
+                            const isLocked = speed === 0 && item.ign === "Y";
+
+                            return {
+                                no: (
+                                    <MDBox
+                                        display="flex"
+                                        alignItems="center"
+                                        gap={0.5}
+                                        justifyContent="flex-start"
+                                    >
+                                        <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
+                                            {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                                        </Icon>
+                                        <MDTypography
+                                            variant="caption"
+                                            fontWeight="bold"
+                                            color={item.ign === "Y" ? "success" : "error"}
+                                        >
+                                            {index + 1}
+                                        </MDTypography>
+                                    </MDBox>
+                                ),
+                                accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+                                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
+                                gpsStatus: <Status status={gpsDisplay} />,
+                                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+                                imei: (
+                                    <DataCell
+                                        text={imei}
+                                        isClickable={true}
+                                        onClick={() => handleImeiClick(imei)}
+                                    />
+                                ),
+                                simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
+                                date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+                                latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+                                longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+                                address: (
+                                    <DataCell
+                                        text={
+                                            item.address && item.address !== "NA"
+                                                ? item.address
+                                                : "Location Not Available"
+                                        }
+                                    />
+                                ),
+                                avgSpeed: (
+                                    <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
+                                ),
+                                currentSpeed: (
+                                    <DataCell
+                                        text={`${speed} km/h`}
+                                        color={speed > 0 ? "success" : "text"}
+                                        fontWeight="bold"
+                                    />
+                                ),
+                                lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
+                                checkbox: null,
+                                _imei: imei,
+                                _isLockedInitial: isLocked,
+                            };
+                        });
+                        setAllElkRows(fetchedRows);
+                        setSelectedRows({});
+                    } else {
+                        setAllElkRows([]);
+                    }
+                    setLoading(false);
+                },
+                true,
+                1
+            );
+        },
+        [handleImeiClick]
+    );
 
     const fetchUnreachableData = useCallback(
         (currentAccountId) => {
@@ -321,15 +418,7 @@ function Projects({ accountId }) {
                                 no: <DataCell text={index + 1} fontWeight="bold" />,
                                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
                                 accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
-                                // 🔥 UPDATED: Clickable Vehicle No
-                                vehicleNo: (
-                                    <DataCell
-                                        text={item.vehnum || "N/A"}
-                                        fontWeight="bold"
-                                        isClickable={true}
-                                        onClick={() => handleImeiClick(imei)}
-                                    />
-                                ),
+                                vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
                                 imei: (
                                     <DataCell
                                         text={imei}
@@ -355,18 +444,75 @@ function Projects({ accountId }) {
     useEffect(() => {
         if (tripFilterType === "vts") {
             fetchVtsData(accountId);
-        } else if (tripFilterType === "unreachable") {
+        } else if (tripFilterType === "elk") {
+            fetchElkData(accountId);
+        }
+        else if (tripFilterType === "unreachable") {
             fetchUnreachableData(accountId);
         }
-    }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData]);
+    }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData, fetchElkData]);
 
-    const currentRows = tripFilterType === "vts" ? allVtsRows : unreachableRows;
-    const currentColumns = tripFilterType === "vts"
-        ? [...VTS_COLUMNS, { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" }, { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" }]
-        : UNREACHABLE_COLUMNS;
+    // const currentRows = tripFilterType === "vts" ? allVtsRows : unreachableRows;
+    // const currentColumns = tripFilterType === "vts"
+    //     ? [...VTS_COLUMNS,
+
+    //     ]
+    //     : UNREACHABLE_COLUMNS;
+
+    // Create a map for rows
+    const rowsByType = {
+        vts: allVtsRows,
+        elk: allElkRows,            // <-- add your ELK rows array
+        unreachable: unreachableRows
+    };
+
+    // Create a map for columns
+    const columnsByType = {
+        vts: VTS_COLUMNS,
+        elk: ELK_COLUMNS,           // <-- add your ELK columns array
+        unreachable: UNREACHABLE_COLUMNS
+    };
+
+    // Resolve based on tripFilterType
+    const currentRows = rowsByType[tripFilterType] || [];
+    const currentColumns = columnsByType[tripFilterType] || [];
+
 
     const filteredRows = useMemo(() => {
         if (tripFilterType === "vts") {
+            return currentRows
+                .map((row) => {
+                    const imei = row._imei;
+                    const checkboxComponent = row._isLockedInitial ? (
+                        <MDBox display="flex" justifyContent="center">
+                            <Checkbox
+                                checked={!!selectedRows[imei]}
+                                onChange={() => handleToggleSelect(imei)}
+                                color="info"
+                            />
+                        </MDBox>
+                    ) : (
+                        <MDTypography variant="caption" color="text">-</MDTypography>
+                    );
+                    return {
+                        ...row,
+                        lockUnlock: row.lockUnlock,
+                        checkbox: checkboxComponent,
+                    };
+                })
+                .filter((row) => {
+                    if (!searchTerm) return true;
+                    const term = searchTerm.toLowerCase();
+                    const fields = [
+                        row.accountName?.props?.text,
+                        row.vehicleNo?.props?.text,
+                        row._imei,
+                        row.address?.props?.text,
+                    ].filter(Boolean);
+                    return fields.some((f) => String(f).toLowerCase().includes(term));
+                });
+        }
+        else if (tripFilterType === "elk") {
             return currentRows
                 .map((row) => {
                     const imei = row._imei;
@@ -446,6 +592,7 @@ function Projects({ accountId }) {
                         overflow: "hidden",
                     })}
                 >
+                    {/* ... existing buttons ... */}
                     <MDButton
                         variant={tripFilterType === "vts" ? "contained" : "text"}
                         color={tripFilterType === "vts" ? "info" : "dark"}
@@ -454,6 +601,15 @@ function Projects({ accountId }) {
                         sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
                     >
                         VTS
+                    </MDButton>
+                    <MDButton
+                        variant={tripFilterType === "elk" ? "contained" : "text"}
+                        color={tripFilterType === "elk" ? "info" : "dark"}
+                        size="small"
+                        onClick={() => setTripFilterType("elk")}
+                        sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
+                    >
+                        PADLOCK
                     </MDButton>
                     <MDButton
                         variant={tripFilterType === "unreachable" ? "contained" : "text"}

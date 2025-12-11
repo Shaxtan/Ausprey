@@ -71,7 +71,7 @@ function Dashboard() {
     unreachable: 0,
   });
 
-  const fetchDashboardData = useCallback((accountId) => {
+  const fetchDashboardData = (accountId) => {
     ApiService.getDashboardData(
       { accid: accountId },
       (res) => {
@@ -112,9 +112,8 @@ function Dashboard() {
       true,
       1
     );
-  }, []);
-
-  const fetchAccounts = useCallback(() => {
+  };
+   const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
         setAccounts(res.data.data);
@@ -122,19 +121,29 @@ function Dashboard() {
         console.error("Failed to load account dropdown:", res);
       }
     });
-  }, []);
+  };
 
   useEffect(() => {
+    // 1. Fetch initial data immediately
     fetchAccounts();
     fetchDashboardData(selectedAccountId);
 
-    const intervalId = setInterval(() => {
-      console.log("Auto-refreshing dashboard data...");
-      fetchDashboardData(selectedAccountId);
-    }, 300000);
+    // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
+    // const intervalId = setInterval(() => {
+    //   console.log("Auto-refreshing dashboard data...");
+    //   fetchDashboardData(selectedAccountId);
+    // }, 300000);
 
-    return () => clearInterval(intervalId);
-  }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
+    // 3. Cleanup interval on component unmount or if selectedAccountId changes
+    // return () => clearInterval(intervalId);
+
+  }, [selectedAccountId]);
+
+  const handleAccountChange = (event) => {
+    const newAccountId = event.target.value;
+    setSelectedAccountId(newAccountId);
+    // The useEffect above will handle the data re-fetch.
+  };
 
   // =========================================================================
   // === CHART MEMOIZATION ===
