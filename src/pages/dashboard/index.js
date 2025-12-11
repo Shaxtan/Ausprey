@@ -102,7 +102,8 @@ function Dashboard() {
   // ... (inside Dashboard function, before useEffect)
 
   // Refactored data fetch function to accept accountId
-  const fetchDashboardData = useCallback((accountId) => {
+  // const fetchDashboardData = useCallback((accountId) => {
+  const fetchDashboardData = (accountId) => {
     ApiService.getDashboardData(
       { accid: accountId }, // Pass the account ID in the data payload
       (res) => {
@@ -154,10 +155,11 @@ function Dashboard() {
       true,
       1
     );
-  }, []); // Dependency array empty as it only uses state setters
+  }; // Dependency array empty as it only uses state setters
 
   // Function to fetch the account list
-  const fetchAccounts = useCallback(() => {
+  // const fetchAccounts = useCallback(() => {
+  const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
         setAccounts(res.data.data);
@@ -165,25 +167,40 @@ function Dashboard() {
         console.error("Failed to load account dropdown:", res);
       }
     });
-  }, []);
+  };
+  // }, []);
 
   // ... (replacing the old useEffect)
 
+  // useEffect(() => {
+  //   // 1. Fetch initial data immediately
+  //   fetchAccounts();
+  //   fetchDashboardData(selectedAccountId);
+
+  //   // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
+  //   const intervalId = setInterval(() => {
+  //     console.log("Auto-refreshing dashboard data...");
+  //     fetchDashboardData(selectedAccountId);
+  //   }, 300000);
+
+  //   // 3. Cleanup interval on component unmount or if selectedAccountId changes
+  //   return () => clearInterval(intervalId);
+
+  // }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
   useEffect(() => {
     // 1. Fetch initial data immediately
     fetchAccounts();
     fetchDashboardData(selectedAccountId);
 
     // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
-    const intervalId = setInterval(() => {
-      console.log("Auto-refreshing dashboard data...");
-      fetchDashboardData(selectedAccountId);
-    }, 300000); 
+    // const intervalId = setInterval(() => {
+    //   console.log("Auto-refreshing dashboard data...");
+    //   fetchDashboardData(selectedAccountId);
+    // }, 300000);
 
     // 3. Cleanup interval on component unmount or if selectedAccountId changes
-    return () => clearInterval(intervalId);
-
-  }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
+    // return () => clearInterval(intervalId);
+  }, []);
 
   const handleAccountChange = (event) => {
     const newAccountId = event.target.value;
@@ -331,45 +348,45 @@ function Dashboard() {
 
     // 2. Simulate action and prepare navigation
     setTimeout(() => {
-        let botResponseText = "";
-        let targetPath = null; // Variable to store the destination path
+      let botResponseText = "";
+      let targetPath = null; // Variable to store the destination path
 
-        if (option === "Alert Logs") {
-            botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
-            // Redirect to the Alerts page, optionally passing IMEI as a query parameter
-            targetPath = `/alerts?imei=${activeImei}`; 
-        } else if (option === "Track/Play") {
-            botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
-            // Redirect to the Live Track page, optionally passing IMEI as a query parameter
-            targetPath = `/live-track?imei=${activeImei}`; 
-        } else if (option === "Trip Report") {
-            botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
-            // Assuming you have a reports route
-            targetPath = `/reports/trip?imei=${activeImei}`;
-        } else {
-             // Fallback for unexpected options
-             botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
-        }
-        
-        const botResponse = {
-            type: "bot",
-            text: `${botResponseText} This conversation is now complete. You can close the widget.`,
-        };
-        setMessages((prev) => [...prev, botResponse]);
-        setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
+      if (option === "Alert Logs") {
+        botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
+        // Redirect to the Alerts page, optionally passing IMEI as a query parameter
+        targetPath = `/alerts?imei=${activeImei}`;
+      } else if (option === "Track/Play") {
+        botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
+        // Redirect to the Live Track page, optionally passing IMEI as a query parameter
+        targetPath = `/live-track?imei=${activeImei}`;
+      } else if (option === "Trip Report") {
+        botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
+        // Assuming you have a reports route
+        targetPath = `/reports/trip?imei=${activeImei}`;
+      } else {
+        // Fallback for unexpected options
+        botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
+      }
 
-        // 🔥🔥🔥 ADDED REDIRECTION LOGIC 🔥🔥🔥
-        if (targetPath) {
-            navigate(targetPath);
-            // Optionally, close the chatbot immediately upon navigation
-            setIsChatbotOpen(false); 
-        }
+      const botResponse = {
+        type: "bot",
+        text: `${botResponseText} This conversation is now complete. You can close the widget.`,
+      };
+      setMessages((prev) => [...prev, botResponse]);
+      setChatStep(CHAT_STEP.COMPLETE); // Mark as complete
 
-        // Scroll to bottom (simulated)
-        const body = document.getElementById("chatbot-body-content");
-        if (body) body.scrollTop = body.scrollHeight;
+      // 🔥🔥🔥 ADDED REDIRECTION LOGIC 🔥🔥🔥
+      if (targetPath) {
+        navigate(targetPath);
+        // Optionally, close the chatbot immediately upon navigation
+        setIsChatbotOpen(false);
+      }
+
+      // Scroll to bottom (simulated)
+      const body = document.getElementById("chatbot-body-content");
+      if (body) body.scrollTop = body.scrollHeight;
     }, 1000);
-};
+  };
   // --- INLINE STYLE OBJECTS FOR CHATBOT (Unmodified) ---
 
   const iconStyle = {
@@ -459,12 +476,18 @@ function Dashboard() {
   });
 
   return (
-    <DashboardLayout>
-      <DashboardNavbar handleAccountChange={handleAccountChange} selectedAccountId={selectedAccountId}/>
+    accounts && (
+      <DashboardLayout>
+        <DashboardNavbar
+          handleAccountChange={handleAccountChange}
+          selectedAccountId={selectedAccountId}
+          fetchAccounts={fetchAccounts}
+          accounts={accounts}
+        />
 
-      {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
-      <MDBox py={3} pt={1} pb={1}>
-        {/* <Grid container justifyContent="flex-end" mb={2}>
+        {/* We place the dropdown directly inside MDBox py={3} or a new section for better layout control */}
+        <MDBox py={3} pt={1} pb={1}>
+          {/* <Grid container justifyContent="flex-end" mb={2}>
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <MDBox display="flex" alignItems="center" gap={2}>
               {" "}
@@ -498,361 +521,362 @@ function Dashboard() {
             </MDBox>
           </Grid>
         </Grid> */}
-      </MDBox>
-      {/* --- END: ACCOUNT DROPDOWN SECTION --- */}
-
-      {/* The rest of the content (Cards and Charts) will follow immediately below */}
-      <MDBox py={0}>
-        {/* The existing MDBox py={3} is now MDBox py={0} or removed if the main content starts here */}
-
-        {/* --- Complex Statistics Cards --- (UPDATED WITH LIVE DATA) */}
-        <Grid container spacing={3}>
-          {/* Total Devices */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="dark"
-                icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
-                title="Total Devices"
-                count={summaryData.totalDevices.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  label: "Total Active Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-          {/* Online Motion */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="success" // Makes the card green
-                icon={
-                  <DirectionsRunIcon
-                    style={{
-                      marginTop: "-15px",
-                      color: "white", // 🔥 Makes the icon/logo white
-                    }}
-                  />
-                }
-                title="Online Motion"
-                count={summaryData.onlineMotion.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  label: "Total Online Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-
-          {/* Online Idle */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="warning"
-                icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
-                title="Online Idle"
-                count={summaryData.onlineIdle.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  label: "Total Idle Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-          {/* Online stopped */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="error"
-                icon={<StopIcon style={{ marginTop: "-15px" }} />}
-                title="Online Stopped"
-                count={summaryData.onlineStopped.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  label: "Total Stopped Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-          {/* Offline */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="warning"
-                icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-                title="Offline"
-                count={summaryData.offline.toLocaleString()}
-                percentage={{
-                  color: "error",
-                  label: "Total Offline Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-          {/* Unreachable */}
-          <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="secondary"
-                icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-                title="Unreachable"
-                count={summaryData.unreachable.toLocaleString()}
-                percentage={{
-                  color: "success",
-                  label: "Total Unreacble Fleet",
-                }}
-              />
-            </MDBox>
-          </Grid>
-        </Grid>
-
-        {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
-        <MDBox mt={4}>
-          {/* Pie Charts on a separate row */}
-          <Grid container spacing={2}>
-            {/* Online vs Offline vs Unreachable */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "success", component: <WifiIcon /> }}
-                  title="Online vs Offline vs Unreachable"
-                  // description={
-                  //   // Use <br /> to enforce the vertical stacking of the counts
-                  //   <>
-                  //     Online:{" "}
-                  //     <strong>
-                  //       {(
-                  //         summaryData.onlineMotion +
-                  //         summaryData.onlineIdle +
-                  //         summaryData.onlineStopped
-                  //       ).toLocaleString()}
-                  //     </strong>
-                  //     <br />
-                  //     Offline: <strong>{summaryData.offline.toLocaleString()}</strong>
-                  //     <br />
-                  //     Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                  //   </>
-                  // }
-                  chart={onlineOfflinePieData}
-                />
-              </MDBox>
-            </Grid>
-
-            {/* Vehicle Running Status */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "dark", component: <DonutLargeIcon /> }}
-                  title="Vehicle Running Status"
-                  // description={
-                  //   <>
-                  //     In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
-                  //     Stopped:{" "}
-                  //     <strong>
-                  //       {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
-                  //     </strong>{" "}
-                  //     | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
-                  //     {summaryData.unreachable > 0 && (
-                  //       <>
-                  //         {" "}
-                  //         | Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
-                  //       </>
-                  //     )}
-                  //   </>
-                  // }
-                  chart={allDeviceStatusPieData}
-                />
-              </MDBox>
-            </Grid>
-            {/* ROW 1: EXISTING Pie Chart 3 (Alert Type Distribution) */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
-                  title="Alert Type Distribution"
-                  // description="Breakdown of Critical, Warning, and Info alerts."
-                  chart={alertTypePieData} // Using mock data for alerts
-                />
-              </MDBox>
-            </Grid>
-
-            {/* --- ROW 2: NEW Pie Charts --- */}
-
-            {/* NEW Pie Chart 4 (This will automatically wrap to the next line) */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-                  title="New Chart 4: Fuel Usage"
-                  description="Distribution of fuel consumption types."
-                  chart={newPieData4} // <--- REPLACE with your data
-                />
-              </MDBox>
-            </Grid>
-
-            {/* NEW Pie Chart 5 */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "error", component: <Icon>security</Icon> }}
-                  title="New Chart 5: Geofence Violations"
-                  description="Breakdown of different types of violations."
-                  chart={newPieData5} // <--- REPLACE with your data
-                />
-              </MDBox>
-            </Grid>
-
-            {/* NEW Pie Chart 6 */}
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "info", component: <Icon>healing</Icon> }}
-                  title="New Chart 6: Vehicle Health"
-                  description="Distribution of vehicle diagnostic statuses."
-                  chart={newPieData6} // <--- REPLACE with your data
-                />
-              </MDBox>
-            </Grid>
-          </Grid>
         </MDBox>
+        {/* --- END: ACCOUNT DROPDOWN SECTION --- */}
 
-        {/* --- Projects and Orders Overview Section --- */}
-       {/* --- Projects and Orders Overview Section --- */}
-        <MDBox>
+        {/* The rest of the content (Cards and Charts) will follow immediately below */}
+        <MDBox py={0}>
+          {/* The existing MDBox py={3} is now MDBox py={0} or removed if the main content starts here */}
+
+          {/* --- Complex Statistics Cards --- (UPDATED WITH LIVE DATA) */}
           <Grid container spacing={3}>
-            {/* 🔥 FIX: Changed xs={16}, md={14}, lg={14} to xs={12}.
+            {/* Total Devices */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="dark"
+                  icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
+                  title="Total Devices"
+                  count={summaryData.totalDevices.toLocaleString()}
+                  percentage={{
+                    color: "success",
+                    label: "Total Active Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+            {/* Online Motion */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="success" // Makes the card green
+                  icon={
+                    <DirectionsRunIcon
+                      style={{
+                        marginTop: "-15px",
+                        color: "white", // 🔥 Makes the icon/logo white
+                      }}
+                    />
+                  }
+                  title="Online Motion"
+                  count={summaryData.onlineMotion.toLocaleString()}
+                  percentage={{
+                    color: "success",
+                    label: "Total Online Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+
+            {/* Online Idle */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="warning"
+                  icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
+                  title="Online Idle"
+                  count={summaryData.onlineIdle.toLocaleString()}
+                  percentage={{
+                    color: "success",
+                    label: "Total Idle Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+            {/* Online stopped */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="error"
+                  icon={<StopIcon style={{ marginTop: "-15px" }} />}
+                  title="Online Stopped"
+                  count={summaryData.onlineStopped.toLocaleString()}
+                  percentage={{
+                    color: "success",
+                    label: "Total Stopped Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+            {/* Offline */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="warning"
+                  icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
+                  title="Offline"
+                  count={summaryData.offline.toLocaleString()}
+                  percentage={{
+                    color: "error",
+                    label: "Total Offline Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+            {/* Unreachable */}
+            <Grid item xs={12} md={6} lg={2}>
+              <MDBox mb={1.5}>
+                <ComplexStatisticsCard
+                  color="secondary"
+                  icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
+                  title="Unreachable"
+                  count={summaryData.unreachable.toLocaleString()}
+                  percentage={{
+                    color: "success",
+                    label: "Total Unreacble Fleet",
+                  }}
+                />
+              </MDBox>
+            </Grid>
+          </Grid>
+
+          {/* --- Charts Section --- (UPDATED WITH LIVE DATA) */}
+          <MDBox mt={4}>
+            {/* Pie Charts on a separate row */}
+            <Grid container spacing={2}>
+              {/* Online vs Offline vs Unreachable */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "success", component: <WifiIcon /> }}
+                    title="Online vs Offline vs Unreachable"
+                    // description={
+                    //   // Use <br /> to enforce the vertical stacking of the counts
+                    //   <>
+                    //     Online:{" "}
+                    //     <strong>
+                    //       {(
+                    //         summaryData.onlineMotion +
+                    //         summaryData.onlineIdle +
+                    //         summaryData.onlineStopped
+                    //       ).toLocaleString()}
+                    //     </strong>
+                    //     <br />
+                    //     Offline: <strong>{summaryData.offline.toLocaleString()}</strong>
+                    //     <br />
+                    //     Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                    //   </>
+                    // }
+                    chart={onlineOfflinePieData}
+                  />
+                </MDBox>
+              </Grid>
+
+              {/* Vehicle Running Status */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "dark", component: <DonutLargeIcon /> }}
+                    title="Vehicle Running Status"
+                    // description={
+                    //   <>
+                    //     In Motion: <strong>{summaryData.onlineMotion.toLocaleString()}</strong> |
+                    //     Stopped:{" "}
+                    //     <strong>
+                    //       {(summaryData.onlineStopped + summaryData.offline).toLocaleString()}
+                    //     </strong>{" "}
+                    //     | Idle: <strong>{summaryData.onlineIdle.toLocaleString()}</strong>
+                    //     {summaryData.unreachable > 0 && (
+                    //       <>
+                    //         {" "}
+                    //         | Unreachable: <strong>{summaryData.unreachable.toLocaleString()}</strong>
+                    //       </>
+                    //     )}
+                    //   </>
+                    // }
+                    chart={allDeviceStatusPieData}
+                  />
+                </MDBox>
+              </Grid>
+              {/* ROW 1: EXISTING Pie Chart 3 (Alert Type Distribution) */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
+                    title="Alert Type Distribution"
+                    // description="Breakdown of Critical alerts."
+                    chart={alertTypePieData} // Using mock data for alerts
+                  />
+                </MDBox>
+              </Grid>
+
+              {/* --- ROW 2: NEW Pie Charts --- */}
+
+              {/* NEW Pie Chart 4 (This will automatically wrap to the next line) */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+                    title="New Chart 4: Fuel Usage"
+                    // description="Distribution of fuel consumption types."
+                    chart={newPieData4} // <--- REPLACE with your data
+                  />
+                </MDBox>
+              </Grid>
+
+              {/* NEW Pie Chart 5 */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "error", component: <Icon>security</Icon> }}
+                    title="New Chart 5: Geofence Violations"
+                    // description="Breakdown of different types of violations."
+                    chart={newPieData5} // <--- REPLACE with your data
+                  />
+                </MDBox>
+              </Grid>
+
+              {/* NEW Pie Chart 6 */}
+              <Grid item xs={12} md={6} lg={4}>
+                <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                  <PieChart
+                    icon={{ color: "info", component: <Icon>healing</Icon> }}
+                    title="New Chart 6: Vehicle Health"
+                    // description="Distribution of vehicle diagnostic statuses."
+                    chart={newPieData6} // <--- REPLACE with your data
+                  />
+                </MDBox>
+              </Grid>
+            </Grid>
+          </MDBox>
+
+          {/* --- Projects and Orders Overview Section --- */}
+          {/* --- Projects and Orders Overview Section --- */}
+          <MDBox>
+            <Grid container spacing={3}>
+              {/* 🔥 FIX: Changed xs={16}, md={14}, lg={14} to xs={12}.
                The maximum value in Material UI Grid is 12. 
                Any value higher triggers a full-page scrollbar.
             */}
-            <Grid item xs={12}>
-              {/* 🔥 ADDED: A wrapper to enforce internal scrolling.
+              <Grid item xs={12}>
+                {/* 🔥 ADDED: A wrapper to enforce internal scrolling.
                  This ensures that if the table is huge, only this box scrolls.
               */}
-              <MDBox sx={{ width: "100%", overflowX: "auto" }}>
-                 <Projects accountId={selectedAccountId} />
-              </MDBox>
+                <MDBox sx={{ width: "100%", overflowX: "auto" }}>
+                  <Projects accountId={selectedAccountId} />
+                </MDBox>
+              </Grid>
             </Grid>
-          </Grid>
+          </MDBox>
         </MDBox>
-      </MDBox>
 
-      {/* --- START CHATBOT INTEGRATION SECTION (Unchanged) --- */}
-      {/* ⭐️ CHATBOT ICON BUTTON */}
-      <div style={iconStyle} onClick={toggleChatbot}>
-        <img
-          src={CHATBOT_ICON_PLACEHOLDER}
-          alt="Chatbot Icon"
-          style={{ width: 30, height: 30, filter: "invert(1)" }}
-        />
-      </div>
-
-      {/* ⭐️ CHATBOT WIDGET PANEL */}
-      <div style={widgetStyle}>
-        <div style={headerStyle}>
-          <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
-            Virtual Assistant
-          </MDTypography>
-          <button style={closeBtnStyle} onClick={toggleChatbot}>
-            &times;
-          </button>
+        {/* --- START CHATBOT INTEGRATION SECTION (Unchanged) --- */}
+        {/* ⭐️ CHATBOT ICON BUTTON */}
+        <div style={iconStyle} onClick={toggleChatbot}>
+          <img
+            src={CHATBOT_ICON_PLACEHOLDER}
+            alt="Chatbot Icon"
+            style={{ width: 30, height: 30, filter: "invert(1)" }}
+          />
         </div>
 
-        {/* Chat Body */}
-        <div id="chatbot-body-content" style={bodyStyle}>
-          {messages.map((msg, index) => (
-            <div key={index} style={getMessageStyle(msg.type)}>
-              <MDTypography
-                variant="button"
-                fontWeight="regular"
-                color={msg.type === "user" ? "white" : "dark"}
-                dangerouslySetInnerHTML={{
-                  __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-                }}
-              />
-            </div>
-          ))}
+        {/* ⭐️ CHATBOT WIDGET PANEL */}
+        <div style={widgetStyle}>
+          <div style={headerStyle}>
+            <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
+              Virtual Assistant
+            </MDTypography>
+            <button style={closeBtnStyle} onClick={toggleChatbot}>
+              &times;
+            </button>
+          </div>
 
-          {/* Quick Links / Options */}
-          {chatStep === CHAT_STEP.SHOW_OPTIONS && (
-            <MDBox mt={1}>
-              <MDTypography variant="caption" color="text" sx={{ mb: 1 }}>
-                Options for IMEI: {activeImei}
-              </MDTypography>
-              <MDButton
-                variant="outlined"
-                color="info"
-                fullWidth
-                sx={{ mb: 1.5 }}
-                onClick={() => handleOptionSelect("Track/Play")}
-              >
-                Track/Play
-              </MDButton>
-              <MDButton
-                variant="outlined"
-                color="info"
-                fullWidth
-                sx={{ mb: 1.5 }}
-                onClick={() => handleOptionSelect("Alert Logs")}
-              >
-                Alert Logs
-              </MDButton>
-              <MDButton
-                variant="outlined"
-                color="info"
-                fullWidth
-                onClick={() => handleOptionSelect("Trip Report")}
-              >
-                Trip Report
-              </MDButton>
-            </MDBox>
-          )}
-        </div>
+          {/* Chat Body */}
+          <div id="chatbot-body-content" style={bodyStyle}>
+            {messages.map((msg, index) => (
+              <div key={index} style={getMessageStyle(msg.type)}>
+                <MDTypography
+                  variant="button"
+                  fontWeight="regular"
+                  color={msg.type === "user" ? "white" : "dark"}
+                  dangerouslySetInnerHTML={{
+                    __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+                  }}
+                />
+              </div>
+            ))}
 
-        {/* Chat Input/Footer */}
-        <div style={footerStyle}>
-          {chatStep === CHAT_STEP.ASK_IMEI ? (
-            <>
+            {/* Quick Links / Options */}
+            {chatStep === CHAT_STEP.SHOW_OPTIONS && (
+              <MDBox mt={1}>
+                <MDTypography variant="caption" color="text" sx={{ mb: 1 }}>
+                  Options for IMEI: {activeImei}
+                </MDTypography>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  fullWidth
+                  sx={{ mb: 1.5 }}
+                  onClick={() => handleOptionSelect("Track/Play")}
+                >
+                  Track/Play
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  fullWidth
+                  sx={{ mb: 1.5 }}
+                  onClick={() => handleOptionSelect("Alert Logs")}
+                >
+                  Alert Logs
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  fullWidth
+                  onClick={() => handleOptionSelect("Trip Report")}
+                >
+                  Trip Report
+                </MDButton>
+              </MDBox>
+            )}
+          </div>
+
+          {/* Chat Input/Footer */}
+          <div style={footerStyle}>
+            {chatStep === CHAT_STEP.ASK_IMEI ? (
+              <>
+                <MDInput
+                  type="text"
+                  placeholder="Enter IMEI (e.g., 123456)"
+                  value={imeiInput}
+                  onChange={(e) => setImeiInput(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleImeiSubmit()}
+                  size="small"
+                  fullWidth
+                />
+                <MDButton
+                  variant="gradient"
+                  color="info"
+                  iconOnly
+                  onClick={handleImeiSubmit}
+                  sx={{ minWidth: "40px", height: "36px" }}
+                >
+                  <Icon>
+                    <SendIcon />
+                  </Icon>
+                </MDButton>
+              </>
+            ) : (
               <MDInput
                 type="text"
-                placeholder="Enter IMEI (e.g., 123456)"
-                value={imeiInput}
-                onChange={(e) => setImeiInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleImeiSubmit()}
+                placeholder={
+                  chatStep === CHAT_STEP.COMPLETE
+                    ? "Conversation is complete"
+                    : "Select an option above"
+                }
+                disabled
                 size="small"
                 fullWidth
               />
-              <MDButton
-                variant="gradient"
-                color="info"
-                iconOnly
-                onClick={handleImeiSubmit}
-                sx={{ minWidth: "40px", height: "36px" }}
-              >
-                <Icon>
-                  <SendIcon />
-                </Icon>
-              </MDButton>
-            </>
-          ) : (
-            <MDInput
-              type="text"
-              placeholder={
-                chatStep === CHAT_STEP.COMPLETE
-                  ? "Conversation is complete"
-                  : "Select an option above"
-              }
-              disabled
-              size="small"
-              fullWidth
-            />
-          )}
+            )}
+          </div>
         </div>
-      </div>
-      {/* --- END CHATBOT INTEGRATION SECTION --- */}
+        {/* --- END CHATBOT INTEGRATION SECTION --- */}
 
-      <Footer />
-    </DashboardLayout>
+        <Footer />
+      </DashboardLayout>
+    )
   );
 }
 export default Dashboard;

@@ -68,7 +68,7 @@ const getInitialAccountId = () => {
 };
 // ==============================================================================
 
-function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selectedAccountId }) {
+function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selectedAccountId, fetchAccounts, accounts }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
@@ -78,27 +78,27 @@ function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selecte
   const [openAccountMenu, setOpenAccountMenu] = useState(false);
 
   // --- ACCOUNT DROPDOWN STATE ---
-  const [accounts, setAccounts] = useState([]);
+  // const [accounts, setAccounts] = useState([]);
   // const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   // --- END ACCOUNT DROPDOWN STATE ---
 
   const route = useLocation().pathname.split("/").slice(1);
 
   // Function to fetch the account list (Memoized with useCallback)
-  const fetchAccounts = useCallback(() => {
-    ApiService.getAccountDropdown((res) => {
-      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        setAccounts(res.data.data);
+  // const fetchAccounts = useCallback(() => {
+  //   ApiService.getAccountDropdown((res) => {
+  //     if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+  //       setAccounts(res.data.data);
 
-        if (!selectedAccountId && res.data.data.length > 0) {
-          // Use the prop function to update the account ID in the parent state
-          handleAccountChange({ target: { value: res.data.data[0].id } });
-        }
-      } else {
-        console.error("Failed to load account dropdown:", res);
-      }
-    });
-  }, [selectedAccountId, handleAccountChange]); // Also add handleAccountChange to dependencies
+  //       if (!selectedAccountId && res.data.data.length > 0) {
+  //         // Use the prop function to update the account ID in the parent state
+  //         handleAccountChange({ target: { value: res.data.data[0].id } });
+  //       }
+  //     } else {
+  //       console.error("Failed to load account dropdown:", res);
+  //     }
+  //   });
+  // }, [selectedAccountId, handleAccountChange]); // Also add handleAccountChange to dependencies
 
   // --- STANDARD NAVBAR EFFECTS ---
   useEffect(() => {
@@ -121,9 +121,9 @@ function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selecte
   // --- END STANDARD NAVBAR EFFECTS ---
 
   // --- ACCOUNT DATA FETCH EFFECT ---
-  useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+  // useEffect(() => {
+  //   fetchAccounts();
+  // }, [fetchAccounts]);
   // --- END ACCOUNT DATA FETCH EFFECT ---
 
   // Handlers
@@ -345,7 +345,9 @@ DashboardNavbar.defaultProps = {
   light: false,
   isMini: false,
   handleAccountChange: () => {},
+  fetchAccounts: () => {},
   selectedAccountId: "",
+  accounts: [],
 };
 
 DashboardNavbar.propTypes = {
@@ -353,7 +355,9 @@ DashboardNavbar.propTypes = {
   light: PropTypes.bool,
   isMini: PropTypes.bool,
   handleAccountChange: PropTypes.func.isRequired,
+  fetchAccounts: PropTypes.func.isRequired,
   selectedAccountId: PropTypes.string.isRequired, // adjust type as needed
+  accounts: PropTypes.array.isRequired, // adjust type as needed
 };
 
 export default DashboardNavbar;
