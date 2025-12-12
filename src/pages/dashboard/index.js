@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ApiService from "services/ApiService";
 import { useNavigate } from "react-router-dom";
-
-// @mui icons
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import DevicesIcon from "@mui/icons-material/Devices";
@@ -12,26 +10,20 @@ import DonutLargeIcon from "@mui/icons-material/DonutLarge";
 import Icon from "@mui/material/Icon";
 import StopIcon from "@mui/icons-material/Stop";
 
-// @mui material components
 import Grid from "@mui/material/Grid";
 
-// Material Dashboard 2 React components
 import MDBox from "../../../src/assets/components/MDBox";
 
-// Material Dashboard 2 React example components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
 import Footer from "../../assets/components/examples/Footer";
 import ComplexStatisticsCard from "../../assets/components/examples/Cards/StatisticsCards/ComplexStatisticsCard";
 import PieChart from "../../assets/components/examples/Charts/PieChart";
 
-// Dashboard components
 import Projects from "./components/DashboardTable";
 
-// IMPORT THE NEW CHATBOT COMPONENT
-import Chatbot from "./Chatbot"; // <--- Adjust path if needed
+import Chatbot from "./Chatbot"; 
 
-// Mock Pie Chart Data
 const alertTypePieData = {
   labels: ["Critical (Error)", "Warning", "Informational"],
   datasets: {
@@ -53,13 +45,11 @@ const getInitialAccountId = () => {
 function Dashboard() {
   const navigate = useNavigate();
   
-  // =========================================================================
-  // === API STATE ===
-  // =========================================================================
+  
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
   const [offlineDevices, setOfflineDevices] = useState(0);
-  const [devices, setDevices] = useState([]); // Passed to Chatbot
+  const [devices, setDevices] = useState([]); 
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   const [summaryData, setSummaryData] = useState({
@@ -124,7 +114,6 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    // 1. Fetch initial data immediately
     fetchAccounts();
     fetchDashboardData(selectedAccountId);
 
@@ -145,9 +134,7 @@ function Dashboard() {
     // The useEffect above will handle the data re-fetch.
   };
 
-  // =========================================================================
-  // === CHART MEMOIZATION ===
-  // =========================================================================
+ 
 
   const onlineOfflinePieData = useMemo(() => {
     const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
@@ -204,7 +191,6 @@ function Dashboard() {
     },
   }), []);
 
-  // --- MEMOIZED CHARTS (To prevent scroll refresh) ---
 
   const renderChart1 = useMemo(() => (
     <PieChart
@@ -226,7 +212,6 @@ function Dashboard() {
     <PieChart
       icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
       title="Alert Type Distribution"
-      // description="Breakdown of Critical, Waring, and Info alerts."
       chart={alertTypePieData}
     />
   ), []);
@@ -263,11 +248,9 @@ function Dashboard() {
       <DashboardNavbar />
 
       <MDBox py={3} pt={1} pb={1}>
-        {/* Account selection placeholder */}
       </MDBox>
 
       <MDBox py={0}>
-        {/* --- Statistics Cards --- */}
         <Grid container spacing={3}>
           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
@@ -337,7 +320,6 @@ function Dashboard() {
           </Grid>
         </Grid>
 
-        {/* --- Charts --- */}
         <MDBox mt={4}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
@@ -373,7 +355,6 @@ function Dashboard() {
           </Grid>
         </MDBox>
 
-        {/* --- Table --- */}
         <MDBox>
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -385,8 +366,7 @@ function Dashboard() {
         </MDBox>
       </MDBox>
 
-      {/* --- Chatbot Component --- */}
-      {/* We simply pass the devices data down to the Chatbot */}
+     
       <Chatbot devices={devices} />
 
       <Footer />

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import ApiService from "../../../../services/ApiService";
 
-// @mui material components
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
 import Menu from "@mui/material/Menu";
@@ -17,17 +16,12 @@ import Checkbox from "@mui/material/Checkbox";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 
-// Material Dashboard 2 React components
 import MDBox from "../../../../assets/components/MDBox";
 import MDTypography from "../../../../assets/components/MDTypography";
 import MDButton from "../../../../assets/components/MDButton";
 
-// Material Dashboard 2 React examples
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
-// =====================================================================================
-// HELPER COMPONENTS
-// =====================================================================================
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
     if (isClickable) {
@@ -129,9 +123,6 @@ LockUnlock.propTypes = {
     deviceStatus: PropTypes.string,
 };
 
-// =====================================================================================
-// TABLE COLUMNS
-// =====================================================================================
 
 const VTS_COLUMNS = [
     { Header: "No", accessor: "no", width: "5%", align: "left" },
@@ -176,9 +167,6 @@ const UNREACHABLE_COLUMNS = [
     { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
-// =====================================================================================
-// MAIN COMPONENT
-// =====================================================================================
 
 function Projects({ accountId }) {
     const navigate = useNavigate();
@@ -192,13 +180,11 @@ function Projects({ accountId }) {
     const [selectedRows, setSelectedRows] = useState({});
     const [tripFilterType, setTripFilterType] = useState("vts");
 
-    // 🔥 Page Size State
     const [pageSize, setPageSize] = useState(10);
 
     const openMenu = ({ currentTarget }) => setMenu(currentTarget);
     const closeMenu = () => setMenu(null);
 
-    // 🔥 Handle Dropdown Change
     const handlePageSizeChange = (event) => {
         setPageSize(event.target.value);
     };
@@ -224,10 +210,6 @@ function Projects({ accountId }) {
         },
         [navigate]
     );
-
-    // -----------------------------------------------------------------------------------
-    // Data Fetching Functions
-    // -----------------------------------------------------------------------------------
 
     const fetchVtsData = useCallback(
         (currentAccountId) => {
@@ -578,13 +560,12 @@ function Projects({ accountId }) {
     return (
         <Card sx={{ height: "100%", mt: 3, overflow: "visible" }}>
 
-            {/* --------------------------------- HEADER (TABS) --------------------------------- */}
             <MDBox position="relative" px={3} pt={3} pb={1}>
                 <MDBox
                     display="inline-flex"
                     sx={(theme) => ({
                         position: "absolute",
-                        top: -18, // This moves the tabs up. The mt: 3 on Card ensures space for this.
+                        top: -18, 
                         left: 24,
                         backgroundColor: theme.palette.background.paper,
                         borderRadius: "16px",
@@ -592,7 +573,6 @@ function Projects({ accountId }) {
                         overflow: "hidden",
                     })}
                 >
-                    {/* ... existing buttons ... */}
                     <MDButton
                         variant={tripFilterType === "vts" ? "contained" : "text"}
                         color={tripFilterType === "vts" ? "info" : "dark"}
@@ -633,9 +613,7 @@ function Projects({ accountId }) {
                             </MDTypography>
                         </MDBox>
 
-                        {/* 🔥 FIXED: Search + Select in Flex Container */}
                         <MDBox ml="auto" mr={2} width="50%" display="flex" alignItems="center" justifyContent="flex-end">
-                            {/* Search Box */}
                             <MDBox flexGrow={1} mr={2}>
                                 <TextField
                                     fullWidth
@@ -654,13 +632,12 @@ function Projects({ accountId }) {
                                 />
                             </MDBox>
 
-                            {/* 🔥 Dropdown (Right side of Search) */}
                             <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
                                 <Select
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
                                     displayEmpty
-                                    sx={{ height: "44px" }} // Align height with TextField
+                                    sx={{ height: "44px" }} 
                                 >
                                     <MenuItem value={10}>10</MenuItem>
                                     <MenuItem value={20}>20</MenuItem>
@@ -687,22 +664,16 @@ function Projects({ accountId }) {
                 </MDBox>
             </MDBox>
 
-            {/* <MDBox p={3} mb={0} mt={0} /> */}
 
-            {/* --------------------------------- TABLE --------------------------------- */}
             <MDBox>
                 <DataTable
-                    key={pageSize} // 🔥 Forces update when pageSize changes
+                    key={pageSize} 
                     table={{ columns: currentColumns, rows: filteredRows }}
                     isSorted={false}
-                    // 🔥 Using entriesPerPage={false} to HIDE the duplicate internal dropdown ("next line" issue)
-                    // Note: If you have a specific custom DataTable implementation that needs the entries object to function, 
-                    // you may need to pass the object but hide the internal UI via CSS.
                     entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
                     showTotalEntries={true}
                     pagination={{ variant: "gradient", color: "info" }}
                     noEndBorder
-                    // 🔥 OPTIONAL: Hides the internal "Entries" header if the component still renders it
                     sx={{ "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": { display: "none" } }}
                 />
             </MDBox>

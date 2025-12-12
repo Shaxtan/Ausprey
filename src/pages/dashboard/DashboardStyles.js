@@ -1,8 +1,3 @@
-/** * DashboardStyles.js
- * Contains style objects for the Dashboard and Chatbot components.
- */
-
-// MD Info color (approximate based on your previous code)
 const PRIMARY_COLOR = "#1A73E8"; 
 
 export const chatbotIconStyle = {

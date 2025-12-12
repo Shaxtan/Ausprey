@@ -1,17 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-// 1. IMPORT PROP-TYPES
 import PropTypes from "prop-types"; 
-
-// Material UI Components
 import Icon from "@mui/material/Icon";
 import SendIcon from "@mui/icons-material/Send";
 import MDBox from "../../../src/assets/components/MDBox"; 
 import MDButton from "../../../src/assets/components/MDButton"; 
 import MDTypography from "../../../src/assets/components/MDTypography"; 
 import MDInput from "../../../src/assets/components/MDInput"; 
-
-// Styles
 import {
   chatbotIconStyle,
   getWidgetStyle,
@@ -55,8 +50,7 @@ const Chatbot = ({ devices }) => {
     setMessages((prev) => [...prev, newUserMessage]);
     setImeiInput("");
 
-    // Use the devices prop passed from Dashboard
-    // Added safety check: (devices || []) to prevent crash if prop is null
+   
     const safeDevices = devices || [];
     const foundDevice = safeDevices.find((d) => d.imei === enteredImei);
 
@@ -129,7 +123,6 @@ const Chatbot = ({ devices }) => {
 
   return (
     <>
-      {/* Icon Button */}
       <div style={chatbotIconStyle} onClick={toggleChatbot}>
         <img
           src={CHATBOT_ICON_PLACEHOLDER}
@@ -138,7 +131,6 @@ const Chatbot = ({ devices }) => {
         />
       </div>
 
-      {/* Widget Window */}
       <div style={getWidgetStyle(isChatbotOpen)}>
         <div style={headerStyle}>
           <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
@@ -241,9 +233,8 @@ const Chatbot = ({ devices }) => {
   );
 };
 
-// 2. DEFINE PROP TYPES HERE
 Chatbot.propTypes = {
-  devices: PropTypes.array.isRequired, // Defines that 'devices' must be an array
+  devices: PropTypes.array.isRequired, 
 };
 
 export default Chatbot;
