@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import ApiService from "../../../../services/ApiService";
 
-// @mui material components
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
 import Menu from "@mui/material/Menu";
@@ -16,18 +15,19 @@ import Tooltip from "@mui/material/Tooltip";
 import Checkbox from "@mui/material/Checkbox";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 
-// Material Dashboard 2 React components
 import MDBox from "../../../../assets/components/MDBox";
 import MDTypography from "../../../../assets/components/MDTypography";
 import MDButton from "../../../../assets/components/MDButton";
 
-// Material Dashboard 2 React examples
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
-// =====================================================================================
-// HELPER COMPONENTS
-// =====================================================================================
+// --- Components ---
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -129,10 +129,7 @@ LockUnlock.propTypes = {
   deviceStatus: PropTypes.string,
 };
 
-// =====================================================================================
-// TABLE COLUMNS
-// =====================================================================================
-
+// --- Columns ---
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -159,8 +156,6 @@ const ELK_COLUMNS = [
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
   { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
   { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
-  { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
-  { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
   { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
   { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
@@ -176,10 +171,6 @@ const UNREACHABLE_COLUMNS = [
   { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
-// =====================================================================================
-// MAIN COMPONENT
-// =====================================================================================
-
 function Projects({ accountId }) {
   const navigate = useNavigate();
 
@@ -191,14 +182,17 @@ function Projects({ accountId }) {
   const [unreachableRows, setUnreachableRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
   const [tripFilterType, setTripFilterType] = useState("vts");
-
-  // 🔥 Page Size State
   const [pageSize, setPageSize] = useState(10);
+
+  const [unlockDialog, setUnlockDialog] = useState({
+    open: false,
+    imei: null,
+    vehicleNo: "",
+  });
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
 
-  // 🔥 Handle Dropdown Change
   const handlePageSizeChange = (event) => {
     setPageSize(event.target.value);
   };
@@ -225,9 +219,37 @@ function Projects({ accountId }) {
     [navigate]
   );
 
-  // -----------------------------------------------------------------------------------
-  // Data Fetching Functions
-  // -----------------------------------------------------------------------------------
+  const handleInitiateUnlock = (imei, vehicleNo) => {
+    setUnlockDialog({
+      open: true,
+      imei: imei,
+      vehicleNo: vehicleNo,
+    });
+  };
+
+  const handleCloseUnlockDialog = () => {
+    setUnlockDialog({ open: false, imei: null, vehicleNo: "" });
+  };
+
+  const handleConfirmUnlock = () => {
+    const { imei } = unlockDialog;
+    handleCloseUnlockDialog();
+
+    ApiService.sendCommand(
+      {
+        imei: imei,
+        command: "UNLOCK",
+      },
+      (res) => {
+        if (res?.data?.resultCode === 1) {
+          alert("Unlock command sent successfully!");
+          fetchElkData(accountId);
+        } else {
+          alert("Failed to send unlock command.");
+        }
+      }
+    );
+  };
 
   const fetchVtsData = useCallback(
     (currentAccountId) => {
@@ -259,7 +281,6 @@ function Projects({ accountId }) {
                   </MDBox>
                 ),
                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                // 🔥 UPDATED: Clickable Vehicle No
                 vehicleNo: (
                   <DataCell
                     text={item.vehnum || item.name || "N/A"}
@@ -315,6 +336,7 @@ function Projects({ accountId }) {
     },
     [handleImeiClick]
   );
+
   const fetchElkData = useCallback(
     (currentAccountId) => {
       setLoading(true);
@@ -345,9 +367,15 @@ function Projects({ accountId }) {
                   </MDBox>
                 ),
                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
+                vehicleNo: (
+                  <DataCell
+                    text={item.vehnum || item.name || "N/A"}
+                    fontWeight="bold"
+                    isClickable={true}
+                    onClick={() => handleImeiClick(imei)}
+                  />
+                ),
                 gpsStatus: <Status status={gpsDisplay} />,
-                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
                 imei: (
                   <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />
                 ),
@@ -363,9 +391,6 @@ function Projects({ accountId }) {
                         : "Location Not Available"
                     }
                   />
-                ),
-                avgSpeed: (
-                  <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
                 ),
                 currentSpeed: (
                   <DataCell
@@ -406,7 +431,6 @@ function Projects({ accountId }) {
               no: <DataCell text={index + 1} fontWeight="bold" />,
               accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
-              // 🔥 UPDATED: Clickable Vehicle No
               vehicleNo: (
                 <DataCell
                   text={item.vehnum || "N/A"}
@@ -442,28 +466,18 @@ function Projects({ accountId }) {
     }
   }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData, fetchElkData]);
 
-  // const currentRows = tripFilterType === "vts" ? allVtsRows : unreachableRows;
-  // const currentColumns = tripFilterType === "vts"
-  //     ? [...VTS_COLUMNS,
-
-  //     ]
-  //     : UNREACHABLE_COLUMNS;
-
-  // Create a map for rows
   const rowsByType = {
     vts: allVtsRows,
-    elk: allElkRows, // <-- add your ELK rows array
+    elk: allElkRows,
     unreachable: unreachableRows,
   };
 
-  // Create a map for columns
   const columnsByType = {
     vts: VTS_COLUMNS,
-    elk: ELK_COLUMNS, // <-- add your ELK columns array
+    elk: ELK_COLUMNS,
     unreachable: UNREACHABLE_COLUMNS,
   };
 
-  // Resolve based on tripFilterType
   const currentRows = rowsByType[tripFilterType] || [];
   const currentColumns = columnsByType[tripFilterType] || [];
 
@@ -472,6 +486,7 @@ function Projects({ accountId }) {
       return currentRows
         .map((row) => {
           const imei = row._imei;
+          // Standard Bulk Selection Checkbox
           const checkboxComponent = row._isLockedInitial ? (
             <MDBox display="flex" justifyContent="center">
               <Checkbox
@@ -506,12 +521,15 @@ function Projects({ accountId }) {
       return currentRows
         .map((row) => {
           const imei = row._imei;
+          const vehicleNum = row.vehicleNo?.props?.text;
+
           const checkboxComponent = row._isLockedInitial ? (
             <MDBox display="flex" justifyContent="center">
               <Checkbox
-                checked={!!selectedRows[imei]}
-                onChange={() => handleToggleSelect(imei)}
-                color="info"
+                checked={false}
+                onChange={() => handleInitiateUnlock(imei, vehicleNum)}
+                color="error"
+                inputProps={{ "aria-label": "unlock checkbox" }}
               />
             </MDBox>
           ) : (
@@ -519,6 +537,7 @@ function Projects({ accountId }) {
               -
             </MDTypography>
           );
+
           return {
             ...row,
             lockUnlock: row.lockUnlock,
@@ -560,9 +579,7 @@ function Projects({ accountId }) {
         <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
           <MDTypography variant="h6" ml={2}>
-            {tripFilterType === "vts"
-              ? "Fetching Live Trip Data..."
-              : "Fetching Unreachable Devices..."}
+            {tripFilterType === "vts" ? "Fetching Live Trip Data..." : "Fetching Data..."}
           </MDTypography>
         </MDBox>
       </Card>
@@ -571,13 +588,12 @@ function Projects({ accountId }) {
 
   return (
     <Card sx={{ height: "100%", mt: 3, overflow: "visible" }}>
-      {/* --------------------------------- HEADER (TABS) --------------------------------- */}
       <MDBox position="relative" px={3} pt={3} pb={1}>
         <MDBox
           display="inline-flex"
           sx={(theme) => ({
             position: "absolute",
-            top: -18, // This moves the tabs up. The mt: 3 on Card ensures space for this.
+            top: -18,
             left: 24,
             backgroundColor: theme.palette.background.paper,
             borderRadius: "16px",
@@ -585,7 +601,6 @@ function Projects({ accountId }) {
             overflow: "hidden",
           })}
         >
-          {/* ... existing buttons ... */}
           <MDButton
             variant={tripFilterType === "vts" ? "contained" : "text"}
             color={tripFilterType === "vts" ? "info" : "dark"}
@@ -619,15 +634,17 @@ function Projects({ accountId }) {
           <MDBox display="flex" alignItems="center" width="100%">
             <MDBox mr={3}>
               <MDTypography variant="h6">
-                {tripFilterType === "vts" ? "Live Trip Report Table" : "Unreachable Devices"}
+                {tripFilterType === "vts"
+                  ? "Live Trip Report Table"
+                  : tripFilterType === "elk"
+                  ? "Padlock Devices"
+                  : "Unreachable Devices"}
                 <MDTypography variant="button" color="text" ml={1}>
-                  (<strong>{filteredRows.length}</strong>{" "}
-                  {tripFilterType === "vts" ? "trips" : "devices"} displayed)
+                  (<strong>{filteredRows.length}</strong> displayed)
                 </MDTypography>
               </MDTypography>
             </MDBox>
 
-            {/* 🔥 FIXED: Search + Select in Flex Container */}
             <MDBox
               ml="auto"
               mr={2}
@@ -636,15 +653,12 @@ function Projects({ accountId }) {
               alignItems="center"
               justifyContent="flex-end"
             >
-              {/* Search Box */}
               <MDBox flexGrow={1} mr={2}>
                 <TextField
                   fullWidth
                   size="small"
                   variant="outlined"
-                  placeholder={`Search by ${
-                    tripFilterType === "vts" ? "Vehicle, IMEI..." : "Vehicle, IMEI..."
-                  }`}
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
@@ -657,13 +671,12 @@ function Projects({ accountId }) {
                 />
               </MDBox>
 
-              {/* 🔥 Dropdown (Right side of Search) */}
               <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
                 <Select
                   value={pageSize}
                   onChange={handlePageSizeChange}
                   displayEmpty
-                  sx={{ height: "44px" }} // Align height with TextField
+                  sx={{ height: "44px" }}
                 >
                   <MenuItem value={10}>10</MenuItem>
                   <MenuItem value={20}>20</MenuItem>
@@ -690,27 +703,43 @@ function Projects({ accountId }) {
         </MDBox>
       </MDBox>
 
-      {/* <MDBox p={3} mb={0} mt={0} /> */}
-
-      {/* --------------------------------- TABLE --------------------------------- */}
       <MDBox>
         <DataTable
-          key={pageSize} // 🔥 Forces update when pageSize changes
+          key={pageSize}
           table={{ columns: currentColumns, rows: filteredRows }}
           isSorted={false}
-          // 🔥 Using entriesPerPage={false} to HIDE the duplicate internal dropdown ("next line" issue)
-          // Note: If you have a specific custom DataTable implementation that needs the entries object to function,
-          // you may need to pass the object but hide the internal UI via CSS.
           entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
           showTotalEntries={true}
           pagination={{ variant: "gradient", color: "info" }}
           noEndBorder
-          // 🔥 OPTIONAL: Hides the internal "Entries" header if the component still renders it
           sx={{
             "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": { display: "none" },
           }}
         />
       </MDBox>
+
+      <Dialog
+        open={unlockDialog.open}
+        onClose={handleCloseUnlockDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Confirm Unlock?"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to unlock device <strong>{unlockDialog.vehicleNo}</strong> (IMEI:{" "}
+            {unlockDialog.imei})?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <MDButton onClick={handleCloseUnlockDialog} color="dark">
+            Cancel
+          </MDButton>
+          <MDButton onClick={handleConfirmUnlock} color="info" autoFocus>
+            Confirm Unlock
+          </MDButton>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

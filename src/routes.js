@@ -10,6 +10,9 @@ import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 
 // Material Dashboard 2 React layouts
 import Dashboard from "../src/pages/dashboard";
+// 🔥 Step 1: Import your new component here
+import Dashboard2 from "../src/pages/dashboard2"; 
+
 import Notifications from "../src/pages/notifications";
 import SignIn from "../src/pages/authentication/sign-in";
 import SignUp from "../src/pages/authentication/sign-up";
@@ -28,6 +31,15 @@ const routes = [
     route: "/dashboard",
     component: <Dashboard />,
   },
+  // 🔥 Step 2: Add the new route object here
+  // {
+  //   type: "collapse",
+  //   name: "Dashboard 2",
+  //   key: "dashboard2",
+  //   icon: <Icon fontSize="small">analytics</Icon>, // You can change the icon (e.g., 'speed', 'grid_view')
+  //   route: "/dashboard2",
+  //   component: <Dashboard2 />,
+  // },
   // {
   //   type: "collapse",
   //   name: "Device Config",
