@@ -22,7 +22,7 @@ import PieChart from "../../assets/components/examples/Charts/PieChart";
 
 import Projects from "./components/DashboardTable";
 
-import Chatbot from "./Chatbot"; 
+import Chatbot from "./Chatbot";
 
 const alertTypePieData = {
   labels: ["Critical (Error)", "Warning", "Informational"],
@@ -44,12 +44,11 @@ const getInitialAccountId = () => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  
-  
+
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
   const [offlineDevices, setOfflineDevices] = useState(0);
-  const [devices, setDevices] = useState([]); 
+  const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
   const [summaryData, setSummaryData] = useState({
@@ -111,7 +110,7 @@ function Dashboard() {
       1
     );
   };
-   const fetchAccounts = () => {
+  const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
         setAccounts(res.data.data);
@@ -148,7 +147,6 @@ function Dashboard() {
 
     // 3. Cleanup interval on component unmount or if selectedAccountId changes
     // return () => clearInterval(intervalId);
-
   }, [selectedAccountId]);
 
   const handleAccountChange = (event) => {
@@ -156,8 +154,6 @@ function Dashboard() {
     setSelectedAccountId(newAccountId);
     // The useEffect above will handle the data re-fetch.
   };
-
- 
 
   const onlineOfflinePieData = useMemo(() => {
     const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
@@ -187,95 +183,120 @@ function Dashboard() {
     };
   }, [summaryData]);
 
-  const newPieData4 = useMemo(() => ({
-    labels: ["Category A", "Category B", "Category C"],
-    datasets: {
-      label: "Placeholder Data 4",
-      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-      data: [30, 40, 30],
-    },
-  }), []);
+  const newPieData4 = useMemo(
+    () => ({
+      labels: ["Category A", "Category B", "Category C"],
+      datasets: {
+        label: "Placeholder Data 4",
+        backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
+        data: [30, 40, 30],
+      },
+    }),
+    []
+  );
 
-  const newPieData5 = useMemo(() => ({
-    labels: ["Violations", "Warnings", "Safe Zones"],
-    datasets: {
-      label: "Placeholder Data 5",
-      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-      data: [15, 25, 60],
-    },
-  }), []);
+  const newPieData5 = useMemo(
+    () => ({
+      labels: ["Violations", "Warnings", "Safe Zones"],
+      datasets: {
+        label: "Placeholder Data 5",
+        backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
+        data: [15, 25, 60],
+      },
+    }),
+    []
+  );
 
-  const newPieData6 = useMemo(() => ({
-    labels: ["Good", "Fair", "Poor"],
-    datasets: {
-      label: "Placeholder Data 6",
-      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-      data: [70, 20, 10],
-    },
-  }), []);
+  const newPieData6 = useMemo(
+    () => ({
+      labels: ["Good", "Fair", "Poor"],
+      datasets: {
+        label: "Placeholder Data 6",
+        backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
+        data: [70, 20, 10],
+      },
+    }),
+    []
+  );
 
+  const renderChart1 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "success", component: <WifiIcon /> }}
+        title="Online vs Offline vs Unreachable"
+        chart={onlineOfflinePieData}
+      />
+    ),
+    [onlineOfflinePieData]
+  );
 
-  const renderChart1 = useMemo(() => (
-    <PieChart
-      icon={{ color: "success", component: <WifiIcon /> }}
-      title="Online vs Offline vs Unreachable"
-      chart={onlineOfflinePieData}
-    />
-  ), [onlineOfflinePieData]);
+  const renderChart2 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "dark", component: <DonutLargeIcon /> }}
+        title="Vehicle Running Status"
+        chart={allDeviceStatusPieData}
+      />
+    ),
+    [allDeviceStatusPieData]
+  );
 
-  const renderChart2 = useMemo(() => (
-    <PieChart
-      icon={{ color: "dark", component: <DonutLargeIcon /> }}
-      title="Vehicle Running Status"
-      chart={allDeviceStatusPieData}
-    />
-  ), [allDeviceStatusPieData]);
+  const renderChart3 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
+        title="Alert Type Distribution"
+        chart={alertTypePieData}
+      />
+    ),
+    []
+  );
 
-  const renderChart3 = useMemo(() => (
-    <PieChart
-      icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
-      title="Alert Type Distribution"
-      chart={alertTypePieData}
-    />
-  ), []);
+  const renderChart4 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+        title="New Chart 4: Fuel Usage"
+        description="Distribution of fuel consumption types."
+        chart={newPieData4}
+      />
+    ),
+    [newPieData4]
+  );
 
-  const renderChart4 = useMemo(() => (
-    <PieChart
-      icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-      title="New Chart 4: Fuel Usage"
-      description="Distribution of fuel consumption types."
-      chart={newPieData4}
-    />
-  ), [newPieData4]);
+  const renderChart5 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "error", component: <Icon>security</Icon> }}
+        title="New Chart 5: Geofence Violations"
+        description="Breakdown of different types of violations."
+        chart={newPieData5}
+      />
+    ),
+    [newPieData5]
+  );
 
-  const renderChart5 = useMemo(() => (
-    <PieChart
-      icon={{ color: "error", component: <Icon>security</Icon> }}
-      title="New Chart 5: Geofence Violations"
-      description="Breakdown of different types of violations."
-      chart={newPieData5}
-    />
-  ), [newPieData5]);
-
-  const renderChart6 = useMemo(() => (
-    <PieChart
-      icon={{ color: "info", component: <Icon>healing</Icon> }}
-      title="New Chart 6: Vehicle Health"
-      description="Distribution of vehicle diagnostic statuses."
-      chart={newPieData6}
-    />
-  ), [newPieData6]);
+  const renderChart6 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "info", component: <Icon>healing</Icon> }}
+        title="New Chart 6: Vehicle Health"
+        description="Distribution of vehicle diagnostic statuses."
+        chart={newPieData6}
+      />
+    ),
+    [newPieData6]
+  );
 
   return (
     <DashboardLayout>
-      <DashboardNavbar 
-        accounts={accounts} 
-        selectedAccountId={String(selectedAccountId)} 
+      <DashboardNavbar
+        accounts={accounts}
+        selectedAccountId={String(selectedAccountId)}
         handleAccountChange={handleAccountChange}
       />
 
-      <MDBox py={3} pt={1} pb={1}>
-      </MDBox>
+      <MDBox py={3} pt={1} pb={1}></MDBox>
 
       <MDBox py={0}>
         <Grid container spacing={3}>
@@ -393,12 +414,10 @@ function Dashboard() {
         </MDBox>
       </MDBox>
 
-     
       <Chatbot devices={devices} />
 
-        <Footer />
-      </DashboardLayout>
-    )
+      <Footer />
+    </DashboardLayout>
   );
 }
 export default Dashboard;
