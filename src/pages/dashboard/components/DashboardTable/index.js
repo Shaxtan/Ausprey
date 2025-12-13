@@ -15,6 +15,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Checkbox from "@mui/material/Checkbox";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 
 import MDBox from "../../../../assets/components/MDBox";
 import MDTypography from "../../../../assets/components/MDTypography";
@@ -22,6 +27,7 @@ import MDButton from "../../../../assets/components/MDButton";
 
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
+// --- Components ---
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
     if (isClickable) {
@@ -123,7 +129,7 @@ LockUnlock.propTypes = {
     deviceStatus: PropTypes.string,
 };
 
-
+// --- Columns ---
 const VTS_COLUMNS = [
     { Header: "No", accessor: "no", width: "5%", align: "left" },
     { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -150,8 +156,6 @@ const ELK_COLUMNS = [
     { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
     { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
     { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
-    { Header: "IGNITION", accessor: "ignitionStatus", width: "8%", align: "center" },
-    { Header: "LOAD SENSOR", accessor: "avgSpeed", width: "7%", align: "center" },
     { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
     { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
     { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" }
@@ -179,8 +183,13 @@ function Projects({ accountId }) {
     const [unreachableRows, setUnreachableRows] = useState([]);
     const [selectedRows, setSelectedRows] = useState({});
     const [tripFilterType, setTripFilterType] = useState("vts");
-
     const [pageSize, setPageSize] = useState(10);
+
+    const [unlockDialog, setUnlockDialog] = useState({
+        open: false,
+        imei: null,
+        vehicleNo: ""
+    });
 
     const openMenu = ({ currentTarget }) => setMenu(currentTarget);
     const closeMenu = () => setMenu(null);
@@ -211,6 +220,35 @@ function Projects({ accountId }) {
         [navigate]
     );
 
+    const handleInitiateUnlock = (imei, vehicleNo) => {
+        setUnlockDialog({
+            open: true,
+            imei: imei,
+            vehicleNo: vehicleNo
+        });
+    };
+
+    const handleCloseUnlockDialog = () => {
+        setUnlockDialog({ open: false, imei: null, vehicleNo: "" });
+    };
+
+    const handleConfirmUnlock = () => {
+        const { imei } = unlockDialog;
+        handleCloseUnlockDialog();
+
+        ApiService.sendCommand({ 
+            imei: imei, 
+            command: "UNLOCK", 
+        }, (res) => {
+            if(res?.data?.resultCode === 1) {
+                alert("Unlock command sent successfully!");
+                fetchElkData(accountId); 
+            } else {
+                alert("Failed to send unlock command.");
+            }
+        });
+    };
+
     const fetchVtsData = useCallback(
         (currentAccountId) => {
             setLoading(true);
@@ -227,58 +265,34 @@ function Projects({ accountId }) {
 
                             return {
                                 no: (
-                                    <MDBox
-                                        display="flex"
-                                        alignItems="center"
-                                        gap={0.5}
-                                        justifyContent="flex-start"
-                                    >
+                                    <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
                                         <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
                                             {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
                                         </Icon>
-                                        <MDTypography
-                                            variant="caption"
-                                            fontWeight="bold"
-                                            color={item.ign === "Y" ? "success" : "error"}
-                                        >
+                                        <MDTypography variant="caption" fontWeight="bold" color={item.ign === "Y" ? "success" : "error"}>
                                             {index + 1}
                                         </MDTypography>
                                     </MDBox>
                                 ),
                                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
-                                gpsStatus: <Status status={gpsDisplay} />,
-                                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-                                imei: (
-                                    <DataCell
-                                        text={imei}
-                                        isClickable={true}
-                                        onClick={() => handleImeiClick(imei)}
+                                vehicleNo: (
+                                    <DataCell 
+                                        text={item.vehnum || item.name || "N/A"} 
+                                        fontWeight="bold" 
+                                        isClickable={true} 
+                                        onClick={() => handleImeiClick(imei)} 
                                     />
                                 ),
+                                gpsStatus: <Status status={gpsDisplay} />,
+                                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+                                imei: <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />,
                                 simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
                                 date: <DataCell text={item.devTs || item.cts || "N/A"} />,
                                 latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
                                 longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-                                address: (
-                                    <DataCell
-                                        text={
-                                            item.address && item.address !== "NA"
-                                                ? item.address
-                                                : "Location Not Available"
-                                        }
-                                    />
-                                ),
-                                avgSpeed: (
-                                    <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
-                                ),
-                                currentSpeed: (
-                                    <DataCell
-                                        text={`${speed} km/h`}
-                                        color={speed > 0 ? "success" : "text"}
-                                        fontWeight="bold"
-                                    />
-                                ),
+                                address: <DataCell text={item.address && item.address !== "NA" ? item.address : "Location Not Available"} />,
+                                avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
+                                currentSpeed: <DataCell text={`${speed} km/h`} color={speed > 0 ? "success" : "text"} fontWeight="bold" />,
                                 lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
                                 checkbox: null,
                                 _imei: imei,
@@ -298,6 +312,7 @@ function Projects({ accountId }) {
         },
         [handleImeiClick]
     );
+
     const fetchElkData = useCallback(
         (currentAccountId) => {
             setLoading(true);
@@ -314,58 +329,32 @@ function Projects({ accountId }) {
 
                             return {
                                 no: (
-                                    <MDBox
-                                        display="flex"
-                                        alignItems="center"
-                                        gap={0.5}
-                                        justifyContent="flex-start"
-                                    >
+                                    <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
                                         <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
                                             {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
                                         </Icon>
-                                        <MDTypography
-                                            variant="caption"
-                                            fontWeight="bold"
-                                            color={item.ign === "Y" ? "success" : "error"}
-                                        >
+                                        <MDTypography variant="caption" fontWeight="bold" color={item.ign === "Y" ? "success" : "error"}>
                                             {index + 1}
                                         </MDTypography>
                                     </MDBox>
                                 ),
                                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                                vehicleNo: <DataCell text={item.vehnum || item.name || "N/A"} fontWeight="bold" />,
-                                gpsStatus: <Status status={gpsDisplay} />,
-                                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-                                imei: (
-                                    <DataCell
-                                        text={imei}
-                                        isClickable={true}
-                                        onClick={() => handleImeiClick(imei)}
+                                vehicleNo: (
+                                    <DataCell 
+                                        text={item.vehnum || item.name || "N/A"} 
+                                        fontWeight="bold" 
+                                        isClickable={true} 
+                                        onClick={() => handleImeiClick(imei)} 
                                     />
                                 ),
+                                gpsStatus: <Status status={gpsDisplay} />,
+                                imei: <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />,
                                 simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
                                 date: <DataCell text={item.devTs || item.cts || "N/A"} />,
                                 latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
                                 longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-                                address: (
-                                    <DataCell
-                                        text={
-                                            item.address && item.address !== "NA"
-                                                ? item.address
-                                                : "Location Not Available"
-                                        }
-                                    />
-                                ),
-                                avgSpeed: (
-                                    <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
-                                ),
-                                currentSpeed: (
-                                    <DataCell
-                                        text={`${speed} km/h`}
-                                        color={speed > 0 ? "success" : "text"}
-                                        fontWeight="bold"
-                                    />
-                                ),
+                                address: <DataCell text={item.address && item.address !== "NA" ? item.address : "Location Not Available"} />,
+                                currentSpeed: <DataCell text={`${speed} km/h`} color={speed > 0 ? "success" : "text"} fontWeight="bold" />,
                                 lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
                                 checkbox: null,
                                 _imei: imei,
@@ -400,14 +389,15 @@ function Projects({ accountId }) {
                                 no: <DataCell text={index + 1} fontWeight="bold" />,
                                 accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
                                 accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
-                                vehicleNo: <DataCell text={item.vehnum || "N/A"} fontWeight="bold" />,
-                                imei: (
-                                    <DataCell
-                                        text={imei}
-                                        isClickable={true}
-                                        onClick={() => handleImeiClick(imei)}
+                                vehicleNo: (
+                                    <DataCell 
+                                        text={item.vehnum || "N/A"} 
+                                        fontWeight="bold" 
+                                        isClickable={true} 
+                                        onClick={() => handleImeiClick(imei)} 
                                     />
                                 ),
+                                imei: <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />,
                                 deviceType: <DataCell text={item.deviceType || "N/A"} fontWeight="medium" />,
                                 createdOn: <DataCell text={item.createdOn || "N/A"} fontWeight="medium" />,
                             };
@@ -434,28 +424,18 @@ function Projects({ accountId }) {
         }
     }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData, fetchElkData]);
 
-    // const currentRows = tripFilterType === "vts" ? allVtsRows : unreachableRows;
-    // const currentColumns = tripFilterType === "vts"
-    //     ? [...VTS_COLUMNS,
-
-    //     ]
-    //     : UNREACHABLE_COLUMNS;
-
-    // Create a map for rows
     const rowsByType = {
         vts: allVtsRows,
-        elk: allElkRows,            // <-- add your ELK rows array
+        elk: allElkRows,
         unreachable: unreachableRows
     };
 
-    // Create a map for columns
     const columnsByType = {
         vts: VTS_COLUMNS,
-        elk: ELK_COLUMNS,           // <-- add your ELK columns array
+        elk: ELK_COLUMNS,
         unreachable: UNREACHABLE_COLUMNS
     };
 
-    // Resolve based on tripFilterType
     const currentRows = rowsByType[tripFilterType] || [];
     const currentColumns = columnsByType[tripFilterType] || [];
 
@@ -465,6 +445,7 @@ function Projects({ accountId }) {
             return currentRows
                 .map((row) => {
                     const imei = row._imei;
+                    // Standard Bulk Selection Checkbox
                     const checkboxComponent = row._isLockedInitial ? (
                         <MDBox display="flex" justifyContent="center">
                             <Checkbox
@@ -498,17 +479,21 @@ function Projects({ accountId }) {
             return currentRows
                 .map((row) => {
                     const imei = row._imei;
+                    const vehicleNum = row.vehicleNo?.props?.text; 
+
                     const checkboxComponent = row._isLockedInitial ? (
                         <MDBox display="flex" justifyContent="center">
                             <Checkbox
-                                checked={!!selectedRows[imei]}
-                                onChange={() => handleToggleSelect(imei)}
-                                color="info"
+                                checked={false} 
+                                onChange={() => handleInitiateUnlock(imei, vehicleNum)}
+                                color="error" 
+                                inputProps={{ 'aria-label': 'unlock checkbox' }}
                             />
                         </MDBox>
                     ) : (
                         <MDTypography variant="caption" color="text">-</MDTypography>
                     );
+
                     return {
                         ...row,
                         lockUnlock: row.lockUnlock,
@@ -550,7 +535,7 @@ function Projects({ accountId }) {
                 <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                     <CircularProgress color="info" size={30} />
                     <MDTypography variant="h6" ml={2}>
-                        {tripFilterType === "vts" ? "Fetching Live Trip Data..." : "Fetching Unreachable Devices..."}
+                        {tripFilterType === "vts" ? "Fetching Live Trip Data..." : "Fetching Data..."}
                     </MDTypography>
                 </MDBox>
             </Card>
@@ -565,7 +550,7 @@ function Projects({ accountId }) {
                     display="inline-flex"
                     sx={(theme) => ({
                         position: "absolute",
-                        top: -18, 
+                        top: -18,
                         left: 24,
                         backgroundColor: theme.palette.background.paper,
                         borderRadius: "16px",
@@ -606,9 +591,9 @@ function Projects({ accountId }) {
                     <MDBox display="flex" alignItems="center" width="100%">
                         <MDBox mr={3}>
                             <MDTypography variant="h6">
-                                {tripFilterType === "vts" ? "Live Trip Report Table" : "Unreachable Devices"}
+                                {tripFilterType === "vts" ? "Live Trip Report Table" : tripFilterType === "elk" ? "Padlock Devices" : "Unreachable Devices"}
                                 <MDTypography variant="button" color="text" ml={1}>
-                                    (<strong>{filteredRows.length}</strong> {tripFilterType === "vts" ? "trips" : "devices"} displayed)
+                                    (<strong>{filteredRows.length}</strong> displayed)
                                 </MDTypography>
                             </MDTypography>
                         </MDBox>
@@ -619,7 +604,7 @@ function Projects({ accountId }) {
                                     fullWidth
                                     size="small"
                                     variant="outlined"
-                                    placeholder={`Search by ${tripFilterType === "vts" ? "Vehicle, IMEI..." : "Vehicle, IMEI..."}`}
+                                    placeholder="Search..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     InputProps={{
@@ -637,7 +622,7 @@ function Projects({ accountId }) {
                                     value={pageSize}
                                     onChange={handlePageSizeChange}
                                     displayEmpty
-                                    sx={{ height: "44px" }} 
+                                    sx={{ height: "44px" }}
                                 >
                                     <MenuItem value={10}>10</MenuItem>
                                     <MenuItem value={20}>20</MenuItem>
@@ -664,10 +649,9 @@ function Projects({ accountId }) {
                 </MDBox>
             </MDBox>
 
-
             <MDBox>
                 <DataTable
-                    key={pageSize} 
+                    key={pageSize}
                     table={{ columns: currentColumns, rows: filteredRows }}
                     isSorted={false}
                     entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
@@ -677,6 +661,30 @@ function Projects({ accountId }) {
                     sx={{ "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": { display: "none" } }}
                 />
             </MDBox>
+
+            <Dialog
+                open={unlockDialog.open}
+                onClose={handleCloseUnlockDialog}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    {"Confirm Unlock?"}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        Are you sure you want to unlock device <strong>{unlockDialog.vehicleNo}</strong> (IMEI: {unlockDialog.imei})?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <MDButton onClick={handleCloseUnlockDialog} color="dark">
+                        Cancel
+                    </MDButton>
+                    <MDButton onClick={handleConfirmUnlock} color="info" autoFocus>
+                        Confirm Unlock
+                    </MDButton>
+                </DialogActions>
+            </Dialog>
         </Card>
     );
 }

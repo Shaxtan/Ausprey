@@ -245,7 +245,11 @@ function Dashboard() {
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      <DashboardNavbar 
+        accounts={accounts} 
+        selectedAccountId={String(selectedAccountId)} 
+        handleAccountChange={handleAccountChange}
+      />
 
       <MDBox py={3} pt={1} pb={1}>
       </MDBox>
