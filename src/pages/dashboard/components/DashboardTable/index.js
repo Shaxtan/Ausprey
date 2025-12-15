@@ -138,8 +138,7 @@ LockUnlock.propTypes = {
   isLocked: PropTypes.bool.isRequired,
   deviceStatus: PropTypes.string,
   elkType: PropTypes.string, // NEW PROP ADDED
-};
-// --- Columns ---
+}; // --- Columns ---
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
