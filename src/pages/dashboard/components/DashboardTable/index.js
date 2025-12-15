@@ -84,10 +84,17 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
   let iconName, color, tooltipText;
 
   // 1. Handle ELK-specific lock/unlock based on 'elkType'
-  if (elkType === "L" || elkType === "U") {
-    iconName = elkType === "L" ? "lock" : "lock_open";
-    color = elkType === "L" ? "error" : "success"; // Red for Locked (L), Green for Unlocked (U)
-    tooltipText = elkType === "L" ? "**Device Status: LOCKED**" : "**Device Status: UNLOCKED**";
+  if (elkType === "U" || elkType === "L") {
+    // --- UPDATED LOGIC HERE: Green for Locked (L), Red for Unlocked (U) ---
+    if (elkType === "L") {
+      iconName = "lock";
+      color = "success"; // Green
+      tooltipText = "**Device Status: LOCKED (Ready to Unlock)**";
+    } else {
+      iconName = "lock_open";
+      color = "error"; // Red
+      tooltipText = "**Device Status: UNLOCKED**";
+    }
   } else {
     // 2. Handle specific device alerts (Rope Cut, etc.)
     switch (deviceStatus) {
@@ -109,7 +116,7 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
       default:
         // 3. Handle default VTS status (based on ignition and speed)
         iconName = isLocked ? "lock" : "lock_open";
-        color = isLocked ? "error" : "success";
+        color = isLocked ? "error" : "success"; // Standard logic for VTS
         tooltipText = isLocked
           ? "**Trip Status: Locked (Ready to Unlock)**"
           : "**Trip Status: Unlocked**";
@@ -137,8 +144,10 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
 LockUnlock.propTypes = {
   isLocked: PropTypes.bool.isRequired,
   deviceStatus: PropTypes.string,
-  elkType: PropTypes.string, // NEW PROP ADDED
-}; // --- Columns ---
+  elkType: PropTypes.string,
+};
+
+// --- Columns ---
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -322,19 +331,15 @@ function Projects({ accountId }) {
                     alignItems="flex-start"
                     lineHeight={1.4}
                   >
-                    {/* Primary: Show address if available */}
                     {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
                       <MDTypography variant="caption" color="text">
                         {item.address}
                       </MDTypography>
                     ) : (
                       <>
-                        {/* Fallback text when address is missing */}
                         <MDTypography variant="caption" color="text" fontStyle="italic">
                           Location Not Available
                         </MDTypography>
-
-                        {/* Google Maps link ONLY if lat/lng are valid and address is missing */}
                         {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
                           <MDTypography
                             variant="caption"
@@ -411,8 +416,12 @@ function Projects({ accountId }) {
           const fetchedRows = devices.map((item, index) => {
             const imei = item.imei || "N/A";
             const speed = Number(item.speed) || 0;
-            const isLocked = speed === 0 && item.ign === "Y";
             const elkTypeStatus = item.type;
+            
+            // --- UPDATED LOGIC HERE: Logic for Checkbox ---
+            // 'L' means Locked, so isLocked = true.
+            const isLocked = elkTypeStatus === "L"; 
+
             return {
               no: (
                 <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
@@ -437,7 +446,6 @@ function Projects({ accountId }) {
                   onClick={() => handleImeiClick(imei)}
                 />
               ),
-              // gpsStatus: <Status status={gpsDisplay} />,
               imei: (
                 <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />
               ),
@@ -452,19 +460,15 @@ function Projects({ accountId }) {
                   alignItems="flex-start"
                   lineHeight={1.4}
                 >
-                  {/* Primary: Show address if available */}
                   {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
                     <MDTypography variant="caption" color="text">
                       {item.address}
                     </MDTypography>
                   ) : (
                     <>
-                      {/* Fallback text when address is missing */}
                       <MDTypography variant="caption" color="text" fontStyle="italic">
                         Location Not Available
                       </MDTypography>
-
-                      {/* Google Maps link ONLY if lat/lng are valid and address is missing */}
                       {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
                         <MDTypography
                           variant="caption"
@@ -513,12 +517,12 @@ function Projects({ accountId }) {
                 <LockUnlock
                   isLocked={isLocked}
                   deviceStatus={item.status || null}
-                  elkType={elkTypeStatus} // <-- PASS THE ELK TYPE
+                  elkType={elkTypeStatus}
                 />
               ),
               checkbox: null,
               _imei: imei,
-              _isLockedInitial: isLocked,
+              _isLockedInitial: isLocked, // Pass true if status is "L"
             };
           });
           setAllElkRows(fetchedRows);
@@ -599,7 +603,6 @@ function Projects({ accountId }) {
       return currentRows
         .map((row) => {
           const imei = row._imei;
-          // Standard Bulk Selection Checkbox
           const checkboxComponent = row._isLockedInitial ? (
             <MDBox display="flex" justifyContent="center">
               <Checkbox
@@ -636,6 +639,7 @@ function Projects({ accountId }) {
           const imei = row._imei;
           const vehicleNum = row.vehicleNo?.props?.text;
 
+          // If _isLockedInitial is true (which means status is "L"), show checkbox
           const checkboxComponent = row._isLockedInitial ? (
             <MDBox display="flex" justifyContent="center">
               <Checkbox
