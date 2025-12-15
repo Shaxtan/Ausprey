@@ -136,18 +136,24 @@ function Dashboard() {
 
   // }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
   useEffect(() => {
+    // Fetch accounts once (only when component mounts or selectedAccountId changes if needed)
     fetchAccounts();
+
+    // Initial data fetch
     fetchDashboardData(selectedAccountId);
 
-    // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
-    // const intervalId = setInterval(() => {
-    //   console.log("Auto-refreshing dashboard data...");
-    //   fetchDashboardData(selectedAccountId);
-    // }, 300000);
+    // refresh dashboard data every 5 minutes
+    const intervalId = setInterval(() => {
+      console.log("Auto-refreshing dashboard data every 5 minutes...");
+      fetchDashboardData(selectedAccountId);
+    }, 5 * 60 * 1000); // 5 minutes = 300,000 ms
 
-    // 3. Cleanup interval on component unmount or if selectedAccountId changes
-    // return () => clearInterval(intervalId);
-  }, [selectedAccountId]);
+    // Cleanup interval on unmount or when selectedAccountId changes
+    return () => {
+      clearInterval(intervalId);
+      console.log("Auto-refresh interval cleared");
+    };
+  }, [selectedAccountId]); // Only re-run if selectedAccountId changes
 
   const handleAccountChange = (event) => {
     const newAccountId = event.target.value;

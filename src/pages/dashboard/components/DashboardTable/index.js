@@ -80,32 +80,41 @@ const Ignition = ({ status }) => {
 };
 Ignition.propTypes = { status: PropTypes.number.isRequired };
 
-const LockUnlock = ({ isLocked, deviceStatus }) => {
+const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
   let iconName, color, tooltipText;
 
-  switch (deviceStatus) {
-    case "ROPE_CUT":
-      iconName = "gpp_bad";
-      color = "error";
-      tooltipText = "**Device Alert: Rope Cut Detected**";
-      break;
-    case "CASE_TAMPER":
-      iconName = "lock_person";
-      color = "warning";
-      tooltipText = "**Device Alert: Case Tamper / String Tamper**";
-      break;
-    case "ROPE_INSERT":
-      iconName = "lock_reset";
-      color = "info";
-      tooltipText = "**Device Status: Rope Inserted / Pending Lock**";
-      break;
-    default:
-      iconName = isLocked ? "lock" : "lock_open";
-      color = isLocked ? "error" : "success";
-      tooltipText = isLocked
-        ? "**Trip Status: Locked (Ready to Unlock)**"
-        : "**Trip Status: Unlocked**";
-      break;
+  // 1. Handle ELK-specific lock/unlock based on 'elkType'
+  if (elkType === "L" || elkType === "U") {
+    iconName = elkType === "L" ? "lock" : "lock_open";
+    color = elkType === "L" ? "error" : "success"; // Red for Locked (L), Green for Unlocked (U)
+    tooltipText = elkType === "L" ? "**Device Status: LOCKED**" : "**Device Status: UNLOCKED**";
+  } else {
+    // 2. Handle specific device alerts (Rope Cut, etc.)
+    switch (deviceStatus) {
+      case "ROPE_CUT":
+        iconName = "gpp_bad";
+        color = "error";
+        tooltipText = "**Device Alert: Rope Cut Detected**";
+        break;
+      case "CASE_TAMPER":
+        iconName = "lock_person";
+        color = "warning";
+        tooltipText = "**Device Alert: Case Tamper / String Tamper**";
+        break;
+      case "ROPE_INSERT":
+        iconName = "lock_reset";
+        color = "info";
+        tooltipText = "**Device Status: Rope Inserted / Pending Lock**";
+        break;
+      default:
+        // 3. Handle default VTS status (based on ignition and speed)
+        iconName = isLocked ? "lock" : "lock_open";
+        color = isLocked ? "error" : "success";
+        tooltipText = isLocked
+          ? "**Trip Status: Locked (Ready to Unlock)**"
+          : "**Trip Status: Unlocked**";
+        break;
+    }
   }
 
   return (
@@ -124,11 +133,12 @@ const LockUnlock = ({ isLocked, deviceStatus }) => {
     </MDBox>
   );
 };
+
 LockUnlock.propTypes = {
   isLocked: PropTypes.bool.isRequired,
   deviceStatus: PropTypes.string,
+  elkType: PropTypes.string, // NEW PROP ADDED
 };
-
 // --- Columns ---
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
@@ -340,81 +350,79 @@ function Projects({ accountId }) {
   const fetchElkData = useCallback(
     (currentAccountId) => {
       setLoading(true);
-      ApiService.getDashboardData(
-        { accid: currentAccountId },
-        (res) => {
-          if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
-            const devices = res.data.data.data.ELK.available;
-            const fetchedRows = devices.map((item, index) => {
-              const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
-              const imei = item.imei || "N/A";
-              const speed = Number(item.speed) || 0;
-              const isLocked = speed === 0 && item.ign === "Y";
-
-              return {
-                no: (
-                  <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
-                    <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                      {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
-                    </Icon>
-                    <MDTypography
-                      variant="caption"
-                      fontWeight="bold"
-                      color={item.ign === "Y" ? "success" : "error"}
-                    >
-                      {index + 1}
-                    </MDTypography>
-                  </MDBox>
-                ),
-                accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                vehicleNo: (
-                  <DataCell
-                    text={item.vehnum || item.name || "N/A"}
+      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
+          const devices = res.data.data.data.ELK.available;
+          const fetchedRows = devices.map((item, index) => {
+            const imei = item.imei || "N/A";
+            const speed = Number(item.speed) || 0;
+            const isLocked = speed === 0 && item.ign === "Y";
+            const elkTypeStatus = item.type;
+            return {
+              no: (
+                <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
+                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
+                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                  </Icon>
+                  <MDTypography
+                    variant="caption"
                     fontWeight="bold"
-                    isClickable={true}
-                    onClick={() => handleImeiClick(imei)}
-                  />
-                ),
-                gpsStatus: <Status status={gpsDisplay} />,
-                imei: (
-                  <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />
-                ),
-                simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
-                date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-                latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-                longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-                address: (
-                  <DataCell
-                    text={
-                      item.address && item.address !== "NA"
-                        ? item.address
-                        : "Location Not Available"
-                    }
-                  />
-                ),
-                currentSpeed: (
-                  <DataCell
-                    text={`${speed} km/h`}
-                    color={speed > 0 ? "success" : "text"}
-                    fontWeight="bold"
-                  />
-                ),
-                lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
-                checkbox: null,
-                _imei: imei,
-                _isLockedInitial: isLocked,
-              };
-            });
-            setAllElkRows(fetchedRows);
-            setSelectedRows({});
-          } else {
-            setAllElkRows([]);
-          }
-          setLoading(false);
-        },
-        true,
-        1
-      );
+                    color={item.ign === "Y" ? "success" : "error"}
+                  >
+                    {index + 1}
+                  </MDTypography>
+                </MDBox>
+              ),
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+              vehicleNo: (
+                <DataCell
+                  text={item.vehnum || item.name || "N/A"}
+                  fontWeight="bold"
+                  isClickable={true}
+                  onClick={() => handleImeiClick(imei)}
+                />
+              ),
+              // gpsStatus: <Status status={gpsDisplay} />,
+              imei: (
+                <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />
+              ),
+              simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
+              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+              address: (
+                <DataCell
+                  text={
+                    item.address && item.address !== "NA" ? item.address : "Location Not Available"
+                  }
+                />
+              ),
+              currentSpeed: (
+                <DataCell
+                  text={`${speed} km/h`}
+                  color={speed > 0 ? "success" : "text"}
+                  fontWeight="bold"
+                />
+              ),
+              lockUnlock: (
+                <LockUnlock
+                  isLocked={isLocked}
+                  deviceStatus={item.status || null}
+                  elkType={elkTypeStatus} // <-- PASS THE ELK TYPE
+                />
+              ),
+              checkbox: null,
+              _imei: imei,
+              _isLockedInitial: isLocked,
+            };
+          });
+          setAllElkRows(fetchedRows);
+          setSelectedRows({});
+        } else {
+          setAllElkRows([]);
+        }
+        setLoading(false);
+      });
     },
     [handleImeiClick]
   );
