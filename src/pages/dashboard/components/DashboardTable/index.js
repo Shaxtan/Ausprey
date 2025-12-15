@@ -316,13 +316,61 @@ function Projects({ accountId }) {
                 latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
                 longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
                 address: (
-                  <DataCell
-                    text={
-                      item.address && item.address !== "NA"
-                        ? item.address
-                        : "Location Not Available"
-                    }
-                  />
+                  <MDBox
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="flex-start"
+                    lineHeight={1.4}
+                  >
+                    {/* Primary: Show address if available */}
+                    {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
+                      <MDTypography variant="caption" color="text">
+                        {item.address}
+                      </MDTypography>
+                    ) : (
+                      <>
+                        {/* Fallback text when address is missing */}
+                        <MDTypography variant="caption" color="text" fontStyle="italic">
+                          Location Not Available
+                        </MDTypography>
+
+                        {/* Google Maps link ONLY if lat/lng are valid and address is missing */}
+                        {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
+                          <MDTypography
+                            variant="caption"
+                            color="info"
+                            fontWeight="bold"
+                            sx={{
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              mt: 0.5,
+                              "&:hover": { color: "primary.main" },
+                            }}
+                            onClick={() =>
+                              window.open(
+                                `https://www.google.com/maps?q=${item.lat.toFixed(
+                                  6
+                                )},${item.lng.toFixed(6)}`,
+                                "_blank",
+                                "noopener,noreferrer"
+                              )
+                            }
+                          >
+                            Open in Google Maps ↗
+                          </MDTypography>
+                        ) : (
+                          <MDTypography
+                            variant="caption"
+                            color="textSecondary"
+                            fontSize="0.7rem"
+                            mt={0.5}
+                          >
+                            No coordinates available
+                          </MDTypography>
+                        )}
+                      </>
+                    )}
+                  </MDBox>
                 ),
                 avgSpeed: (
                   <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
@@ -398,11 +446,61 @@ function Projects({ accountId }) {
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: (
-                <DataCell
-                  text={
-                    item.address && item.address !== "NA" ? item.address : "Location Not Available"
-                  }
-                />
+                <MDBox
+                  display="flex"
+                  flexDirection="column"
+                  alignItems="flex-start"
+                  lineHeight={1.4}
+                >
+                  {/* Primary: Show address if available */}
+                  {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
+                    <MDTypography variant="caption" color="text">
+                      {item.address}
+                    </MDTypography>
+                  ) : (
+                    <>
+                      {/* Fallback text when address is missing */}
+                      <MDTypography variant="caption" color="text" fontStyle="italic">
+                        Location Not Available
+                      </MDTypography>
+
+                      {/* Google Maps link ONLY if lat/lng are valid and address is missing */}
+                      {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
+                        <MDTypography
+                          variant="caption"
+                          color="info"
+                          fontWeight="bold"
+                          sx={{
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                            mt: 0.5,
+                            "&:hover": { color: "primary.main" },
+                          }}
+                          onClick={() =>
+                            window.open(
+                              `https://www.google.com/maps?q=${item.lat.toFixed(
+                                6
+                              )},${item.lng.toFixed(6)}`,
+                              "_blank",
+                              "noopener,noreferrer"
+                            )
+                          }
+                        >
+                          Open in Google Maps ↗
+                        </MDTypography>
+                      ) : (
+                        <MDTypography
+                          variant="caption"
+                          color="textSecondary"
+                          fontSize="0.7rem"
+                          mt={0.5}
+                        >
+                          No coordinates available
+                        </MDTypography>
+                      )}
+                    </>
+                  )}
+                </MDBox>
               ),
               currentSpeed: (
                 <DataCell
