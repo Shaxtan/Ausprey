@@ -213,9 +213,18 @@ function Projects({ accountId }) {
         setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
     }, []);
 
+    
     const handleImeiClick = useCallback(
         (imei) => {
-            navigate(`/live-track?imei=${imei}`);
+            if (!imei || imei === "N/A") {
+                console.warn("Invalid IMEI clicked");
+                return;
+            }
+            navigate(`/live-track?imei=${imei}`, { 
+                state: { 
+                    imei: imei 
+                } 
+            });
         },
         [navigate]
     );
