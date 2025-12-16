@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { useLocation } from "react-router-dom";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -272,16 +273,39 @@ export default function LiveTrack() {
   const intervalRef = useRef(null);
   const [liveMetrics, setLiveMetrics] = useState({});
   const [filterStatus, setFilterStatus] = useState("Total");
+  const location = useLocation();
 
+  // src/LiveTrack/LiveTrack.js (Updated useEffect)
   useEffect(() => {
+    const targetImei = location.state?.targetImei;
+    const targetAccountId = location.state?.targetAccountId; // NEW
+
     ApiService.getAllDevices()
       .then((devices) => {
         setAllDevices(devices);
-        if (devices.length > 0) setSelectedDevice(devices[0]);
+
+        let initialSelectedDevice = null;
+
+        if (targetImei) {
+          initialSelectedDevice = devices.find((d) => d.id === targetImei);
+
+          // **ENHANCEMENT:** Use targetAccountId if the device is found and the state provided it
+          if (initialSelectedDevice && targetAccountId) {
+            initialSelectedDevice = {
+              ...initialSelectedDevice,
+              accountId: targetAccountId, // Override/ensure accountId
+            };
+          }
+        }
+
+        if (!initialSelectedDevice && devices.length > 0) {
+          initialSelectedDevice = devices[0];
+        }
+
+        setSelectedDevice(initialSelectedDevice);
       })
       .catch(console.error);
-  }, []);
-
+  }, [location.state]); // Dependency on location.state
   useEffect(() => {
     if (!selectedDevice?.accountId || !selectedDevice?.id) {
       if (intervalRef.current) clearInterval(intervalRef.current);

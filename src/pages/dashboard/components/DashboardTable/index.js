@@ -236,13 +236,17 @@ function Projects({ accountId }) {
         console.warn("Invalid IMEI clicked");
         return;
       }
+
+      // Navigate to /live-track and pass the selected IMEI and current accountId in the state.
+      // This ensures the LiveTrack page can immediately load data for this specific device.
       navigate(`/live-track?imei=${imei}`, {
         state: {
-          imei: imei,
+          targetImei: imei, // Use a clear key like targetImei
+          targetAccountId: accountId, // Pass the accountId to form the complete payload
         },
       });
     },
-    [navigate]
+    [navigate, accountId] // Add accountId to the dependency array
   );
 
   const handleInitiateUnlock = (imei, vehicleNo) => {
@@ -417,10 +421,10 @@ function Projects({ accountId }) {
             const imei = item.imei || "N/A";
             const speed = Number(item.speed) || 0;
             const elkTypeStatus = item.type;
-            
+
             // --- UPDATED LOGIC HERE: Logic for Checkbox ---
             // 'L' means Locked, so isLocked = true.
-            const isLocked = elkTypeStatus === "L"; 
+            const isLocked = elkTypeStatus === "L";
 
             return {
               no: (
