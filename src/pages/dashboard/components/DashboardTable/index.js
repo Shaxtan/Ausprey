@@ -231,7 +231,7 @@ function Projects({ accountId }) {
   }, []);
 
   const handleImeiClick = useCallback(
-    (imei) => {
+    (imei, accountId) => {
       if (!imei || imei === "N/A") {
         console.warn("Invalid IMEI clicked");
         return;
@@ -246,7 +246,7 @@ function Projects({ accountId }) {
         },
       });
     },
-    [navigate, accountId] // Add accountId to the dependency array
+    [navigate] // Add accountId to the dependency array
   );
 
   const handleInitiateUnlock = (imei, vehicleNo) => {
@@ -421,6 +421,7 @@ function Projects({ accountId }) {
             const imei = item.imei || "N/A";
             const speed = Number(item.speed) || 0;
             const elkTypeStatus = item.type;
+            const vehicleAccountId = item.accid;
 
             // --- UPDATED LOGIC HERE: Logic for Checkbox ---
             // 'L' means Locked, so isLocked = true.
@@ -447,11 +448,15 @@ function Projects({ accountId }) {
                   text={item.vehnum || item.name || "N/A"}
                   fontWeight="bold"
                   isClickable={true}
-                  onClick={() => handleImeiClick(imei)}
+                  onClick={() => handleImeiClick(imei, vehicleAccountId)}
                 />
               ),
               imei: (
-                <DataCell text={imei} isClickable={true} onClick={() => handleImeiClick(imei)} />
+                <DataCell
+                  text={imei}
+                  isClickable={true}
+                  onClick={() => handleImeiClick(imei, vehicleAccountId)}
+                />
               ),
               simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
               date: <DataCell text={item.devTs || item.cts || "N/A"} />,
