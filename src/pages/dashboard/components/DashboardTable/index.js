@@ -27,8 +27,6 @@ import MDButton from "../../../../assets/components/MDButton";
 
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
 
-// --- Components ---
-
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
     return (
@@ -83,20 +81,17 @@ Ignition.propTypes = { status: PropTypes.number.isRequired };
 const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
   let iconName, color, tooltipText;
 
-  // 1. Handle ELK-specific lock/unlock based on 'elkType'
   if (elkType === "U" || elkType === "L") {
-    // --- UPDATED LOGIC HERE: Green for Locked (L), Red for Unlocked (U) ---
     if (elkType === "L") {
       iconName = "lock";
-      color = "success"; // Green
+      color = "success";
       tooltipText = "**Device Status: LOCKED (Ready to Unlock)**";
     } else {
       iconName = "lock_open";
-      color = "error"; // Red
+      color = "error";
       tooltipText = "**Device Status: UNLOCKED**";
     }
   } else {
-    // 2. Handle specific device alerts (Rope Cut, etc.)
     switch (deviceStatus) {
       case "ROPE_CUT":
         iconName = "gpp_bad";
@@ -114,9 +109,8 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
         tooltipText = "**Device Status: Rope Inserted / Pending Lock**";
         break;
       default:
-        // 3. Handle default VTS status (based on ignition and speed)
         iconName = isLocked ? "lock" : "lock_open";
-        color = isLocked ? "error" : "success"; // Standard logic for VTS
+        color = isLocked ? "error" : "success";
         tooltipText = isLocked
           ? "**Trip Status: Locked (Ready to Unlock)**"
           : "**Trip Status: Unlocked**";
@@ -147,7 +141,6 @@ LockUnlock.propTypes = {
   elkType: PropTypes.string,
 };
 
-// --- Columns ---
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -206,6 +199,9 @@ function Projects({ accountId }) {
     open: false,
     imei: null,
     vehicleNo: "",
+    isBulk: false,
+    bulkCount: 0,
+    bulkImeis: [],
   });
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
@@ -215,20 +211,27 @@ function Projects({ accountId }) {
     setPageSize(event.target.value);
   };
 
-  const handleBulkUnlock = () => {
-    closeMenu();
-    const imeiToUnlock = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
-    if (imeiToUnlock.length > 0) {
-      alert(`UNLOCK command sent for ${imeiToUnlock.length} trip(s).`);
-      setSelectedRows({});
-    } else {
-      alert("No trips selected.");
-    }
-  };
-
   const handleToggleSelect = useCallback((imei) => {
     setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
   }, []);
+
+  const handleBulkUnlockClick = () => {
+    closeMenu();
+    const imeiToUnlock = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
+
+    if (imeiToUnlock.length > 0) {
+      setUnlockDialog({
+        open: true,
+        imei: null,
+        vehicleNo: "",
+        isBulk: true,
+        bulkCount: imeiToUnlock.length,
+        bulkImeis: imeiToUnlock,
+      });
+    } else {
+      alert("No devices selected. Please check the boxes next to the devices you want to unlock.");
+    }
+  };
 
   const handleImeiClick = useCallback(
     (imei, accountId) => {
@@ -249,36 +252,65 @@ function Projects({ accountId }) {
     [navigate] // Add accountId to the dependency array
   );
 
-  const handleInitiateUnlock = (imei, vehicleNo) => {
+  const handleInitiateSingleUnlock = (imei, vehicleNo) => {
     setUnlockDialog({
       open: true,
       imei: imei,
       vehicleNo: vehicleNo,
+      isBulk: false,
+      bulkCount: 0,
+      bulkImeis: [],
     });
   };
 
   const handleCloseUnlockDialog = () => {
-    setUnlockDialog({ open: false, imei: null, vehicleNo: "" });
+    setUnlockDialog({
+      open: false,
+      imei: null,
+      vehicleNo: "",
+      isBulk: false,
+      bulkCount: 0,
+      bulkImeis: [],
+    });
   };
 
   const handleConfirmUnlock = () => {
-    const { imei } = unlockDialog;
+    const { imei, isBulk, bulkImeis } = unlockDialog;
     handleCloseUnlockDialog();
 
-    ApiService.sendCommand(
-      {
-        imei: imei,
-        command: "UNLOCK",
-      },
-      (res) => {
-        if (res?.data?.resultCode === 1) {
-          alert("Unlock command sent successfully!");
-          fetchElkData(accountId);
-        } else {
-          alert("Failed to send unlock command.");
+    let imeisToSend = [];
+
+    if (isBulk && bulkImeis.length > 0) {
+      imeisToSend = bulkImeis;
+    } else if (imei) {
+      imeisToSend = [imei];
+    }
+
+    if (imeisToSend.length === 0) return;
+
+    let successCount = 0;
+
+    imeisToSend.forEach((targetImei) => {
+      ApiService.sendCommand(
+        {
+          imei: targetImei,
+          command: "UNLOCK",
+        },
+        (res) => {
+          if (res?.data?.resultCode === 1) {
+            successCount++;
+            console.log(`Unlock sent for ${targetImei}`);
+          }
         }
-      }
-    );
+      );
+    });
+
+    alert(`Unlock command initiated for ${imeisToSend.length} device(s).`);
+
+    if (isBulk) setSelectedRows({});
+
+    if (tripFilterType === "elk") fetchElkData(accountId);
+    if (tripFilterType === "vts") fetchVtsData(accountId);
   };
 
   const fetchVtsData = useCallback(
@@ -328,59 +360,7 @@ function Projects({ accountId }) {
                 date: <DataCell text={item.devTs || item.cts || "N/A"} />,
                 latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
                 longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-                address: (
-                  <MDBox
-                    display="flex"
-                    flexDirection="column"
-                    alignItems="flex-start"
-                    lineHeight={1.4}
-                  >
-                    {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
-                      <MDTypography variant="caption" color="text">
-                        {item.address}
-                      </MDTypography>
-                    ) : (
-                      <>
-                        <MDTypography variant="caption" color="text" fontStyle="italic">
-                          Location Not Available
-                        </MDTypography>
-                        {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
-                          <MDTypography
-                            variant="caption"
-                            color="info"
-                            fontWeight="bold"
-                            sx={{
-                              cursor: "pointer",
-                              textDecoration: "underline",
-                              mt: 0.5,
-                              "&:hover": { color: "primary.main" },
-                            }}
-                            onClick={() =>
-                              window.open(
-                                `https://www.google.com/maps?q=${item.lat.toFixed(
-                                  6
-                                )},${item.lng.toFixed(6)}`,
-                                "_blank",
-                                "noopener,noreferrer"
-                              )
-                            }
-                          >
-                            Open in Google Maps ↗
-                          </MDTypography>
-                        ) : (
-                          <MDTypography
-                            variant="caption"
-                            color="textSecondary"
-                            fontSize="0.7rem"
-                            mt={0.5}
-                          >
-                            No coordinates available
-                          </MDTypography>
-                        )}
-                      </>
-                    )}
-                  </MDBox>
-                ),
+                address: <AddressCell item={item} />,
                 avgSpeed: (
                   <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
                 ),
@@ -462,59 +442,7 @@ function Projects({ accountId }) {
               date: <DataCell text={item.devTs || item.cts || "N/A"} />,
               latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
               longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: (
-                <MDBox
-                  display="flex"
-                  flexDirection="column"
-                  alignItems="flex-start"
-                  lineHeight={1.4}
-                >
-                  {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
-                    <MDTypography variant="caption" color="text">
-                      {item.address}
-                    </MDTypography>
-                  ) : (
-                    <>
-                      <MDTypography variant="caption" color="text" fontStyle="italic">
-                        Location Not Available
-                      </MDTypography>
-                      {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
-                        <MDTypography
-                          variant="caption"
-                          color="info"
-                          fontWeight="bold"
-                          sx={{
-                            cursor: "pointer",
-                            textDecoration: "underline",
-                            mt: 0.5,
-                            "&:hover": { color: "primary.main" },
-                          }}
-                          onClick={() =>
-                            window.open(
-                              `https://www.google.com/maps?q=${item.lat.toFixed(
-                                6
-                              )},${item.lng.toFixed(6)}`,
-                              "_blank",
-                              "noopener,noreferrer"
-                            )
-                          }
-                        >
-                          Open in Google Maps ↗
-                        </MDTypography>
-                      ) : (
-                        <MDTypography
-                          variant="caption"
-                          color="textSecondary"
-                          fontSize="0.7rem"
-                          mt={0.5}
-                        >
-                          No coordinates available
-                        </MDTypography>
-                      )}
-                    </>
-                  )}
-                </MDBox>
-              ),
+              address: <AddressCell item={item} />,
               currentSpeed: (
                 <DataCell
                   text={`${speed} km/h`}
@@ -531,7 +459,7 @@ function Projects({ accountId }) {
               ),
               checkbox: null,
               _imei: imei,
-              _isLockedInitial: isLocked, // Pass true if status is "L"
+              _isLockedInitial: isLocked,
             };
           });
           setAllElkRows(fetchedRows);
@@ -608,6 +536,18 @@ function Projects({ accountId }) {
   const currentColumns = columnsByType[tripFilterType] || [];
 
   const filteredRows = useMemo(() => {
+    const matchesSearch = (row) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      const fields = [
+        row.accountName?.props?.text,
+        row.vehicleNo?.props?.text,
+        row._imei,
+        row.address?.props?.children?.props?.children, // Simplified access
+      ].filter(Boolean);
+      return fields.some((f) => String(f).toLowerCase().includes(term));
+    };
+
     if (tripFilterType === "vts") {
       return currentRows
         .map((row) => {
@@ -625,35 +565,19 @@ function Projects({ accountId }) {
               -
             </MDTypography>
           );
-          return {
-            ...row,
-            lockUnlock: row.lockUnlock,
-            checkbox: checkboxComponent,
-          };
+          return { ...row, checkbox: checkboxComponent };
         })
-        .filter((row) => {
-          if (!searchTerm) return true;
-          const term = searchTerm.toLowerCase();
-          const fields = [
-            row.accountName?.props?.text,
-            row.vehicleNo?.props?.text,
-            row._imei,
-            row.address?.props?.text,
-          ].filter(Boolean);
-          return fields.some((f) => String(f).toLowerCase().includes(term));
-        });
+        .filter(matchesSearch);
     } else if (tripFilterType === "elk") {
       return currentRows
         .map((row) => {
           const imei = row._imei;
-          const vehicleNum = row.vehicleNo?.props?.text;
 
-          // If _isLockedInitial is true (which means status is "L"), show checkbox
           const checkboxComponent = row._isLockedInitial ? (
             <MDBox display="flex" justifyContent="center">
               <Checkbox
-                checked={false}
-                onChange={() => handleInitiateUnlock(imei, vehicleNum)}
+                checked={!!selectedRows[imei]}
+                onChange={() => handleToggleSelect(imei)}
                 color="error"
                 inputProps={{ "aria-label": "unlock checkbox" }}
               />
@@ -664,24 +588,11 @@ function Projects({ accountId }) {
             </MDTypography>
           );
 
-          return {
-            ...row,
-            lockUnlock: row.lockUnlock,
-            checkbox: checkboxComponent,
-          };
+          return { ...row, checkbox: checkboxComponent };
         })
-        .filter((row) => {
-          if (!searchTerm) return true;
-          const term = searchTerm.toLowerCase();
-          const fields = [
-            row.accountName?.props?.text,
-            row.vehicleNo?.props?.text,
-            row._imei,
-            row.address?.props?.text,
-          ].filter(Boolean);
-          return fields.some((f) => String(f).toLowerCase().includes(term));
-        });
+        .filter(matchesSearch);
     }
+
     if (tripFilterType === "unreachable") {
       return currentRows.filter((row) => {
         if (!searchTerm) return true;
@@ -691,7 +602,6 @@ function Projects({ accountId }) {
           row.accountId?.props?.text,
           row.vehicleNo?.props?.text,
           row.imei?.props?.text,
-          row.deviceType?.props?.text,
         ].filter(Boolean);
         return fields.some((f) => String(f).toLowerCase().includes(term));
       });
@@ -699,13 +609,15 @@ function Projects({ accountId }) {
     return [];
   }, [currentRows, searchTerm, selectedRows, handleToggleSelect, tripFilterType]);
 
+  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
+
   if (loading) {
     return (
       <Card>
         <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
           <MDTypography variant="h6" ml={2}>
-            {tripFilterType === "vts" ? "Fetching Live Trip Data..." : "Fetching Data..."}
+            Loading Data...
           </MDTypography>
         </MDBox>
       </Card>
@@ -731,7 +643,10 @@ function Projects({ accountId }) {
             variant={tripFilterType === "vts" ? "contained" : "text"}
             color={tripFilterType === "vts" ? "info" : "dark"}
             size="small"
-            onClick={() => setTripFilterType("vts")}
+            onClick={() => {
+              setTripFilterType("vts");
+              setSelectedRows({});
+            }}
             sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
           >
             VTS
@@ -740,7 +655,10 @@ function Projects({ accountId }) {
             variant={tripFilterType === "elk" ? "contained" : "text"}
             color={tripFilterType === "elk" ? "info" : "dark"}
             size="small"
-            onClick={() => setTripFilterType("elk")}
+            onClick={() => {
+              setTripFilterType("elk");
+              setSelectedRows({});
+            }}
             sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "110px", boxShadow: "none" }}
           >
             PADLOCK
@@ -749,7 +667,10 @@ function Projects({ accountId }) {
             variant={tripFilterType === "unreachable" ? "contained" : "text"}
             color={tripFilterType === "unreachable" ? "warning" : "dark"}
             size="small"
-            onClick={() => setTripFilterType("unreachable")}
+            onClick={() => {
+              setTripFilterType("unreachable");
+              setSelectedRows({});
+            }}
             sx={{ borderRadius: 0, px: 2, py: 1, minWidth: "130px", boxShadow: "none" }}
           >
             UNREACHABLE
@@ -761,7 +682,7 @@ function Projects({ accountId }) {
             <MDBox mr={3}>
               <MDTypography variant="h6">
                 {tripFilterType === "vts"
-                  ? "Live Trip Report Table"
+                  ? "Live Trip Report"
                   : tripFilterType === "elk"
                   ? "Padlock Devices"
                   : "Unreachable Devices"}
@@ -770,6 +691,19 @@ function Projects({ accountId }) {
                 </MDTypography>
               </MDTypography>
             </MDBox>
+
+            {selectedCount > 0 && (
+              <MDBox ml={2}>
+                <MDButton
+                  size="small"
+                  variant="gradient"
+                  color="error"
+                  onClick={handleBulkUnlockClick}
+                >
+                  Unlock Selected ({selectedCount})
+                </MDButton>
+              </MDBox>
+            )}
 
             <MDBox
               ml="auto"
@@ -820,8 +754,8 @@ function Projects({ accountId }) {
           </MDBox>
 
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-            {tripFilterType === "vts" && (
-              <MenuItem onClick={handleBulkUnlock}>Bulk Unlock</MenuItem>
+            {(tripFilterType === "vts" || tripFilterType === "elk") && (
+              <MenuItem onClick={handleBulkUnlockClick}>Bulk Unlock</MenuItem>
             )}
             <MenuItem onClick={closeMenu}>Refresh</MenuItem>
             <MenuItem onClick={closeMenu}>Export</MenuItem>
@@ -853,8 +787,17 @@ function Projects({ accountId }) {
         <DialogTitle id="alert-dialog-title">{"Confirm Unlock?"}</DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to unlock device <strong>{unlockDialog.vehicleNo}</strong> (IMEI:{" "}
-            {unlockDialog.imei})?
+            {unlockDialog.isBulk ? (
+              <>
+                Are you sure you want to unlock <strong>{unlockDialog.bulkCount}</strong> selected
+                device(s)?
+              </>
+            ) : (
+              <>
+                Are you sure you want to unlock device <strong>{unlockDialog.vehicleNo}</strong>{" "}
+                (IMEI: {unlockDialog.imei})?
+              </>
+            )}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -869,6 +812,50 @@ function Projects({ accountId }) {
     </Card>
   );
 }
+
+const AddressCell = ({ item }) => (
+  <MDBox display="flex" flexDirection="column" alignItems="flex-start" lineHeight={1.4}>
+    {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
+      <MDTypography variant="caption" color="text">
+        {item.address}
+      </MDTypography>
+    ) : (
+      <>
+        <MDTypography variant="caption" color="text" fontStyle="italic">
+          Location Not Available
+        </MDTypography>
+        {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
+          <MDTypography
+            variant="caption"
+            color="info"
+            fontWeight="bold"
+            sx={{
+              cursor: "pointer",
+              textDecoration: "underline",
+              mt: 0.5,
+              "&:hover": { color: "primary.main" },
+            }}
+            onClick={() =>
+              window.open(
+                `https://www.google.com/maps?q=${item.lat.toFixed(6)},${item.lng.toFixed(6)}`,
+                "_blank",
+                "noopener,noreferrer"
+              )
+            }
+          >
+            Open in Google Maps ↗
+          </MDTypography>
+        ) : (
+          <MDTypography variant="caption" color="textSecondary" fontSize="0.7rem" mt={0.5}>
+            No coordinates available
+          </MDTypography>
+        )}
+      </>
+    )}
+  </MDBox>
+);
+AddressCell.propTypes = { item: PropTypes.object };
+
 Projects.propTypes = {
   accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
 };
