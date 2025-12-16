@@ -32,6 +32,8 @@ import Grid from "@mui/material/Grid";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import MDButton from "../../../MDButton";
 
 // Material Dashboard components
 import MDBox from "../../../MDBox";
@@ -68,7 +70,18 @@ const getInitialAccountId = () => {
 };
 // ==============================================================================
 
-function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selectedAccountId, fetchAccounts, accounts }) {
+function DashboardNavbar({
+  absolute,
+  light,
+  isMini,
+  handleAccountChange,
+  selectedAccountId,
+  fetchAccounts,
+  accounts,
+  onManualRefresh, //refresh handler
+  isRefreshing, //refresh state
+  lastRefreshTime, //timestamp of last refresh
+}) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
@@ -196,6 +209,36 @@ function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selecte
       </MenuItem>
     </Menu>
   );
+  // Countdown Timer Component
+
+  const RefreshCountdown = ({ lastRefreshTime }) => {
+    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes = 300 seconds
+
+    useEffect(() => {
+      const calculateTimeLeft = () => {
+        const diff = Math.max(0, 300 - Math.floor((Date.now() - lastRefreshTime) / 1000));
+        setTimeLeft(diff);
+      };
+
+      calculateTimeLeft();
+      const interval = setInterval(calculateTimeLeft, 1000);
+
+      return () => clearInterval(interval);
+    }, [lastRefreshTime]);
+
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = String(timeLeft % 60).padStart(2, "0");
+
+    return (
+      <MDTypography variant="caption" color="text" fontWeight="medium">
+        Next refresh in {minutes}:{seconds}
+      </MDTypography>
+    );
+  };
+  // PropTypes for Countdown Timer
+  RefreshCountdown.propTypes = {
+    lastRefreshTime: PropTypes.number.isRequired,
+  };
 
   // Icon styling
   const iconsStyle = ({ palette: { dark, white, text }, functions: { rgba } }) => ({
@@ -283,6 +326,29 @@ function DashboardNavbar({ absolute, light, isMini, handleAccountChange, selecte
                 <Icon sx={iconsStyle}>supervisor_account</Icon>
               </IconButton> */}
               {renderAccountMenu()}
+              <MDBox display="flex" alignItems="center" gap={1}>
+                {/* Manual Refresh Button */}
+                <MDButton
+                  variant="text"
+                  color="dark"
+                  size="small"
+                  onClick={onManualRefresh}
+                  disabled={isRefreshing}
+                  startIcon={
+                    isRefreshing ? (
+                      <RefreshIcon sx={{ animation: "spin 1s linear infinite" }} />
+                    ) : (
+                      <RefreshIcon />
+                    )
+                  }
+                  sx={{ textTransform: "none", fontWeight: 500 }}
+                >
+                  {isRefreshing ? "Refreshing..." : "Refresh Now"}
+                </MDButton>
+
+                {/* Countdown Timer */}
+                <RefreshCountdown lastRefreshTime={lastRefreshTime} />
+              </MDBox>
 
               {/* Authentication icon */}
               <IconButton
@@ -348,6 +414,9 @@ DashboardNavbar.defaultProps = {
   fetchAccounts: () => {},
   selectedAccountId: "",
   accounts: [],
+  onManualRefresh: () => {},
+  isRefreshing: false,
+  lastRefreshTime: Date.now(),
 };
 
 DashboardNavbar.propTypes = {
@@ -358,6 +427,9 @@ DashboardNavbar.propTypes = {
   fetchAccounts: PropTypes.func.isRequired,
   selectedAccountId: PropTypes.string.isRequired, // adjust type as needed
   accounts: PropTypes.array.isRequired, // adjust type as needed
+  onManualRefresh: PropTypes.func.isRequired,
+  isRefreshing: PropTypes.bool.isRequired,
+  lastRefreshTime: PropTypes.number.isRequired,
 };
 
 export default DashboardNavbar;

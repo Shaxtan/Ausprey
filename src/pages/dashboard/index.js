@@ -59,8 +59,12 @@ function Dashboard() {
     onlineMotion: 0,
     unreachable: 0,
   });
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchDashboardData = (accountId) => {
+  const fetchDashboardData = useCallback((accountId, isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+
     ApiService.getDashboardData(
       { accid: accountId },
       (res) => {
@@ -93,23 +97,20 @@ function Dashboard() {
             ign: item.ign,
             speed: Number(item.speed) || 0,
           }));
-          const devicesRawELK = apiData.VTS?.available || [];
-          const fetchedELKDevices = devicesRawELK.map((item) => ({
-            imei: item.imei || "N/A",
-            name: item.vehnum || item.name || item.imei,
-            status: item.gps === "A" ? "active" : "inactive",
-            ign: item.ign,
-            speed: Number(item.speed) || 0,
-          }));
           setDevices(fetchedDevices);
+
+          // Update last refresh time + reset states
+          setLastRefreshTime(Date.now());
+          if (isManual) setIsRefreshing(false);
         } else {
           console.error("Invalid dashboard response:", res);
+          if (isManual) setIsRefreshing(false);
         }
       },
       true,
       1
     );
-  };
+  }, []); // dependencies if needed
   const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
@@ -300,6 +301,9 @@ function Dashboard() {
         accounts={accounts}
         selectedAccountId={String(selectedAccountId)}
         handleAccountChange={handleAccountChange}
+        onManualRefresh={() => fetchDashboardData(selectedAccountId, true)}
+        lastRefreshTime={lastRefreshTime}
+        isRefreshing={isRefreshing}
       />
 
       <MDBox py={3} pt={1} pb={1}></MDBox>
