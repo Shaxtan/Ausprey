@@ -23,6 +23,7 @@ import PieChart from "../../assets/components/examples/Charts/PieChart";
 import Projects from "./components/DashboardTable";
 
 import Chatbot from "./Chatbot";
+import AlertModal from "../Modals/Modal"; 
 
 const alertTypePieData = {
   labels: ["Critical (Error)", "Warning", "Informational"],
@@ -45,6 +46,8 @@ const getInitialAccountId = () => {
 function Dashboard() {
   const navigate = useNavigate();
 
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
   const [offlineDevices, setOfflineDevices] = useState(0);
@@ -61,6 +64,9 @@ function Dashboard() {
   });
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleOpenAlertModal = () => setAlertModalOpen(true);
+  const handleCloseAlertModal = () => setAlertModalOpen(false);
 
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -99,7 +105,6 @@ function Dashboard() {
           }));
           setDevices(fetchedDevices);
 
-          // Update last refresh time + reset states
           setLastRefreshTime(Date.now());
           if (isManual) setIsRefreshing(false);
         } else {
@@ -110,7 +115,8 @@ function Dashboard() {
       true,
       1
     );
-  }, []); // dependencies if needed
+  }, []);
+
   const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
@@ -121,45 +127,24 @@ function Dashboard() {
     });
   };
 
-  // useEffect(() => {
-  //   // 1. Fetch initial data immediately
-  //   fetchAccounts();
-  //   fetchDashboardData(selectedAccountId);
-
-  //   // 2. Set up interval to refresh data every 5 minutes (300,000 ms)
-  //   const intervalId = setInterval(() => {
-  //     console.log("Auto-refreshing dashboard data...");
-  //     fetchDashboardData(selectedAccountId);
-  //   }, 300000);
-
-  //   // 3. Cleanup interval on component unmount or if selectedAccountId changes
-  //   return () => clearInterval(intervalId);
-
-  // }, [fetchAccounts, fetchDashboardData, selectedAccountId]);
   useEffect(() => {
-    // Fetch accounts once (only when component mounts or selectedAccountId changes if needed)
     fetchAccounts();
-
-    // Initial data fetch
     fetchDashboardData(selectedAccountId);
 
-    // refresh dashboard data every 5 minutes
     const intervalId = setInterval(() => {
       console.log("Auto-refreshing dashboard data every 5 minutes...");
       fetchDashboardData(selectedAccountId);
-    }, 5 * 60 * 1000); // 5 minutes = 300,000 ms
+    }, 5 * 60 * 1000);
 
-    // Cleanup interval on unmount or when selectedAccountId changes
     return () => {
       clearInterval(intervalId);
       console.log("Auto-refresh interval cleared");
     };
-  }, [selectedAccountId]); // Only re-run if selectedAccountId changes
+  }, [selectedAccountId]);
 
   const handleAccountChange = (event) => {
     const newAccountId = event.target.value;
     setSelectedAccountId(newAccountId);
-    // The useEffect above will handle the data re-fetch.
   };
 
   const onlineOfflinePieData = useMemo(() => {
@@ -310,7 +295,8 @@ function Dashboard() {
 
       <MDBox py={0}>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6} lg={2}>
+            {/* ... (Your Statistics Cards Grid Code - unchanged) ... */}
+           <Grid item xs={12} md={6} lg={2}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="dark"
@@ -390,11 +376,22 @@ function Dashboard() {
                 {renderChart2}
               </MDBox>
             </Grid>
+            
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>
+              <MDBox 
+                mb={3} 
+                sx={{ 
+                  height: "300px !important", 
+                  cursor: "pointer", 
+                  transition: "transform 0.2s", 
+                  "&:hover": { transform: "scale(1.02)" } 
+                }}
+                onClick={handleOpenAlertModal}
+              >
                 {renderChart3}
               </MDBox>
             </Grid>
+
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
                 {renderChart4}
@@ -427,6 +424,9 @@ function Dashboard() {
       <Chatbot devices={devices} />
 
       <Footer />
+      
+      <AlertModal open={alertModalOpen} onClose={handleCloseAlertModal} />
+      
     </DashboardLayout>
   );
 }
