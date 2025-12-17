@@ -381,6 +381,23 @@ class ApiService {
         throw error;
       });
   }
+  getDbAlerts(accId, callback) {
+    return this.postRequest(
+      "/alerts/db-alerts",
+      {}, // Empty body as per your CURL -d ''
+      true,
+      SERVICES.dashboard,
+      { accid: accId } // Query parameter
+    )
+      .then((res) => {
+        if (callback) callback(res);
+        return res;
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch DB alerts");
+        throw error;
+      });
+  }
 }
 
 export { SERVICES };

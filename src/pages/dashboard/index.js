@@ -11,7 +11,6 @@ import Icon from "@mui/material/Icon";
 import StopIcon from "@mui/icons-material/Stop";
 
 import Grid from "@mui/material/Grid";
-
 import MDBox from "../../../src/assets/components/MDBox";
 
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
@@ -21,18 +20,8 @@ import ComplexStatisticsCard from "../../assets/components/examples/Cards/Statis
 import PieChart from "../../assets/components/examples/Charts/PieChart";
 
 import Projects from "./components/DashboardTable";
-
 import Chatbot from "./Chatbot";
-import AlertModal from "../Modals/Modal"; 
-
-const alertTypePieData = {
-  labels: ["Critical (Error)", "Warning", "Informational"],
-  datasets: {
-    label: "Alert Types",
-    backgroundColors: ["error", "warning", "info"],
-    data: [50, 120, 300],
-  },
-};
+import AlertModal from "../Modals/Modal";
 
 const getInitialAccountId = () => {
   try {
@@ -46,7 +35,9 @@ const getInitialAccountId = () => {
 function Dashboard() {
   const navigate = useNavigate();
 
+  // --- States ---
   const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [selectedAlertType, setSelectedAlertType] = useState(null); // Filter for modal
 
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
@@ -54,6 +45,7 @@ function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+
   const [summaryData, setSummaryData] = useState({
     totalDevices: 0,
     offline: 0,
@@ -62,11 +54,27 @@ function Dashboard() {
     onlineMotion: 0,
     unreachable: 0,
   });
+
+  // New state for Alert API Response
+  const [alertApiData, setAlertApiData] = useState({ summary: [], data: [] });
+
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleOpenAlertModal = () => setAlertModalOpen(true);
-  const handleCloseAlertModal = () => setAlertModalOpen(false);
+  const handleCloseAlertModal = () => {
+    setAlertModalOpen(false);
+    setSelectedAlertType(null);
+  };
+
+  // --- API Fetchers ---
+
+  const fetchAlertsData = useCallback((accountId) => {
+    ApiService.getDbAlerts(accountId, (res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        setAlertApiData(res.data.data);
+      }
+    });
+  }, []);
 
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
@@ -96,19 +104,19 @@ function Dashboard() {
           setOfflineDevices(newSummary.offline);
 
           const devicesRaw = apiData.VTS?.available || [];
-          const fetchedDevices = devicesRaw.map((item) => ({
-            imei: item.imei || "N/A",
-            name: item.vehnum || item.name || item.imei,
-            status: item.gps === "A" ? "active" : "inactive",
-            ign: item.ign,
-            speed: Number(item.speed) || 0,
-          }));
-          setDevices(fetchedDevices);
+          setDevices(
+            devicesRaw.map((item) => ({
+              imei: item.imei || "N/A",
+              name: item.vehnum || item.name || item.imei,
+              status: item.gps === "A" ? "active" : "inactive",
+              ign: item.ign,
+              speed: Number(item.speed) || 0,
+            }))
+          );
 
           setLastRefreshTime(Date.now());
           if (isManual) setIsRefreshing(false);
         } else {
-          console.error("Invalid dashboard response:", res);
           if (isManual) setIsRefreshing(false);
         }
       },
@@ -121,8 +129,6 @@ function Dashboard() {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
         setAccounts(res.data.data);
-      } else {
-        console.error("Failed to load account dropdown:", res);
       }
     });
   };
@@ -130,92 +136,84 @@ function Dashboard() {
   useEffect(() => {
     fetchAccounts();
     fetchDashboardData(selectedAccountId);
+    fetchAlertsData(selectedAccountId);
 
     const intervalId = setInterval(() => {
-      console.log("Auto-refreshing dashboard data every 5 minutes...");
       fetchDashboardData(selectedAccountId);
+      fetchAlertsData(selectedAccountId);
     }, 5 * 60 * 1000);
 
-    return () => {
-      clearInterval(intervalId);
-      console.log("Auto-refresh interval cleared");
-    };
-  }, [selectedAccountId]);
+    return () => clearInterval(intervalId);
+  }, [selectedAccountId, fetchDashboardData, fetchAlertsData]);
 
   const handleAccountChange = (event) => {
-    const newAccountId = event.target.value;
-    setSelectedAccountId(newAccountId);
+    setSelectedAccountId(event.target.value);
   };
+
+  // --- Chart Data Processing ---
 
   const onlineOfflinePieData = useMemo(() => {
     const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
-    const offline = summaryData.offline;
-    const unreachable = summaryData.unreachable;
     return {
       labels: ["Online", "Offline", "Unreachable"],
       datasets: {
         label: "Connection Status",
         backgroundColors: ["success", "error", "info"],
-        data: [online, offline, unreachable],
+        data: [online, summaryData.offline, summaryData.unreachable],
       },
     };
   }, [summaryData]);
 
   const allDeviceStatusPieData = useMemo(() => {
-    const inMotion = summaryData.onlineMotion;
-    const stopped = summaryData.onlineStopped + summaryData.offline;
-    const idle = summaryData.onlineIdle;
     return {
       labels: ["In Motion", "Stopped", "Idle"],
       datasets: {
         label: "Vehicle Status",
         backgroundColors: ["success", "error", "warning"],
-        data: [inMotion, stopped, idle],
+        data: [
+          summaryData.onlineMotion,
+          summaryData.onlineStopped + summaryData.offline,
+          summaryData.onlineIdle,
+        ],
       },
     };
   }, [summaryData]);
 
-  const newPieData4 = useMemo(
-    () => ({
-      labels: ["Category A", "Category B", "Category C"],
+  // Dynamic Alerts Pie Data from API Summary
+  const dynamicAlertPieData = useMemo(() => {
+    const labels = alertApiData.summary.map((item) => item.type);
+    const counts = alertApiData.summary.map((item) => item.count);
+    return {
+      labels: labels.length > 0 ? labels : ["No Alerts"],
       datasets: {
-        label: "Placeholder Data 4",
-        backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-        data: [30, 40, 30],
+        label: "Alert Count",
+        backgroundColors: ["error", "warning", "info", "primary", "dark", "secondary"],
+        data: counts.length > 0 ? counts : [0],
       },
-    }),
-    []
-  );
+    };
+  }, [alertApiData]);
 
-  const newPieData5 = useMemo(
-    () => ({
-      labels: ["Violations", "Warnings", "Safe Zones"],
-      datasets: {
-        label: "Placeholder Data 5",
-        backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-        data: [15, 25, 60],
-      },
-    }),
-    []
-  );
+  // Chart Click Handler for Alerts
+  const handleAlertChartClick = (event, elements) => {
+    if (elements && elements.length > 0) {
+      const index = elements[0].index;
+      const type = dynamicAlertPieData.labels[index];
+      setSelectedAlertType(type);
+      setAlertModalOpen(true);
+    }
+  };
 
-  const newPieData6 = useMemo(
-    () => ({
-      labels: ["Good", "Fair", "Poor"],
-      datasets: {
-        label: "Placeholder Data 6",
-        backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-        data: [70, 20, 10],
-      },
-    }),
-    []
-  );
+  // --- Placeholder Charts (Kept as per original structure) ---
+  const placeholderData = (label, colors) => ({
+    labels: ["Category A", "Category B", "Category C"],
+    datasets: { label, backgroundColors: colors, data: [30, 40, 30] },
+  });
 
   const renderChart1 = useMemo(
     () => (
       <PieChart
         icon={{ color: "success", component: <WifiIcon /> }}
-        title="Online vs Offline vs Unreachable"
+        title="Online vs Offline"
         chart={onlineOfflinePieData}
       />
     ),
@@ -238,46 +236,11 @@ function Dashboard() {
       <PieChart
         icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
         title="Alert Type Distribution"
-        chart={alertTypePieData}
+        chart={dynamicAlertPieData}
+        onClick={handleAlertChartClick}
       />
     ),
-    []
-  );
-
-  const renderChart4 = useMemo(
-    () => (
-      <PieChart
-        icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-        title="New Chart 4: Fuel Usage"
-        description="Distribution of fuel consumption types."
-        chart={newPieData4}
-      />
-    ),
-    [newPieData4]
-  );
-
-  const renderChart5 = useMemo(
-    () => (
-      <PieChart
-        icon={{ color: "error", component: <Icon>security</Icon> }}
-        title="New Chart 5: Geofence Violations"
-        description="Breakdown of different types of violations."
-        chart={newPieData5}
-      />
-    ),
-    [newPieData5]
-  );
-
-  const renderChart6 = useMemo(
-    () => (
-      <PieChart
-        icon={{ color: "info", component: <Icon>healing</Icon> }}
-        title="New Chart 6: Vehicle Health"
-        description="Distribution of vehicle diagnostic statuses."
-        chart={newPieData6}
-      />
-    ),
-    [newPieData6]
+    [dynamicAlertPieData]
   );
 
   return (
@@ -286,81 +249,71 @@ function Dashboard() {
         accounts={accounts}
         selectedAccountId={String(selectedAccountId)}
         handleAccountChange={handleAccountChange}
-        onManualRefresh={() => fetchDashboardData(selectedAccountId, true)}
+        onManualRefresh={() => {
+          fetchDashboardData(selectedAccountId, true);
+          fetchAlertsData(selectedAccountId);
+        }}
         lastRefreshTime={lastRefreshTime}
         isRefreshing={isRefreshing}
       />
 
-      <MDBox py={3} pt={1} pb={1}></MDBox>
+      <MDBox py={3} pt={1} pb={1} />
 
       <MDBox py={0}>
         <Grid container spacing={3}>
-            {/* ... (Your Statistics Cards Grid Code - unchanged) ... */}
-           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="dark"
-                icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
-                title="Total Devices"
-                count={summaryData.totalDevices.toLocaleString()}
-                percentage={{ color: "success", label: "Total Active Fleet" }}
-              />
-            </MDBox>
+          <Grid item xs={12} md={6} lg={2}>
+            <ComplexStatisticsCard
+              color="dark"
+              icon={<DevicesIcon style={{ marginTop: "-15px" }} />}
+              title="Total Devices"
+              count={summaryData.totalDevices.toLocaleString()}
+              percentage={{ color: "success", label: "Total Active Fleet" }}
+            />
           </Grid>
           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="success"
-                icon={<DirectionsRunIcon style={{ marginTop: "-15px", color: "white" }} />}
-                title="Online Motion"
-                count={summaryData.onlineMotion.toLocaleString()}
-                percentage={{ color: "success", label: "Total Online Fleet" }}
-              />
-            </MDBox>
+            <ComplexStatisticsCard
+              color="success"
+              icon={<DirectionsRunIcon style={{ marginTop: "-15px", color: "white" }} />}
+              title="Online Motion"
+              count={summaryData.onlineMotion.toLocaleString()}
+              percentage={{ color: "success", label: "Total Online Fleet" }}
+            />
           </Grid>
           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="warning"
-                icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
-                title="Online Idle"
-                count={summaryData.onlineIdle.toLocaleString()}
-                percentage={{ color: "success", label: "Total Idle Fleet" }}
-              />
-            </MDBox>
+            <ComplexStatisticsCard
+              color="warning"
+              icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
+              title="Online Idle"
+              count={summaryData.onlineIdle.toLocaleString()}
+              percentage={{ color: "success", label: "Total Idle Fleet" }}
+            />
           </Grid>
           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="error"
-                icon={<StopIcon style={{ marginTop: "-15px" }} />}
-                title="Online Stopped"
-                count={summaryData.onlineStopped.toLocaleString()}
-                percentage={{ color: "success", label: "Total Stopped Fleet" }}
-              />
-            </MDBox>
+            <ComplexStatisticsCard
+              color="error"
+              icon={<StopIcon style={{ marginTop: "-15px" }} />}
+              title="Online Stopped"
+              count={summaryData.onlineStopped.toLocaleString()}
+              percentage={{ color: "success", label: "Total Stopped Fleet" }}
+            />
           </Grid>
           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="warning"
-                icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-                title="Offline"
-                count={summaryData.offline.toLocaleString()}
-                percentage={{ color: "error", label: "Total Offline Fleet" }}
-              />
-            </MDBox>
+            <ComplexStatisticsCard
+              color="warning"
+              icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
+              title="Offline"
+              count={summaryData.offline.toLocaleString()}
+              percentage={{ color: "error", label: "Total Offline Fleet" }}
+            />
           </Grid>
           <Grid item xs={12} md={6} lg={2}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="secondary"
-                icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
-                title="Unreachable"
-                count={summaryData.unreachable.toLocaleString()}
-                percentage={{ color: "success", label: "Total Unreacble Fleet" }}
-              />
-            </MDBox>
+            <ComplexStatisticsCard
+              color="secondary"
+              icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
+              title="Unreachable"
+              count={summaryData.unreachable.toLocaleString()}
+              percentage={{ color: "success", label: "Total Unreacble Fleet" }}
+            />
           </Grid>
         </Grid>
 
@@ -376,35 +329,46 @@ function Dashboard() {
                 {renderChart2}
               </MDBox>
             </Grid>
-            
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox 
-                mb={3} 
-                sx={{ 
-                  height: "300px !important", 
-                  cursor: "pointer", 
-                  transition: "transform 0.2s", 
-                  "&:hover": { transform: "scale(1.02)" } 
+              <MDBox
+                mb={3}
+                sx={{
+                  height: "300px !important",
+                  cursor: "pointer",
+                  transition: "transform 0.2s",
+                  "&:hover": { transform: "scale(1.02)" },
                 }}
-                onClick={handleOpenAlertModal}
               >
                 {renderChart3}
               </MDBox>
             </Grid>
 
+            {/* Placeholder Rows 4, 5, 6 */}
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart4}
+                <PieChart
+                  icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+                  title="Fuel Usage"
+                  chart={placeholderData("Fuel", ["#4CAF50", "#2196F3", "#FF9800"])}
+                />
               </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart5}
+                <PieChart
+                  icon={{ color: "error", component: <Icon>security</Icon> }}
+                  title="Geofence Violations"
+                  chart={placeholderData("Violations", ["#F44336", "#FFC107", "#00BCD4"])}
+                />
               </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                {renderChart6}
+                <PieChart
+                  icon={{ color: "info", component: <Icon>healing</Icon> }}
+                  title="Vehicle Health"
+                  chart={placeholderData("Health", ["#8BC34A", "#FFEB3B", "#607D8B"])}
+                />
               </MDBox>
             </Grid>
           </Grid>
@@ -422,11 +386,18 @@ function Dashboard() {
       </MDBox>
 
       <Chatbot devices={devices} />
-
       <Footer />
-      
-      <AlertModal open={alertModalOpen} onClose={handleCloseAlertModal} />
-      
+
+      <AlertModal
+        open={alertModalOpen}
+        onClose={handleCloseAlertModal}
+        title={selectedAlertType ? `Alert Details: ${selectedAlertType}` : "Alert Details"}
+        alertData={
+          selectedAlertType
+            ? alertApiData.data.filter((item) => item.type === selectedAlertType)
+            : alertApiData.data
+        }
+      />
     </DashboardLayout>
   );
 }
