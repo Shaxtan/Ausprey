@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 // Components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
-import Projects from "pages/dashboard/components/DashboardTable";
 import Chatbot from "pages/dashboard/Chatbot";
+
+// Import CustomTable and the Helper Component DataCell
+import CustomTable, { DataCell } from "./CustomTable"; 
 
 // Material UI
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
-import Icon from "@mui/material/Icon";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -21,6 +22,15 @@ import Select from "@mui/material/Select";
 // Services
 import ApiService from "services/ApiService";
 import "./Alerts.css";
+
+// 1. Define your Table Columns here
+const ALERT_COLUMNS = [
+  { Header: "No", accessor: "no", width: "5%", align: "left" },
+  { Header: "Vehicle No", accessor: "vehicleNo", width: "15%", align: "left" },
+  { Header: "Alert Type", accessor: "type", width: "20%", align: "left" },
+  { Header: "Time", accessor: "time", width: "20%", align: "center" },
+  { Header: "Message / Location", accessor: "message", width: "40%", align: "left" },
+];
 
 function Alerts() {
   const [accounts, setAccounts] = useState([]);
@@ -32,7 +42,7 @@ function Alerts() {
   const [alertLogs, setAlertLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 1. Fetch Accounts on Mount
+  // Fetch Accounts on Mount
   useEffect(() => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
@@ -45,14 +55,13 @@ function Alerts() {
     });
   }, []);
 
-  // 2. Format Date for API (From "2025-12-17T10:41" to "2025-12-17 10:41:48")
+  // Format Date for API
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return "";
-    // Replace the 'T' separator with a space and add seconds
     return dateTimeString.replace("T", " ") + ":00";
   };
 
-  // 3. Handle Search Submission
+  // Handle Search Submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -67,7 +76,7 @@ function Alerts() {
       accid: selectedAccountId.toString(),
       startTime: formatDateTime(fromDate),
       endTime: formatDateTime(toDate),
-      pageSize: 0, // Default as per your requirement
+      pageSize: 0, 
     };
 
     ApiService.getAlertsByAccount(payload, (res) => {
@@ -81,11 +90,25 @@ function Alerts() {
     });
   };
 
+  // 2. Map API data to Table Rows
+  // We use useMemo to optimize performance so it doesn't remap on every render
+  const tableRows = useMemo(() => {
+    return alertLogs.map((log, index) => ({
+      no: <DataCell text={index + 1} fontWeight="bold" />,
+      // Note: Adjust 'log.vehnum', 'log.alertType' etc. based on your exact API response keys
+      vehicleNo: <DataCell text={log.vehnum || log.vehicleNo || "N/A"} fontWeight="bold" />,
+      type: <DataCell text={log.alertType || log.type || "General Alert"} />,
+      time: <DataCell text={log.devTs || log.time || "N/A"} />,
+      message: <DataCell text={log.msg || log.message || log.location || "No details"} />,
+    }));
+  }, [alertLogs]);
+
   const inputStyleSx = { "& .MuiOutlinedInput-root": { borderRadius: "8px" } };
 
   return (
     <DashboardLayout>
       <MDBox py={3}>
+        {/* Filter Section */}
         <Grid container spacing={3} justifyContent="center">
           <Grid item xs={12}>
             <Card>
@@ -166,26 +189,13 @@ function Alerts() {
           </Grid>
         </Grid>
 
-        {/* Results Table Section */}
+        {/* Results Table Section using CustomTable */}
         <MDBox mt={4}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Card>
-                <MDBox pt={3} px={3} display="flex" justifyContent="space-between">
-                  <MDTypography variant="h6" fontWeight="medium">
-                    Alert Results
-                  </MDTypography>
-                  <MDTypography variant="button" color="text">
-                    Total: {alertLogs.length}
-                  </MDTypography>
-                </MDBox>
-                <MDBox p={2}>
-                  {/* Passing alertLogs as the data source to the Projects table */}
-                  <Projects tableData={alertLogs} />
-                </MDBox>
-              </Card>
-            </Grid>
-          </Grid>
+          <CustomTable 
+            title="Alert Results" 
+            columns={ALERT_COLUMNS} 
+            rows={tableRows} 
+          />
         </MDBox>
       </MDBox>
 
