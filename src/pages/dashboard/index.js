@@ -35,10 +35,8 @@ const getInitialAccountId = () => {
 function Dashboard() {
   const navigate = useNavigate();
 
-  // --- States ---
   const [alertModalOpen, setAlertModalOpen] = useState(false);
-  const [selectedAlertType, setSelectedAlertType] = useState(null); // Filter for modal
-
+  
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
   const [offlineDevices, setOfflineDevices] = useState(0);
@@ -55,18 +53,18 @@ function Dashboard() {
     unreachable: 0,
   });
 
-  // New state for Alert API Response
   const [alertApiData, setAlertApiData] = useState({ summary: [], data: [] });
 
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleCloseAlertModal = () => {
-    setAlertModalOpen(false);
-    setSelectedAlertType(null);
+  const handleOpenAlertModal = () => {
+    setAlertModalOpen(true);
   };
 
-  // --- API Fetchers ---
+  const handleCloseAlertModal = () => {
+    setAlertModalOpen(false);
+  };
 
   const fetchAlertsData = useCallback((accountId) => {
     ApiService.getDbAlerts(accountId, (res) => {
@@ -150,8 +148,7 @@ function Dashboard() {
     setSelectedAccountId(event.target.value);
   };
 
-  // --- Chart Data Processing ---
-
+ 
   const onlineOfflinePieData = useMemo(() => {
     const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
     return {
@@ -179,7 +176,6 @@ function Dashboard() {
     };
   }, [summaryData]);
 
-  // Dynamic Alerts Pie Data from API Summary
   const dynamicAlertPieData = useMemo(() => {
     const labels = alertApiData.summary.map((item) => item.type);
     const counts = alertApiData.summary.map((item) => item.count);
@@ -193,21 +189,33 @@ function Dashboard() {
     };
   }, [alertApiData]);
 
-  // Chart Click Handler for Alerts
-  const handleAlertChartClick = (event, elements) => {
-    if (elements && elements.length > 0) {
-      const index = elements[0].index;
-      const type = dynamicAlertPieData.labels[index];
-      setSelectedAlertType(type);
-      setAlertModalOpen(true);
-    }
-  };
+  const fuelPieData = useMemo(() => ({
+    labels: ["Efficient", "Average", "High Usage"],
+    datasets: { 
+      label: "Fuel", 
+      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"], 
+      data: [30, 40, 30] 
+    },
+  }), []);
 
-  // --- Placeholder Charts (Kept as per original structure) ---
-  const placeholderData = (label, colors) => ({
-    labels: ["Category A", "Category B", "Category C"],
-    datasets: { label, backgroundColors: colors, data: [30, 40, 30] },
-  });
+  const geofencePieData = useMemo(() => ({
+    labels: ["Inside", "Outside", "Violations"],
+    datasets: { 
+      label: "Geofence", 
+      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"], 
+      data: [60, 20, 20] 
+    },
+  }), []);
+
+  const healthPieData = useMemo(() => ({
+    labels: ["Good", "Service Due", "Critical"],
+    datasets: { 
+      label: "Health", 
+      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"], 
+      data: [70, 20, 10] 
+    },
+  }), []);
+
 
   const renderChart1 = useMemo(
     () => (
@@ -237,10 +245,42 @@ function Dashboard() {
         icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
         title="Alert Type Distribution"
         chart={dynamicAlertPieData}
-        onClick={handleAlertChartClick}
       />
     ),
     [dynamicAlertPieData]
+  );
+
+  const renderChart4 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+        title="Fuel Usage"
+        chart={fuelPieData}
+      />
+    ),
+    [fuelPieData]
+  );
+
+  const renderChart5 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "error", component: <Icon>security</Icon> }}
+        title="Geofence Violations"
+        chart={geofencePieData}
+      />
+    ),
+    [geofencePieData]
+  );
+
+  const renderChart6 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "info", component: <Icon>healing</Icon> }}
+        title="Vehicle Health"
+        chart={healthPieData}
+      />
+    ),
+    [healthPieData]
   );
 
   return (
@@ -329,7 +369,7 @@ function Dashboard() {
                 {renderChart2}
               </MDBox>
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
+                        <Grid item xs={12} md={6} lg={4}>
               <MDBox
                 mb={3}
                 sx={{
@@ -338,37 +378,25 @@ function Dashboard() {
                   transition: "transform 0.2s",
                   "&:hover": { transform: "scale(1.02)" },
                 }}
+                onClick={handleOpenAlertModal} 
               >
                 {renderChart3}
               </MDBox>
             </Grid>
 
-            {/* Placeholder Rows 4, 5, 6 */}
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-                  title="Fuel Usage"
-                  chart={placeholderData("Fuel", ["#4CAF50", "#2196F3", "#FF9800"])}
-                />
+                {renderChart4}
               </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "error", component: <Icon>security</Icon> }}
-                  title="Geofence Violations"
-                  chart={placeholderData("Violations", ["#F44336", "#FFC107", "#00BCD4"])}
-                />
+                {renderChart5}
               </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
-                <PieChart
-                  icon={{ color: "info", component: <Icon>healing</Icon> }}
-                  title="Vehicle Health"
-                  chart={placeholderData("Health", ["#8BC34A", "#FFEB3B", "#607D8B"])}
-                />
+                {renderChart6}
               </MDBox>
             </Grid>
           </Grid>
@@ -391,12 +419,8 @@ function Dashboard() {
       <AlertModal
         open={alertModalOpen}
         onClose={handleCloseAlertModal}
-        title={selectedAlertType ? `Alert Details: ${selectedAlertType}` : "Alert Details"}
-        alertData={
-          selectedAlertType
-            ? alertApiData.data.filter((item) => item.type === selectedAlertType)
-            : alertApiData.data
-        }
+        title="All Alerts"
+        alertData={alertApiData.data} 
       />
     </DashboardLayout>
   );
