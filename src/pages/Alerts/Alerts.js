@@ -8,7 +8,7 @@ import MDButton from "../../assets/components/MDButton";
 import Chatbot from "pages/dashboard/Chatbot";
 
 // Import CustomTable and the Helper Component DataCell
-import CustomTable, { DataCell } from "./CustomTable"; 
+import CustomTable, { DataCell } from "./CustomTable";
 
 // Material UI
 import Grid from "@mui/material/Grid";
@@ -76,7 +76,7 @@ function Alerts() {
       accid: selectedAccountId.toString(),
       startTime: formatDateTime(fromDate),
       endTime: formatDateTime(toDate),
-      pageSize: 0, 
+      pageSize: 0,
     };
 
     ApiService.getAlertsByAccount(payload, (res) => {
@@ -90,16 +90,14 @@ function Alerts() {
     });
   };
 
-  // 2. Map API data to Table Rows
-  // We use useMemo to optimize performance so it doesn't remap on every render
+  // Map API data to Table Rows
   const tableRows = useMemo(() => {
     return alertLogs.map((log, index) => ({
       no: <DataCell text={index + 1} fontWeight="bold" />,
-      // Note: Adjust 'log.vehnum', 'log.alertType' etc. based on your exact API response keys
-      vehicleNo: <DataCell text={log.vehnum || log.vehicleNo || "N/A"} fontWeight="bold" />,
-      type: <DataCell text={log.alertType || log.type || "General Alert"} />,
-      time: <DataCell text={log.devTs || log.time || "N/A"} />,
-      message: <DataCell text={log.msg || log.message || log.location || "No details"} />,
+      vehicleNo: <DataCell text={log.vehicleNumber || "N/A"} fontWeight="bold" />,
+      type: <DataCell text={log.type || "General Alert"} />,
+      time: <DataCell text={log.deviceTime || "N/A"} />,
+      message: <DataCell text={log.message || "No details"} />,
     }));
   }, [alertLogs]);
 
@@ -191,11 +189,7 @@ function Alerts() {
 
         {/* Results Table Section using CustomTable */}
         <MDBox mt={4}>
-          <CustomTable 
-            title="Alert Results" 
-            columns={ALERT_COLUMNS} 
-            rows={tableRows} 
-          />
+          <CustomTable title="Alert Results" columns={ALERT_COLUMNS} rows={tableRows} />
         </MDBox>
       </MDBox>
 
