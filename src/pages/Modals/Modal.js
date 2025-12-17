@@ -14,10 +14,9 @@ import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
-import MDBox from "../../assets/components/MDBox"; 
-import MDTypography from "../../assets/components/MDTypography"; 
-import DataTable from "../../assets/components/examples/Tables/DataTable"; 
-
+import MDBox from "../../assets/components/MDBox";
+import MDTypography from "../../assets/components/MDTypography";
+import DataTable from "../../assets/components/examples/Tables/DataTable";
 
 export const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -53,7 +52,7 @@ export const Status = ({ status }) => {
   if (status === "Critical" || status === "Error") color = "error";
   if (status === "Warning") color = "warning";
   if (status === "Informational") color = "info";
-  
+
   return (
     <MDBox lineHeight={1}>
       <MDTypography variant="caption" color={color} fontWeight="bold">
@@ -66,7 +65,6 @@ export const Status = ({ status }) => {
 Status.propTypes = {
   status: PropTypes.string.isRequired,
 };
-
 
 function CustomTable({ title, columns, rows }) {
   const [menu, setMenu] = useState(null);
@@ -108,7 +106,14 @@ function CustomTable({ title, columns, rows }) {
               </MDTypography>
             </MDBox>
 
-            <MDBox ml="auto" mr={2} width="50%" display="flex" alignItems="center" justifyContent="flex-end">
+            <MDBox
+              ml="auto"
+              mr={2}
+              width="50%"
+              display="flex"
+              alignItems="center"
+              justifyContent="flex-end"
+            >
               <MDBox flexGrow={1} mr={2}>
                 <TextField
                   fullWidth
@@ -127,7 +132,12 @@ function CustomTable({ title, columns, rows }) {
                 />
               </MDBox>
               <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
-                <Select value={pageSize} onChange={handlePageSizeChange} displayEmpty sx={{ height: "44px" }}>
+                <Select
+                  value={pageSize}
+                  onChange={handlePageSizeChange}
+                  displayEmpty
+                  sx={{ height: "44px" }}
+                >
                   <MenuItem value={10}>10</MenuItem>
                   <MenuItem value={20}>20</MenuItem>
                   <MenuItem value={50}>50</MenuItem>
@@ -135,7 +145,9 @@ function CustomTable({ title, columns, rows }) {
               </FormControl>
             </MDBox>
             <MDBox>
-              <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>more_vert</Icon>
+              <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
+                more_vert
+              </Icon>
             </MDBox>
           </MDBox>
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
@@ -153,7 +165,9 @@ function CustomTable({ title, columns, rows }) {
           showTotalEntries={true}
           pagination={{ variant: "gradient", color: "info" }}
           noEndBorder
-          sx={{ "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": { display: "none" } }}
+          sx={{
+            "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": { display: "none" },
+          }}
         />
       </MDBox>
     </Card>
@@ -166,57 +180,54 @@ CustomTable.propTypes = {
   rows: PropTypes.array,
 };
 
-
-const AlertModal = ({ open, onClose }) => {
+const AlertModal = ({ open, onClose, title, alertData }) => {
+  // 1. Define columns to match your API response keys (accessors)
   const columns = [
-    { Header: "Alert ID", accessor: "id", width: "15%" },
-    { Header: "Vehicle", accessor: "vehicle", width: "20%" },
-    { Header: "Type", accessor: "type", width: "20%" },
-    { Header: "Message", accessor: "message", width: "30%" },
-    { Header: "Time", accessor: "time", width: "15%" },
+    { Header: "Vehicle", accessor: "vehicle", width: "15%" },
+    { Header: "IMEI", accessor: "imei", width: "15%" },
+    { Header: "Type", accessor: "type", width: "10%" },
+    { Header: "Message", accessor: "message", width: "40%" },
+    { Header: "Time", accessor: "time", width: "20%" },
   ];
 
-  const rows = [
-    {
-      id: <DataCell text="#1001" />,
-      vehicle: <DataCell text="MH-04-AB-1234" />,
-      type: <Status status="Critical" />,
-      message: <DataCell text="Engine Overheating" />,
-      time: <DataCell text="10:45 AM" />,
-    },
-    {
-      id: <DataCell text="#1002" />,
-      vehicle: <DataCell text="KA-01-XY-9999" />,
-      type: <Status status="Warning" />,
-      message: <DataCell text="Speed Limit Violation" />,
-      time: <DataCell text="11:15 AM" />,
-    },
-    {
-      id: <DataCell text="#1003" />,
-      vehicle: <DataCell text="DL-09-CD-4545" />,
-      type: <Status status="Informational" />,
-      message: <DataCell text="Ignition On" />,
-      time: <DataCell text="11:30 AM" />,
-    },
-  ];
+  // 2. Map the raw API data (alertData) to your Table Components
+  const rows = useMemo(() => {
+    if (!alertData) return [];
+
+    return alertData.map((item) => ({
+      vehicle: <DataCell text={item.vehicleNumber || "N/A"} fontWeight="bold" />,
+      imei: <DataCell text={item.imei} />,
+      // Mapping "type" to your Status component colors
+      type: <DataCell text={item.type} />,
+      message: <DataCell text={item.message} />,
+      time: <DataCell text={item.deviceTime} />,
+    }));
+  }, [alertData]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <MDBox display="flex" justifyContent="flex-end" p={2} pb={0}>
+      <MDBox display="flex" justifyContent="space-between" alignItems="center" p={2} pb={0}>
+        <MDTypography variant="h5" sx={{ ml: 2 }}>
+          {title}
+        </MDTypography>
         <IconButton onClick={onClose}>
           <CloseIcon />
         </IconButton>
       </MDBox>
       <DialogContent sx={{ p: 0, pb: 3 }}>
-        <CustomTable title="Alerts Detail" columns={columns} rows={rows} />
+        {/* Pass the dynamic rows here */}
+        <CustomTable title="Filtered Alerts" columns={columns} rows={rows} />
       </DialogContent>
     </Dialog>
   );
 };
 
+// Update PropTypes to include the data and title from Dashboard
 AlertModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  title: PropTypes.string,
+  alertData: PropTypes.array,
 };
 
 export default AlertModal;

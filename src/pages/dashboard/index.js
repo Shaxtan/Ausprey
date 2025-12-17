@@ -36,7 +36,7 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [alertModalOpen, setAlertModalOpen] = useState(false);
-  
+
   const [totalDevices, setTotalDevices] = useState(0);
   const [onlineDevices, setOnlineDevices] = useState(0);
   const [offlineDevices, setOfflineDevices] = useState(0);
@@ -57,10 +57,19 @@ function Dashboard() {
 
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedAlertType, setSelectedAlertType] = useState(null);
 
-  const handleOpenAlertModal = () => {
+  // Update handleOpenAlertModal to accept a type
+  const handleOpenAlertModal = (type = null) => {
+    setSelectedAlertType(type);
     setAlertModalOpen(true);
   };
+
+  // Derived state to filter data for the modal
+  const filteredAlertData = useMemo(() => {
+    if (!selectedAlertType) return alertApiData.data;
+    return alertApiData.data.filter((alert) => alert.type === selectedAlertType);
+  }, [alertApiData.data, selectedAlertType]);
 
   const handleCloseAlertModal = () => {
     setAlertModalOpen(false);
@@ -148,7 +157,6 @@ function Dashboard() {
     setSelectedAccountId(event.target.value);
   };
 
- 
   const onlineOfflinePieData = useMemo(() => {
     const online = summaryData.onlineIdle + summaryData.onlineStopped + summaryData.onlineMotion;
     return {
@@ -189,33 +197,41 @@ function Dashboard() {
     };
   }, [alertApiData]);
 
-  const fuelPieData = useMemo(() => ({
-    labels: ["Efficient", "Average", "High Usage"],
-    datasets: { 
-      label: "Fuel", 
-      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"], 
-      data: [30, 40, 30] 
-    },
-  }), []);
+  const fuelPieData = useMemo(
+    () => ({
+      labels: ["Efficient", "Average", "High Usage"],
+      datasets: {
+        label: "Fuel",
+        backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
+        data: [30, 40, 30],
+      },
+    }),
+    []
+  );
 
-  const geofencePieData = useMemo(() => ({
-    labels: ["Inside", "Outside", "Violations"],
-    datasets: { 
-      label: "Geofence", 
-      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"], 
-      data: [60, 20, 20] 
-    },
-  }), []);
+  const geofencePieData = useMemo(
+    () => ({
+      labels: ["Inside", "Outside", "Violations"],
+      datasets: {
+        label: "Geofence",
+        backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
+        data: [60, 20, 20],
+      },
+    }),
+    []
+  );
 
-  const healthPieData = useMemo(() => ({
-    labels: ["Good", "Service Due", "Critical"],
-    datasets: { 
-      label: "Health", 
-      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"], 
-      data: [70, 20, 10] 
-    },
-  }), []);
-
+  const healthPieData = useMemo(
+    () => ({
+      labels: ["Good", "Service Due", "Critical"],
+      datasets: {
+        label: "Health",
+        backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
+        data: [70, 20, 10],
+      },
+    }),
+    []
+  );
 
   const renderChart1 = useMemo(
     () => (
@@ -239,16 +255,29 @@ function Dashboard() {
     [allDeviceStatusPieData]
   );
 
-  const renderChart3 = useMemo(
-    () => (
+  const renderChart3 = useMemo(() => {
+    // Add options to handle the click event
+    const chartConfigs = {
+      ...dynamicAlertPieData,
+      options: {
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const typeClicked = dynamicAlertPieData.labels[index];
+            handleOpenAlertModal(typeClicked);
+          }
+        },
+      },
+    };
+
+    return (
       <PieChart
         icon={{ color: "warning", component: <Icon>notifications_active</Icon> }}
         title="Alert Type Distribution"
-        chart={dynamicAlertPieData}
+        chart={chartConfigs}
       />
-    ),
-    [dynamicAlertPieData]
-  );
+    );
+  }, [dynamicAlertPieData]);
 
   const renderChart4 = useMemo(
     () => (
@@ -369,7 +398,7 @@ function Dashboard() {
                 {renderChart2}
               </MDBox>
             </Grid>
-                        <Grid item xs={12} md={6} lg={4}>
+            <Grid item xs={12} md={6} lg={4}>
               <MDBox
                 mb={3}
                 sx={{
@@ -378,7 +407,8 @@ function Dashboard() {
                   transition: "transform 0.2s",
                   "&:hover": { transform: "scale(1.02)" },
                 }}
-                onClick={handleOpenAlertModal} 
+                // Now opens with null (all) if the box background is clicked
+                onClick={() => handleOpenAlertModal(null)}
               >
                 {renderChart3}
               </MDBox>
@@ -419,8 +449,9 @@ function Dashboard() {
       <AlertModal
         open={alertModalOpen}
         onClose={handleCloseAlertModal}
-        title="All Alerts"
-        alertData={alertApiData.data} 
+        // Change title dynamically based on selection
+        title={selectedAlertType ? `${selectedAlertType} Alerts` : "All Alerts"}
+        alertData={filteredAlertData}
       />
     </DashboardLayout>
   );
