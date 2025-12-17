@@ -370,6 +370,17 @@ class ApiService {
         callAlert("Error", error?.message || "Failed to fetch unreachable devices");
       });
   }
+  getAlertsByAccount(data, callback) {
+    return this.postRequest("/alerts/by-account", data, true, SERVICES.dashboard)
+      .then((res) => {
+        if (callback) callback(res);
+        return res;
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch alerts");
+        throw error;
+      });
+  }
 }
 
 export { SERVICES };
