@@ -9,6 +9,7 @@ import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
@@ -47,29 +48,11 @@ DataCell.propTypes = {
   onClick: PropTypes.func,
 };
 
-export const Status = ({ status }) => {
-  let color = "info";
-  if (status === "Critical" || status === "Error") color = "error";
-  if (status === "Warning") color = "warning";
-  if (status === "Informational") color = "info";
-
-  return (
-    <MDBox lineHeight={1}>
-      <MDTypography variant="caption" color={color} fontWeight="bold">
-        {status}
-      </MDTypography>
-    </MDBox>
-  );
-};
-
-Status.propTypes = {
-  status: PropTypes.string.isRequired,
-};
-
-function CustomTable({ title, columns, rows }) {
+function CustomTable({ title, columns, rows, rawData = [] }) {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(10);
+  const [selectedType, setSelectedType] = useState("All");
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
@@ -78,19 +61,49 @@ function CustomTable({ title, columns, rows }) {
     setPageSize(event.target.value);
   };
 
-  const filteredRows = useMemo(() => {
-    if (!searchTerm) return rows;
-    const term = searchTerm.toLowerCase();
-    return rows.filter((row) => {
-      const values = Object.values(row).map((val) => {
-        if (typeof val === "object" && val !== null && val.props && val.props.text) {
-          return val.props.text;
-        }
-        return val;
-      });
-      return values.some((val) => String(val).toLowerCase().includes(term));
+  // Extract unique types from raw API data and format for display
+  const uniqueTypes = useMemo(() => {
+    const types = new Set();
+    rawData.forEach((item) => {
+      if (item.type) {
+        types.add(item.type.trim().toLowerCase());
+      }
     });
-  }, [rows, searchTerm]);
+    const sorted = Array.from(types).sort();
+    return ["All", ...sorted.map((t) => t.toUpperCase())];
+  }, [rawData]);
+
+  // Filter rows based on selectedType and searchTerm using raw data
+  const filteredRows = useMemo(() => {
+    let filtered = rows;
+
+    // Apply Type Filter
+    if (selectedType !== "All") {
+      const lowerType = selectedType.toLowerCase();
+      filtered = rows.filter((row, index) => {
+        const originalItem = rawData[index];
+        return (
+          originalItem && originalItem.type && originalItem.type.trim().toLowerCase() === lowerType
+        );
+      });
+    }
+
+    // Apply Search Filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((row) => {
+        const values = Object.values(row).map((val) => {
+          if (React.isValidElement(val) && val.props && val.props.text) {
+            return val.props.text;
+          }
+          return String(val || "");
+        });
+        return values.some((v) => v.toLowerCase().includes(term));
+      });
+    }
+
+    return filtered;
+  }, [rows, rawData, selectedType, searchTerm]);
 
   return (
     <Card sx={{ height: "100%", width: "100%", overflow: "hidden", boxShadow: "none" }}>
@@ -113,7 +126,27 @@ function CustomTable({ title, columns, rows }) {
               display="flex"
               alignItems="center"
               justifyContent="flex-end"
+              gap={2}
             >
+              {/* Type Filter Dropdown */}
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
+                <InputLabel id="type-filter-label">Type</InputLabel>
+                <Select
+                  labelId="type-filter-label"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  label="Type"
+                  sx={{ height: "44px" }}
+                >
+                  {uniqueTypes.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type === "All" ? "All Types" : type}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Search Field */}
               <MDBox flexGrow={1} mr={2}>
                 <TextField
                   fullWidth
@@ -131,6 +164,8 @@ function CustomTable({ title, columns, rows }) {
                   }}
                 />
               </MDBox>
+
+              {/* Page Size Selector */}
               <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
                 <Select
                   value={pageSize}
@@ -144,18 +179,21 @@ function CustomTable({ title, columns, rows }) {
                 </Select>
               </FormControl>
             </MDBox>
+
             <MDBox>
               <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
                 more_vert
               </Icon>
             </MDBox>
           </MDBox>
+
           <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
             <MenuItem onClick={closeMenu}>Refresh</MenuItem>
             <MenuItem onClick={closeMenu}>Export CSV</MenuItem>
           </Menu>
         </MDBox>
       </MDBox>
+
       <MDBox>
         <DataTable
           key={pageSize}
@@ -178,29 +216,27 @@ CustomTable.propTypes = {
   title: PropTypes.string,
   columns: PropTypes.array,
   rows: PropTypes.array,
+  rawData: PropTypes.array, // Original alertData for accurate filtering
 };
 
 const AlertModal = ({ open, onClose, title, alertData }) => {
-  // 1. Define columns to match your API response keys (accessors)
   const columns = [
-    { Header: "Vehicle", accessor: "vehicle", width: "15%" },
     { Header: "IMEI", accessor: "imei", width: "15%" },
-    { Header: "Type", accessor: "type", width: "10%" },
-    { Header: "Message", accessor: "message", width: "40%" },
+    { Header: "Vehicle", accessor: "vehicle", width: "15%" },
     { Header: "Time", accessor: "time", width: "20%" },
+    { Header: "Type", accessor: "type", width: "10%", align: "center" },
+    { Header: "Message", accessor: "message", width: "40%" },
   ];
 
-  // 2. Map the raw API data (alertData) to your Table Components
   const rows = useMemo(() => {
-    if (!alertData) return [];
+    if (!alertData || !Array.isArray(alertData)) return [];
 
     return alertData.map((item) => ({
       vehicle: <DataCell text={item.vehicleNumber || "N/A"} fontWeight="bold" />,
-      imei: <DataCell text={item.imei} />,
-      // Mapping "type" to your Status component colors
-      type: <DataCell text={item.type} />,
-      message: <DataCell text={item.message} />,
-      time: <DataCell text={item.deviceTime} />,
+      imei: <DataCell text={item.imei || "N/A"} />,
+      type: <DataCell text={(item.type || "N/A").toUpperCase()} />, // Display uppercase in table
+      message: <DataCell text={item.message || "No message"} />,
+      time: <DataCell text={item.deviceTime || "N/A"} />,
     }));
   }, [alertData]);
 
@@ -215,14 +251,17 @@ const AlertModal = ({ open, onClose, title, alertData }) => {
         </IconButton>
       </MDBox>
       <DialogContent sx={{ p: 0, pb: 3 }}>
-        {/* Pass the dynamic rows here */}
-        <CustomTable title="Filtered Alerts" columns={columns} rows={rows} />
+        <CustomTable
+          title="Filtered Alerts"
+          columns={columns}
+          rows={rows}
+          rawData={alertData} // Pass original data for correct filtering
+        />
       </DialogContent>
     </Dialog>
   );
 };
 
-// Update PropTypes to include the data and title from Dashboard
 AlertModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
