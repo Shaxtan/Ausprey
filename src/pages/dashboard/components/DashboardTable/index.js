@@ -26,6 +26,7 @@ import MDTypography from "../../../../assets/components/MDTypography";
 import MDButton from "../../../../assets/components/MDButton";
 
 import DataTable from "../../../../assets/components/examples/Tables/DataTable";
+import { exportCSV, exportExcel, exportPDF } from "./dashUtils";
 
 import {
   checkboxBaseSx,
@@ -287,6 +288,50 @@ function Projects({ accountId }) {
     },
     [navigate, accountId]
   );
+
+  const handleExportData = (format) => {
+    closeMenu();
+
+    // 1. Prepare the raw data by extracting text from the table rows
+    const dataToExport = filteredRows.map((row) => {
+      return {
+        accountName: row.accountName.props.text,
+        vehnum: row.vehicleNo.props.text,
+        imei: row._imei,
+        simNo: row.simNo.props.text,
+        devTs: row.date.props.text,
+        address: row.address.props.item.address || "N/A",
+        lat: row.latitude.props.text,
+        lng: row.longitude.props.text,
+        gps: row.gpsStatus.props.status,
+        ign: row.ignitionStatus.props.status === 1 ? "On" : "Off",
+        avg: row.avgSpeed?.props?.text || "0",
+        speed: row.currentSpeed.props.text,
+      };
+    });
+
+    if (dataToExport.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    const filename = `${tripFilterType}_Report_${new Date().toISOString().split("T")[0]}`;
+
+    // 2. Call the respective utility function
+    switch (format) {
+      case "csv":
+        exportCSV(dataToExport, `${filename}.csv`);
+        break;
+      case "excel":
+        exportExcel(dataToExport, `${filename}.xlsx`);
+        break;
+      case "pdf":
+        exportPDF(dataToExport, `${filename}.pdf`);
+        break;
+      default:
+        break;
+    }
+  };
 
   const handleCloseUnlockDialog = () => {
     setUnlockDialog({
@@ -649,19 +694,18 @@ function Projects({ accountId }) {
     );
   }
 
-  const dialogTitle =
-    unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
+  const dialogTitle = unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
 
   const dialogMessage = unlockDialog.isBulk ? (
     unlockDialog.action === "lock" ? (
       <>
-        Are you sure you want to <strong>lock</strong>{" "}
-        <strong>{unlockDialog.bulkCount}</strong> selected device(s)?
+        Are you sure you want to <strong>lock</strong> <strong>{unlockDialog.bulkCount}</strong>{" "}
+        selected device(s)?
       </>
     ) : (
       <>
-        Are you sure you want to <strong>unlock</strong>{" "}
-        <strong>{unlockDialog.bulkCount}</strong> selected device(s)?
+        Are you sure you want to <strong>unlock</strong> <strong>{unlockDialog.bulkCount}</strong>{" "}
+        selected device(s)?
       </>
     )
   ) : unlockDialog.action === "lock" ? (
@@ -809,7 +853,12 @@ function Projects({ accountId }) {
               >
                 Refresh
               </MenuItem>
-              <MenuItem onClick={closeMenu}>Export</MenuItem>
+
+              {/* --- NEW EXPORT OPTIONS --- */}
+              <hr style={{ margin: "4px 0", opacity: 0.2 }} />
+              <MenuItem onClick={() => handleExportData("csv")}>Export CSV</MenuItem>
+              <MenuItem onClick={() => handleExportData("excel")}>Export Excel</MenuItem>
+              <MenuItem onClick={() => handleExportData("pdf")}>Export PDF</MenuItem>
             </Menu>
           </MDBox>
         </MDBox>
@@ -835,9 +884,7 @@ function Projects({ accountId }) {
         >
           <DialogTitle id="alert-dialog-title">{dialogTitle}</DialogTitle>
           <DialogContent>
-            <DialogContentText id="alert-dialog-description">
-              {dialogMessage}
-            </DialogContentText>
+            <DialogContentText id="alert-dialog-description">{dialogMessage}</DialogContentText>
           </DialogContent>
           <DialogActions>
             <MDButton onClick={handleCloseUnlockDialog} color="dark">
