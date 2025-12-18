@@ -172,22 +172,42 @@ function DeviceTable({ devices, selectedId, onSelect }) {
 
       <TableContainer component={Paper} sx={styles.tableContainer}>
         <Table stickyHeader size="small" sx={styles.tableRoot}>
-          <TableHead>
-            <TableRow>
-              <TableCell align="left" sx={styles.cell("45%", "left", { px: 2 })}>
-                Vehicle
-              </TableCell>
-              <TableCell align="center" sx={styles.cell("25%")}>
-                Status
-              </TableCell>
-              <TableCell align="center" sx={styles.cell("15%")}>
-                Speed
-              </TableCell>
-              <TableCell align="center" sx={styles.cell("15%", "center", { pr: 2 })}>
-                Info
-              </TableCell>
-            </TableRow>
-          </TableHead>
+       <TableHead>
+  <TableRow>
+    <TableCell
+      align="left"
+      sx={styles.cell("45%", "left", { px: 2 })}
+    >
+      <MDBox
+        display="flex"
+        alignItems="center"
+        justifyContent="flex-start"
+      >
+        {/* Icon 1 → 2 gap: 4px */}
+        <Icon fontSize="small" sx={{ mr: "65px" }}>
+          directions_car
+        </Icon>
+
+        {/* Icon 2 → 3 gap: 16px */}
+        <Icon fontSize="small" sx={{ mr: "60px" }}>
+          power_settings_new
+        </Icon>
+
+        {/* Icon 3 → 4 gap: 32px */}
+        <Icon fontSize="small" sx={{ mr: "60px" }}>
+          speed
+        </Icon>
+
+        {/* Last icon usually no right margin */}
+        <Icon fontSize="small">
+          info_outline
+        </Icon>
+      </MDBox>
+    </TableCell>
+  </TableRow>
+</TableHead>
+
+
 
           <TableBody>
             {devices.map((d) => (
@@ -222,15 +242,17 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   </Tooltip>
                 </TableCell>
 
-                {/* Speed Column */}
-                <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
-                  <Typography variant="body1" fontWeight={700}>
-                    {d.speed}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    km/h
-                  </Typography>
-                </TableCell>
+               <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
+  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
+      speed
+    </Icon>
+    <Typography variant="caption" color="text.secondary">
+      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
+    </Typography>
+  </MDBox>
+</TableCell>
+
 
                 {/* Info Column */}
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
@@ -476,8 +498,13 @@ export default function LiveTrack() {
 
   return (
     <DashboardLayout>
-      <Box sx={styles.dashboardContainer(isLeftPanelOpen)}>
-        {isLeftPanelOpen && (
+<Box
+  sx={{
+    ...styles.dashboardContainer(isLeftPanelOpen),
+    zIndex: 0,
+    position: 'relative',
+  }}
+>        {isLeftPanelOpen && (
           <Box sx={styles.leftPanelContainer(LEFT_PANEL_WIDTH)}>
             <Box sx={styles.leftPanelHeader}>
               <Typography variant="subtitle1" fontWeight={700}>
@@ -529,7 +556,7 @@ export default function LiveTrack() {
             center={mapCenter}
             zoom={13}
             scrollWheelZoom={true}
-            style={{ height: "100%", width: "100%", zIndex: 1000 }}
+            style={{ height: "100%", width: "100%", zIndex: 0 }}
           >
             <MapFixer />
             <TileLayer

@@ -841,10 +841,10 @@ function Projects({ accountId }) {
             </MDBox>
 
             <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-              {(tripFilterType === "vts" || tripFilterType === "elk") && (
+              {/* {(tripFilterType === "vts" || tripFilterType === "elk") && (
                 <MenuItem onClick={handleBulkUnlockClick}>Bulk Unlock</MenuItem>
-              )}
-              <MenuItem
+              )} */}
+              {/* <MenuItem
                 onClick={() => {
                   closeMenu();
                   if (tripFilterType === "vts") fetchVtsData(accountId);
@@ -853,7 +853,7 @@ function Projects({ accountId }) {
                 }}
               >
                 Refresh
-              </MenuItem>
+              </MenuItem> */}
 
               {/* --- NEW EXPORT OPTIONS --- */}
               <hr style={{ margin: "4px 0", opacity: 0.2 }} />

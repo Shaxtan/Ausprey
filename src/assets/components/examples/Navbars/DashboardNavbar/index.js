@@ -311,8 +311,9 @@ function DashboardNavbar({
                   onClick={onManualRefresh}
                   disabled={isRefreshing}
                   startIcon={
-                    <RefreshIcon 
+                    <RefreshIcon  
                       sx={isRefreshing ? { animation: "spin 1s linear infinite" } : {}} 
+                      
                     />
                   }
                   sx={{ 
