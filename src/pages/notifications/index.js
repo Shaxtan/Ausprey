@@ -289,7 +289,7 @@ function Notifications() {
   // ⭐️ END CHATBOT STATE & LOGIC ⭐️
   return (
     <DashboardLayout>
-      <DashboardNavbar /> {/* Navbar is here */}
+      {/* <DashboardNavbar /> Navbar is here */}
       <MDBox pt={0} pb={0} sx={{ marginTop: 0 }}>
         {/* Alerts Section (Kept for completeness) */}
         <Grid container spacing={6} sx={{ display: "none" }}>

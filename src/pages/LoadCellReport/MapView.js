@@ -313,7 +313,7 @@ const MapView = () => {
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      {/* <DashboardNavbar /> */}
       <MDBox pt={2} pb={3}>
         <Grid container spacing={3}>
           <Grid item xs={12}>

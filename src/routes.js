@@ -94,7 +94,8 @@ const routes = [
     type: "collapse",
     name: "Track Play",
     key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
+    icon: <Icon fontSize="small">location_on</Icon>
+,
     route: "/notifications",
     component: <Notifications />,
     parent: "reports",

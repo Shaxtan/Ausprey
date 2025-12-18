@@ -437,19 +437,20 @@ function Projects({ accountId }) {
 
             return {
               no: (
-                <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
-                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
-                  </Icon>
-                  <MDTypography
-                    variant="caption"
-                    fontWeight="bold"
-                    color={item.ign === "Y" ? "success" : "error"}
-                  >
-                    {index + 1}
-                  </MDTypography>
-                </MDBox>
-              ),
+  <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
+    <Icon fontSize="small" color={isLocked ? "error" : "success"}>
+      {isLocked ? "offline_bolt" : "online_prediction"}
+    </Icon>
+    <MDTypography
+      variant="caption"
+      fontWeight="bold"
+      color={isLocked ? "error" : "success"}
+    >
+      {index + 1}
+    </MDTypography>
+  </MDBox>
+),
+
               accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               vehicleNo: (
                 <DataCell

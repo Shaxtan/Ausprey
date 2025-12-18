@@ -231,7 +231,7 @@ function DashboardNavbar({
 
     return (
       <MDTypography variant="caption" color="text" fontWeight="medium">
-        Next refresh in {minutes}:{seconds}
+        {minutes}:{seconds}
       </MDTypography>
     );
   };
@@ -254,7 +254,7 @@ function DashboardNavbar({
   });
 
   return (
-    <AppBar
+   <AppBar
       position={absolute ? "absolute" : navbarType}
       color="inherit"
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light, darkMode })}
@@ -266,117 +266,80 @@ function DashboardNavbar({
         </MDBox>
 
         {!isMini && (
-          // Right Side: Dropdown and Icons
-          <MDBox sx={(theme) => navbarRow(theme, { isMini })}>
-            {/* =======================================================
-              MODIFICATION START: Account Dropdown (Moved to precede Icons)
-              =======================================================
-            */}
-            {/* The wrapper MDBox provides the needed spacing (mr={2}) from the icon cluster */}
-            <MDBox mr={3}>
-              <MDBox display="flex" alignItems="center" gap={2}>
-                {/* Title for the Dropdown */}
-                <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
-                  Select Account
-                </MDTypography>
-
-                {/* The MUI Dropdown Component */}
-                <FormControl variant="outlined" size="small" sx={{ minWidth: 200, height: 40 }}>
-                  <InputLabel id="account-select-label">Account</InputLabel>
-                  <Select
-                    labelId="account-select-label"
-                    id="account-select"
-                    value={selectedAccountId}
-                    label="Account"
-                    onChange={handleAccountChange}
-                    sx={{ height: "100%" }}
-                  >
-                    {accounts.length > 0 ? (
-                      accounts.map((account) => (
-                        <MenuItem key={account.id} value={account.id}>
-                          {account.name}
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem value={selectedAccountId} disabled>
-                        Loading accounts...
+          /* Right Side: Container for Dropdown + Icons in one row */
+          <MDBox sx={(theme) => navbarRow(theme, { isMini })} display="flex" alignItems="center">
+            
+            {/* 1. Account Dropdown Section */}
+            <MDBox display="flex" alignItems="center" gap={2} mr={2}>
+              <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
+                Select Account
+              </MDTypography>
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 200, height: 40 }}>
+                <InputLabel id="account-select-label">Account</InputLabel>
+                <Select
+                  labelId="account-select-label"
+                  id="account-select"
+                  value={selectedAccountId}
+                  label="Account"
+                  onChange={handleAccountChange}
+                  sx={{ height: "100%" }}
+                >
+                  {accounts.length > 0 ? (
+                    accounts.map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.name}
                       </MenuItem>
-                    )}
-                  </Select>
-                </FormControl>
-              </MDBox>
+                    ))
+                  ) : (
+                    <MenuItem value={selectedAccountId} disabled>
+                      Loading accounts...
+                    </MenuItem>
+                  )}
+                </Select>
+              </FormControl>
             </MDBox>
-            {/* =======================================================
-              MODIFICATION END: Account Dropdown
-              =======================================================
-            */}
 
-            <MDBox color={light ? "white" : "inherit"}>
-              {/* Icon Cluster starts here */}
-
-              {/* NEW — ACCOUNT SWITCH ICON (Secondary to Dropdown) */}
-              {/* <IconButton
-                sx={navbarIconButton}
-                size="small"
-                disableRipple
-                onClick={handleOpenAccountMenu}
-                aria-controls="account-menu"
-                aria-haspopup="true"
-              >
-                <Icon sx={iconsStyle}>supervisor_account</Icon>
-              </IconButton> */}
-              {renderAccountMenu()}
-              <MDBox display="flex" alignItems="center" gap={1}>
-                {/* Manual Refresh Button */}
+            {/* 2. All Icons and Refresh in the SAME row */}
+            <MDBox display="flex" alignItems="center" color={light ? "white" : "inherit"}>
+              
+              {/* Refresh Button - Set to Green (success) */}
+              <MDBox display="flex" alignItems="center" mr={1}>
                 <MDButton
                   variant="text"
-                  color="dark"
+                  color="success" // Change this to success for green
                   size="small"
                   onClick={onManualRefresh}
                   disabled={isRefreshing}
                   startIcon={
-                    isRefreshing ? (
-                      <RefreshIcon sx={{ animation: "spin 1s linear infinite" }} />
-                    ) : (
-                      <RefreshIcon />
-                    )
+                    <RefreshIcon 
+                      sx={isRefreshing ? { animation: "spin 1s linear infinite" } : {}} 
+                    />
                   }
-                  sx={{ textTransform: "none", fontWeight: 500 }}
+                  sx={{ 
+                    textTransform: "none", 
+                    fontWeight: "bold",
+                    minWidth: "unset",
+                    p: 1 
+                  }}
                 >
-                  {isRefreshing ? "Refreshing..." : "Refresh Now"}
+                  {/* Text hidden for cleaner icon-only look, or uncomment below */}
+                  {/* {isRefreshing ? "" : ""} */}
                 </MDButton>
-
-                {/* Countdown Timer */}
+                
                 <RefreshCountdown lastRefreshTime={lastRefreshTime} />
               </MDBox>
 
-              {/* Authentication icon */}
+              {/* Action Icons */}
               <IconButton
                 sx={navbarIconButton}
                 size="small"
                 disableRipple
                 onClick={handleOpenAuthMenu}
-                aria-controls="auth-menu"
-                aria-haspopup="true"
               >
                 <Icon sx={iconsStyle}>account_circle</Icon>
               </IconButton>
               {renderAuthMenu()}
 
-              {/* Mini sidenav toggle */}
-              {/* <IconButton
-                size="small"
-                disableRipple
-                color="inherit"
-                sx={navbarIconButton}
-                onClick={handleMiniSidenav}
-              >
-                <Icon sx={iconsStyle} fontSize="medium">
-                  {miniSidenav ? "menu_open" : "menu"}
-                </Icon>
-              </IconButton> */}
-
-              {/* Settings */}
               <IconButton
                 size="small"
                 disableRipple
@@ -387,8 +350,7 @@ function DashboardNavbar({
                 <Icon sx={iconsStyle}>settings</Icon>
               </IconButton>
 
-              {/* Notifications */}
-              {/* <IconButton
+              <IconButton
                 size="small"
                 disableRipple
                 color="inherit"
@@ -396,8 +358,9 @@ function DashboardNavbar({
                 onClick={handleOpenMenu}
               >
                 <Icon sx={iconsStyle}>notifications</Icon>
-              </IconButton> */}
+              </IconButton>
               {renderMenu()}
+              
             </MDBox>
           </MDBox>
         )}

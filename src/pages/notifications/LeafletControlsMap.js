@@ -790,7 +790,7 @@ const LeafletControlsMap = () => {
         {/* Submit */}
         <MDButton
           variant="gradient"
-          color="primary"
+          color="info"
           fullWidth
           onClick={handleTrackSubmit}
           disabled={isLoading || !selectedVehicle || !fromDate || !toDate}

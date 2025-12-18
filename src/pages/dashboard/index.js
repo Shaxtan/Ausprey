@@ -343,7 +343,7 @@ function Dashboard() {
             <ComplexStatisticsCard
               color="success"
               icon={<DirectionsRunIcon style={{ marginTop: "-15px", color: "white" }} />}
-              title="Online Motion"
+              title="Motion"
               count={summaryData.onlineMotion.toLocaleString()}
               percentage={{ color: "success", label: "Total Online Fleet" }}
             />
@@ -352,7 +352,7 @@ function Dashboard() {
             <ComplexStatisticsCard
               color="warning"
               icon={<HourglassEmptyIcon style={{ marginTop: "-15px" }} />}
-              title="Online Idle"
+              title="Idle"
               count={summaryData.onlineIdle.toLocaleString()}
               percentage={{ color: "success", label: "Total Idle Fleet" }}
             />
@@ -361,7 +361,7 @@ function Dashboard() {
             <ComplexStatisticsCard
               color="error"
               icon={<StopIcon style={{ marginTop: "-15px" }} />}
-              title="Online Stopped"
+              title="Stopped"
               count={summaryData.onlineStopped.toLocaleString()}
               percentage={{ color: "success", label: "Total Stopped Fleet" }}
             />
