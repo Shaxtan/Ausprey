@@ -34,7 +34,7 @@ const getInitialAccountId = () => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  
+
   // Create a ref for the Projects table section
   const projectsRef = useRef(null);
 
@@ -45,6 +45,9 @@ function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+  const [vtsRawData, setVtsRawData] = useState([]);
+  const [elkRawData, setElkRawData] = useState([]);
+  const [unreachableRawData, setUnreachableRawData] = useState([]);
 
   const [summaryData, setSummaryData] = useState({
     totalDevices: 0,
@@ -97,8 +100,11 @@ function Dashboard() {
       (res) => {
         if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
           const apiData = res.data.data.data;
-          const summary = apiData.summary || {};
+          // 1. Set the raw data for the table
+          setVtsRawData(apiData.VTS?.available || []);
+          setElkRawData(apiData.ELK?.available || []);
 
+          const summary = apiData.summary || {};
           const newSummary = {
             totalDevices: summary.totalDevices || 0,
             offline: summary.offline || 0,
@@ -128,15 +134,21 @@ function Dashboard() {
           );
 
           setLastRefreshTime(Date.now());
-          if (isManual) setIsRefreshing(false);
-        } else {
-          if (isManual) setIsRefreshing(false);
         }
+        if (isManual) setIsRefreshing(false);
       },
       true,
       1
     );
+    // 3. Call Unreachable API simultaneously to keep them in one sync cycle
+    ApiService.getUnreachableDevices({ accid: accountId }, (res) => {
+      if (res?.data?.resultCode === 1 && res?.data?.data) {
+        setUnreachableRawData(res.data.data);
+      }
+    });
   }, []);
+  // // Update the return statement to pass the data
+  // <Projects accountId={selectedAccountId} vtsData={vtsRawData} elkData={elkRawData} />;
 
   const fetchAccounts = () => {
     ApiService.getAccountDropdown((res) => {
@@ -204,48 +216,63 @@ function Dashboard() {
   }, [alertApiData]);
 
   // Static chart data (Mock)
-  const fuelPieData = useMemo(() => ({
-    labels: ["Efficient", "Average", "High Usage"],
-    datasets: {
-      label: "Fuel",
-      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-      data: [30, 40, 30],
-    },
-  }), []);
+  const fuelPieData = useMemo(
+    () => ({
+      labels: ["Efficient", "Average", "High Usage"],
+      datasets: {
+        label: "Fuel",
+        backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
+        data: [30, 40, 30],
+      },
+    }),
+    []
+  );
 
-  const geofencePieData = useMemo(() => ({
-    labels: ["Inside", "Outside", "Violations"],
-    datasets: {
-      label: "Geofence",
-      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-      data: [60, 20, 20],
-    },
-  }), []);
+  const geofencePieData = useMemo(
+    () => ({
+      labels: ["Inside", "Outside", "Violations"],
+      datasets: {
+        label: "Geofence",
+        backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
+        data: [60, 20, 20],
+      },
+    }),
+    []
+  );
 
-  const healthPieData = useMemo(() => ({
-    labels: ["Good", "Service Due", "Critical"],
-    datasets: {
-      label: "Health",
-      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-      data: [70, 20, 10],
-    },
-  }), []);
+  const healthPieData = useMemo(
+    () => ({
+      labels: ["Good", "Service Due", "Critical"],
+      datasets: {
+        label: "Health",
+        backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
+        data: [70, 20, 10],
+      },
+    }),
+    []
+  );
 
-  const renderChart1 = useMemo(() => (
-    <PieChart
-      icon={{ color: "success", component: <WifiIcon /> }}
-      title="Online vs Offline"
-      chart={onlineOfflinePieData}
-    />
-  ), [onlineOfflinePieData]);
+  const renderChart1 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "success", component: <WifiIcon /> }}
+        title="Online vs Offline"
+        chart={onlineOfflinePieData}
+      />
+    ),
+    [onlineOfflinePieData]
+  );
 
-  const renderChart2 = useMemo(() => (
-    <PieChart
-      icon={{ color: "dark", component: <DonutLargeIcon /> }}
-      title="Vehicle Running Status"
-      chart={allDeviceStatusPieData}
-    />
-  ), [allDeviceStatusPieData]);
+  const renderChart2 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "dark", component: <DonutLargeIcon /> }}
+        title="Vehicle Running Status"
+        chart={allDeviceStatusPieData}
+      />
+    ),
+    [allDeviceStatusPieData]
+  );
 
   const renderChart3 = useMemo(() => {
     const chartConfigs = {
@@ -269,29 +296,38 @@ function Dashboard() {
     );
   }, [dynamicAlertPieData]);
 
-  const renderChart4 = useMemo(() => (
-    <PieChart
-      icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-      title="Fuel Usage"
-      chart={fuelPieData}
-    />
-  ), [fuelPieData]);
+  const renderChart4 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+        title="Fuel Usage"
+        chart={fuelPieData}
+      />
+    ),
+    [fuelPieData]
+  );
 
-  const renderChart5 = useMemo(() => (
-    <PieChart
-      icon={{ color: "error", component: <Icon>security</Icon> }}
-      title="Geofence Violations"
-      chart={geofencePieData}
-    />
-  ), [geofencePieData]);
+  const renderChart5 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "error", component: <Icon>security</Icon> }}
+        title="Geofence Violations"
+        chart={geofencePieData}
+      />
+    ),
+    [geofencePieData]
+  );
 
-  const renderChart6 = useMemo(() => (
-    <PieChart
-      icon={{ color: "info", component: <Icon>healing</Icon> }}
-      title="Vehicle Health"
-      chart={healthPieData}
-    />
-  ), [healthPieData]);
+  const renderChart6 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "info", component: <Icon>healing</Icon> }}
+        title="Vehicle Health"
+        chart={healthPieData}
+      />
+    ),
+    [healthPieData]
+  );
 
   return (
     <DashboardLayout>
@@ -376,10 +412,14 @@ function Dashboard() {
         <MDBox mt={4}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>{renderChart1}</MDBox>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
+                {renderChart1}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>{renderChart2}</MDBox>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
+                {renderChart2}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox
@@ -396,13 +436,19 @@ function Dashboard() {
               </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart4}</MDBox>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                {renderChart4}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart5}</MDBox>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                {renderChart5}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart6}</MDBox>
+              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>
+                {renderChart6}
+              </MDBox>
             </Grid>
           </Grid>
         </MDBox>
@@ -412,7 +458,13 @@ function Dashboard() {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <MDBox sx={{ width: "100%", overflowX: "auto" }}>
-                <Projects accountId={selectedAccountId} />
+                <Projects
+                  accountId={selectedAccountId}
+                  vtsData={vtsRawData}
+                  elkData={elkRawData}
+                  unreachableData={unreachableRawData}
+                  loading={isRefreshing}
+                />
               </MDBox>
             </Grid>
           </Grid>
@@ -432,4 +484,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;
