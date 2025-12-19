@@ -43,13 +43,12 @@ const loadLogo = () =>
     img.onerror = () => resolve(null); // fallback – no logo
   });
 
-export const exportPDF = async (data, filename = "report.pdf") => {
+export const exportPDF = async (data, filename = "report.pdf", reportType = "VTS") => {
   if (!Array.isArray(data) || data.length === 0) {
     alert("No data available to download.");
     return;
   }
 
-  // 1. Change orientation to 'landscape' (l) instead of 'portrait' (p)
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
@@ -57,71 +56,101 @@ export const exportPDF = async (data, filename = "report.pdf") => {
   });
 
   const img = await loadLogo();
-
-  // Header adjustments for landscape width (~297mm)
   if (img) doc.addImage(img, "JPEG", 10, 5, 35, 25);
 
   const timestamp = new Date().toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     hour12: true,
   });
+  doc.setFontSize(12);
+  doc.setTextColor(20, 110, 180);
+  doc.text(`${reportType} Report`, 10, 35);
+
   doc.setFontSize(9);
   doc.setTextColor(100);
-  doc.text(`Downloaded on: ${timestamp}`, 240, 20); // Moved further right
+  doc.text(`Downloaded on: ${timestamp}`, 240, 20);
 
-  const headers = [
-    [
-      "Acc Name",
-      "Veh No",
-      "IMEI",
-      "Sim No",
-      "Date/Time",
-      "Address",
-      "Lat",
-      "Lng",
-      "GPS",
-      "Ign",
-      "Load",
-      "Speed",
-    ],
-  ];
+  let headers = [];
+  let rows = [];
+  let columnWidths = {};
 
-  const rows = data.map((item) => [
-    item.accountName,
-    item.vehnum,
-    item.imei,
-    item.simNo,
-    item.devTs,
-    item.address,
-    item.lat,
-    item.lng,
-    item.gps,
-    item.ign,
-    item.avg,
-    item.speed,
-  ]);
+  const sample = data[0];
+
+  if ("accountId" in sample && "deviceType" in sample) {
+    // Unreachable Devices
+    headers = [["Acc Name", "Acc ID", "Veh No", "IMEI", "Device Type", "Created On"]];
+    rows = data.map((item) => [
+      item.accountName,
+      item.accid,
+      item.vehnum,
+      item.imei,
+      item.deviceType,
+      item.createdOn,
+    ]);
+    columnWidths = {
+      0: { cellWidth: 40 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 40 },
+      4: { cellWidth: 35 },
+      5: { cellWidth: 40 },
+    };
+  } else {
+    // VTS or PADLOCK
+    headers = [
+      [
+        "Acc Name",
+        "Veh No",
+        "IMEI",
+        "Sim No",
+        "Date/Time",
+        "Address",
+        "Lat",
+        "Lng",
+        "GPS",
+        "Ign",
+        "Load Sensor",
+        "Speed",
+      ],
+    ];
+    rows = data.map((item) => [
+      item.accountName,
+      item.vehnum,
+      item.imei,
+      item.simNo,
+      item.devTs,
+      item.address,
+      item.lat,
+      item.lng,
+      item.gps,
+      item.ign,
+      item.avg,
+      item.speed,
+    ]);
+    columnWidths = {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 25 },
+      5: { cellWidth: 60 }, // Address
+    };
+  }
 
   autoTable(doc, {
     head: headers,
     body: rows,
-    startY: 35,
+    startY: 42,
     margin: { left: 10, right: 10 },
     styles: {
-      fontSize: 7, // Reduce font size to prevent squashing
-      cellPadding: 2,
-      overflow: "linebreak", // Ensure text wraps inside cells
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: "linebreak",
     },
     headStyles: {
-      fillColor: [20, 110, 180], // Your theme blue
+      fillColor: [20, 110, 180],
       textColor: 255,
-      fontSize: 7,
+      fontSize: 8,
       halign: "center",
     },
-    columnStyles: {
-      5: { cellWidth: 60 }, // Give the 'Address' column more width
-      0: { cellWidth: 25 }, // Account Name
-      1: { cellWidth: 20 }, // Vehicle No
-    },
+    columnStyles: columnWidths,
     didDrawPage: (data) => {
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(8);

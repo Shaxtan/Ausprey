@@ -280,41 +280,74 @@ function Projects({ accountId }) {
   const handleExportData = (format) => {
     closeMenu();
 
-    // 1. Prepare the raw data by extracting text from the table rows
-    const dataToExport = filteredRows.map((row) => {
-      return {
-        accountName: row.accountName.props.text,
-        vehnum: row.vehicleNo.props.text,
-        imei: row._imei,
-        simNo: row.simNo.props.text,
-        devTs: row.date.props.text,
-        address: row.address.props.item.address || "N/A",
-        lat: row.latitude.props.text,
-        lng: row.longitude.props.text,
-        gps: row.gpsStatus.props.status,
-        ign: row.ignitionStatus.props.status === 1 ? "On" : "Off",
-        avg: row.avgSpeed?.props?.text || "0",
-        speed: row.currentSpeed.props.text,
-      };
-    });
-
-    if (dataToExport.length === 0) {
+    if (filteredRows.length === 0) {
       alert("No data available to export.");
       return;
     }
 
-    const filename = `${tripFilterType}_Report_${new Date().toISOString().split("T")[0]}`;
+    let dataToExport = [];
+    let reportType = "";
+    let filenamePrefix = "";
 
-    // 2. Call the respective utility function
+    if (tripFilterType === "vts") {
+      reportType = "VTS";
+      filenamePrefix = "VTS_Report";
+      dataToExport = filteredRows.map((row) => ({
+        accountName: row.accountName.props.text || "N/A",
+        vehnum: row.vehicleNo.props.text || "N/A",
+        imei: row._imei || "N/A",
+        simNo: row.simNo.props.text || "N/A",
+        devTs: row.date.props.text || "N/A",
+        address: row.address.props.item.address || "No Address",
+        lat: row.latitude.props.text || "N/A",
+        lng: row.longitude.props.text || "N/A",
+        gps: row.gpsStatus.props.status || "Inactive",
+        ign: row.ignitionStatus.props.status === 1 ? "On" : "Off",
+        avg: row.avgSpeed?.props?.text || "N/A",
+        speed: row.currentSpeed.props.text.replace(" km/h", "") || "0",
+      }));
+    } else if (tripFilterType === "elk") {
+      reportType = "PADLOCK";
+      filenamePrefix = "PADLOCK_Report";
+      dataToExport = filteredRows.map((row) => ({
+        accountName: row.accountName.props.text || "N/A",
+        vehnum: row.vehicleNo.props.text || "N/A",
+        imei: row._imei || "N/A",
+        simNo: row.simNo.props.text || "N/A",
+        devTs: row.date.props.text || "N/A",
+        address: row.address.props.item.address || "No Address",
+        lat: row.latitude.props.text || "N/A",
+        lng: row.longitude.props.text || "N/A",
+        speed: row.currentSpeed.props.text.replace(" km/h", "") || "0",
+        lockStatus: row._type === "L" ? "Locked" : "Unlocked",
+      }));
+    } else if (tripFilterType === "unreachable") {
+      reportType = "UNREACHABLE";
+      filenamePrefix = "UNREACHABLE_Report";
+      dataToExport = filteredRows.map((row) => ({
+        accountName: row.accountName.props.text || "N/A",
+        accountId: row.accountId.props.text || "N/A",
+        vehnum: row.vehicleNo.props.text || "N/A",
+        imei: row.imei.props.text || "N/A",
+        deviceType: row.deviceType.props.text || "N/A",
+        createdOn: row.createdOn.props.text || "N/A",
+      }));
+    }
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const filename = `${filenamePrefix}_${dateStr}.${
+      format === "pdf" ? "pdf" : format === "excel" ? "xlsx" : "csv"
+    }`;
+
     switch (format) {
       case "csv":
-        exportCSV(dataToExport, `${filename}.csv`);
+        exportCSV(dataToExport, filename);
         break;
       case "excel":
-        exportExcel(dataToExport, `${filename}.xlsx`);
+        exportExcel(dataToExport, filename);
         break;
       case "pdf":
-        exportPDF(dataToExport, `${filename}.pdf`);
+        exportPDF(dataToExport, filename, reportType); // We'll update exportPDF to accept reportType
         break;
       default:
         break;
@@ -354,7 +387,7 @@ function Projects({ accountId }) {
         imei: tImei,
         deviceType: 0,
         code: commandCode,
-        command: "0",
+        command: "",
         type: "",
         expiry: 0,
       };
