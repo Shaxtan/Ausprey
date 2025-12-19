@@ -80,7 +80,6 @@ export default function App() {
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
-      // ⭐ CORRECTED: Use setOnMouseEnter to close, not setOnMouseLeave
       setOnMouseEnter(false);
     }
   };
@@ -101,14 +100,12 @@ export default function App() {
 
   // ⭐ CRUCIAL FIX: Set the layout type based on the current route
   useEffect(() => {
-    // Check if the current path starts with the authentication path
     if (pathname.startsWith("/authentication")) {
       setLayout(dispatch, "authentication"); // Set layout to hide Sidenav
     } else {
       setLayout(dispatch, "dashboard"); // Default to dashboard layout
     }
   }, [pathname, dispatch]);
-  // -------------------------------------------------------------
 
   const getRoutes = (allRoutes) =>
     allRoutes.reduce((routesArray, route) => {
@@ -126,51 +123,23 @@ export default function App() {
       return routesArray;
     }, []);
 
-  const configsButton = (
-    <MDBox
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      width="3.25rem"
-      height="3.25rem"
-      bgColor="white"
-      shadow="sm"
-      borderRadius="50%"
-      position="fixed"
-      right="2rem"
-      bottom="2rem"
-      zIndex={99}
-      color="dark"
-      sx={{ cursor: "pointer" }}
-      onClick={handleConfiguratorOpen}
-    >
-      <Icon fontSize="small" color="inherit">
-        settings
-      </Icon>
-    </MDBox>
-  );
-
   // ⭐ NEW LOGIC: Determine which logo to use based on miniSidenav state
   const logo = miniSidenav ? smallIcon : mainLogo;
   // ⭐ NEW LOGIC: Adjust logo styling based on miniSidenav state
   const logoStyles = miniSidenav
     ? {
         "& .MuiBox-root img": {
-          width: "32px !important", // Smaller width for the mini icon
-          height: "32px !important", // Smaller height
-          borderRadius: "50% !important", // Make it circular or adjust as needed
-          // Optionally, add a subtle border if desired
-          // border: '1px solid #ddd !important',
+          width: "32px !important",
+          height: "32px !important",
+          borderRadius: "50% !important",
         },
       }
     : {
         "& .MuiBox-root img": {
-          // 💡 INCREASED WIDTH: Changed from 186px to 250px for the main logo
           marginLeft: "-27px",
           width: "240px !important",
           height: "auto !important",
           borderRadius: "5px !important",
-          // border: '1px solid #ddd !important',
         },
       };
 
@@ -191,7 +160,7 @@ export default function App() {
               sx={logoStyles}
             />
             <Configurator />
-            {configsButton}
+            {/* configsButton removed */}
           </>
         )}
         {layout === "vr" && <Configurator />}
@@ -217,7 +186,7 @@ export default function App() {
             sx={logoStyles}
           />
           <Configurator />
-          {configsButton}
+          {/* configsButton removed */}
         </>
       )}
       {layout === "vr" && <Configurator />}
