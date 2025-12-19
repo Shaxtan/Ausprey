@@ -6,7 +6,8 @@ const SERVICES = {
   main: process.env.REACT_APP_BASE_URL + ":8070",
   mainn: process.env.REACT_APP_BASE_URL + ":8071",
   report: process.env.REACT_APP_BASE_URL + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
+  dashboard: process.env.REACT_APP_BASE_URL + ":8075",
+  commands: process.env.REACT_APP_BASE_URL + ":8010",
 };
 
 axios.interceptors.response.use(
@@ -395,6 +396,24 @@ class ApiService {
       })
       .catch((error) => {
         callAlert("Error", error?.message || "Failed to fetch DB alerts");
+        throw error;
+      });
+  }
+  // Inside your ApiService class in ApiService.js
+
+  createDeviceCommand(payload, callback) {
+    return this.postRequest(
+      "/device-commands/create",
+      payload,
+      true,
+      SERVICES.commands // Port 8010
+    )
+      .then((res) => {
+        if (callback) callback(res);
+        return res;
+      })
+      .catch((error) => {
+        console.error("API Error:", error);
         throw error;
       });
   }

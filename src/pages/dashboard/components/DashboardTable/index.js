@@ -232,42 +232,30 @@ function Projects({ accountId }) {
 
   const handleBulkUnlockClick = () => {
     closeMenu();
-    const imeisSelected = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
 
-    if (imeiSelected.length === 0) {
+    // FIXED: Corrected the variable name consistency here
+    const selectedImeis = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
+
+    if (selectedImeis.length === 0) {
       alert("No devices selected. Please check the boxes next to the devices you want to act on.");
       return;
     }
 
-    if (tripFilterType === "elk") {
-      const lockedImeisSet = new Set(
-        allElkRows.filter((row) => row._isLockedInitial).map((row) => row._imei)
-      );
-      const selectedLockedCount = imeisSelected.filter((i) => lockedImeisSet.has(i)).length;
-      const action = selectedLockedCount > 0 ? "unlock" : "lock";
+    // Determine if we are performing a bulk Unlock or Lock based on the first selected device
+    // (Or you can default to "unlock" as the primary action for the dialog title)
+    const firstImei = selectedImeis[0];
+    const deviceData = allElkRows.find((row) => row._imei === firstImei);
+    const action = deviceData?._type === "L" ? "unlock" : "lock";
 
-      setUnlockDialog({
-        open: true,
-        imei: null,
-        vehicleNo: "",
-        isBulk: true,
-        bulkCount: imeisSelected.length,
-        bulkImeis: imeisSelected,
-        bulkLockedCount: selectedLockedCount,
-        action,
-      });
-    } else {
-      setUnlockDialog({
-        open: true,
-        imei: null,
-        vehicleNo: "",
-        isBulk: true,
-        bulkCount: imeisSelected.length,
-        bulkImeis: imeisSelected,
-        bulkLockedCount: imeisSelected.length,
-        action: "unlock",
-      });
-    }
+    setUnlockDialog({
+      open: true,
+      imei: null,
+      vehicleNo: "",
+      isBulk: true,
+      bulkCount: selectedImeis.length,
+      bulkImeis: selectedImeis,
+      action: action,
+    });
   };
 
   const handleImeiClick = useCallback(
@@ -347,41 +335,42 @@ function Projects({ accountId }) {
   };
 
   const handleConfirmUnlock = () => {
-    const { imei, isBulk, bulkImeis, action } = unlockDialog;
+    const { isBulk, bulkImeis, imei, action } = unlockDialog;
     handleCloseUnlockDialog();
 
-    let imeisToSend = [];
+    const targetImeis = isBulk ? bulkImeis : [imei];
+    if (targetImeis.length === 0) return;
 
-    if (isBulk && bulkImeis.length > 0) {
-      imeisToSend = bulkImeis;
-    } else if (imei) {
-      imeisToSend = [imei];
-    }
+    // Build the array of command objects for the NEW API
+    const commandsList = targetImeis.map((tImei) => {
+      // Find the device type from our state
+      const device = allElkRows.find((r) => r._imei === tImei);
+      const currentType = device?._type || "U";
 
-    if (imeisToSend.length === 0) return;
+      // Requirement: L -> ULK, U -> LCK
+      const commandCode = currentType === "L" ? "ULK" : "LCK";
 
-    const command = action === "lock" ? "LOCK" : "UNLOCK";
-
-    imeisToSend.forEach((targetImei) => {
-      ApiService.sendCommand(
-        {
-          imei: targetImei,
-          command,
-        },
-        (res) => {
-          if (res?.data?.resultCode === 1) {
-            console.log(`${command} sent for ${targetImei}`);
-          }
-        }
-      );
+      return {
+        imei: tImei,
+        deviceType: 0,
+        code: commandCode,
+        command: "0",
+        type: "",
+        expiry: 0,
+      };
     });
 
-    alert(`${command} command initiated for ${imeisToSend.length} device(s).`);
-
-    if (isBulk) setSelectedRows({});
-
-    if (tripFilterType === "elk") fetchElkData(accountId);
-    if (tripFilterType === "vts") fetchVtsData(accountId);
+    // Call the new API endpoint
+    ApiService.createDeviceCommand({ commands: commandsList }, (res) => {
+      if (res?.data?.resultCode === 1) {
+        alert("Command(s) sent successfully!");
+        // Refresh the table to show updated status
+        if (tripFilterType === "elk") fetchElkData(accountId);
+        setSelectedRows({});
+      } else {
+        alert("Error: " + (res?.data?.message || "Failed to send command"));
+      }
+    });
   };
 
   const fetchVtsData = useCallback(
@@ -482,19 +471,19 @@ function Projects({ accountId }) {
 
             return {
               no: (
-  <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
-    <Icon fontSize="small" color={isLocked ? "error" : "success"}>
-      {isLocked ? "offline_bolt" : "online_prediction"}
-    </Icon>
-    <MDTypography
-      variant="caption"
-      fontWeight="bold"
-      color={isLocked ? "error" : "success"}
-    >
-      {index + 1}
-    </MDTypography>
-  </MDBox>
-),
+                <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
+                  <Icon fontSize="small" color={isLocked ? "error" : "success"}>
+                    {isLocked ? "offline_bolt" : "online_prediction"}
+                  </Icon>
+                  <MDTypography
+                    variant="caption"
+                    fontWeight="bold"
+                    color={isLocked ? "error" : "success"}
+                  >
+                    {index + 1}
+                  </MDTypography>
+                </MDBox>
+              ),
 
               accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               vehicleNo: (
@@ -533,7 +522,7 @@ function Projects({ accountId }) {
               ),
               checkbox: null,
               _imei: imei,
-              _isLockedInitial: isLocked,
+              _type: item.type, // "L" or "U"
             };
           });
           setAllElkRows(fetchedRows);
@@ -784,10 +773,10 @@ function Projects({ accountId }) {
                   <MDButton
                     size="small"
                     variant="gradient"
-                    color="error"
+                    color="dark"
                     onClick={handleBulkUnlockClick}
                   >
-                    Unlock Selected ({selectedCount})
+                    Lock/Unlock ({selectedCount})
                   </MDButton>
                 </MDBox>
               )}
