@@ -97,6 +97,7 @@ export const exportPDF = async (data, filename = "report.pdf", reportType = "VTS
     };
   } else {
     // VTS or PADLOCK
+    // PASTE THE NEW MAPPING HERE:
     headers = [
       [
         "Acc Name",
@@ -109,28 +110,26 @@ export const exportPDF = async (data, filename = "report.pdf", reportType = "VTS
         "Lng",
         "GPS",
         "Ign",
-        "Load Sensor",
         "Speed",
       ],
     ];
     rows = data.map((item) => [
-      item.accountName,
-      item.vehnum,
-      item.imei,
-      item.simNo,
-      item.devTs,
-      item.address,
-      item.lat,
-      item.lng,
-      item.gps,
-      item.ign,
-      item.avg,
-      item.speed,
+      item.accountName || "N/A",
+      item.vehnum || item.name || "N/A",
+      item.imei || "N/A",
+      item.simNo || "N/A",
+      item.devTs || "N/A",
+      item.address || "N/A",
+      item.lat || "0",
+      item.lng || "0",
+      item.gps || "N/A",
+      item.ign || "N/A",
+      `${item.speed || 0} km/h`,
     ]);
     columnWidths = {
       0: { cellWidth: 30 },
       1: { cellWidth: 25 },
-      5: { cellWidth: 60 }, // Address
+      5: { cellWidth: 60 },
     };
   }
 

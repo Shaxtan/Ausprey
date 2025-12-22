@@ -538,23 +538,68 @@ function Projects({
         <MenuItem
           onClick={() => {
             setMenu(null);
-            exportCSV(filteredRows, "Report.csv");
+            // Pass the RAW data lists, not the rows mapped with JSX
+            const rawData =
+              tripFilterType === "vts"
+                ? vtsData
+                : tripFilterType === "elk"
+                ? elkData
+                : unreachableData;
+
+            // Apply the search filter to raw data before exporting
+            const searchFilteredRaw = rawData.filter((item) => {
+              const searchStr = `${item.accountName} ${item.vehnum || item.name} ${
+                item.imei
+              }`.toLowerCase();
+              return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+            });
+
+            exportCSV(searchFilteredRaw, "Report.csv");
           }}
         >
           Export CSV
         </MenuItem>
+
         <MenuItem
           onClick={() => {
             setMenu(null);
-            exportExcel(filteredRows, "Report.xlsx");
+            const rawData =
+              tripFilterType === "vts"
+                ? vtsData
+                : tripFilterType === "elk"
+                ? elkData
+                : unreachableData;
+            const searchFilteredRaw = rawData.filter((item) => {
+              const searchStr = `${item.accountName} ${item.vehnum || item.name} ${
+                item.imei
+              }`.toLowerCase();
+              return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+            });
+
+            exportExcel(searchFilteredRaw, "Report.xlsx");
           }}
         >
           Export Excel
         </MenuItem>
+
         <MenuItem
           onClick={() => {
             setMenu(null);
-            exportPDF(filteredRows, "Report.pdf");
+            const rawData =
+              tripFilterType === "vts"
+                ? vtsData
+                : tripFilterType === "elk"
+                ? elkData
+                : unreachableData;
+            const searchFilteredRaw = rawData.filter((item) => {
+              const searchStr = `${item.accountName} ${item.vehnum || item.name} ${
+                item.imei
+              }`.toLowerCase();
+              return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+            });
+
+            // Pass the type so the PDF helper knows which columns to use
+            exportPDF(searchFilteredRaw, "Report.pdf", tripFilterType);
           }}
         >
           Export PDF
