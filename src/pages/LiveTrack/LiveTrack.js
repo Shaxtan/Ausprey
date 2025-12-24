@@ -172,42 +172,31 @@ function DeviceTable({ devices, selectedId, onSelect }) {
 
       <TableContainer component={Paper} sx={styles.tableContainer}>
         <Table stickyHeader size="small" sx={styles.tableRoot}>
-       <TableHead>
-  <TableRow>
-    <TableCell
-      align="left"
-      sx={styles.cell("45%", "left", { px: 2 })}
-    >
-      <MDBox
-        display="flex"
-        alignItems="center"
-        justifyContent="flex-start"
-      >
-        {/* Icon 1 → 2 gap: 4px */}
-        <Icon fontSize="small" sx={{ mr: "65px" }}>
-          directions_car
-        </Icon>
+          <TableHead>
+            <TableRow>
+              <TableCell align="left" sx={styles.cell("45%", "left", { px: 2 })}>
+                <MDBox display="flex" alignItems="center" justifyContent="flex-start">
+                  {/* Icon 1 → 2 gap: 4px */}
+                  <Icon fontSize="small" sx={{ mr: "65px" }}>
+                    directions_car
+                  </Icon>
 
-        {/* Icon 2 → 3 gap: 16px */}
-        <Icon fontSize="small" sx={{ mr: "60px" }}>
-          power_settings_new
-        </Icon>
+                  {/* Icon 2 → 3 gap: 16px */}
+                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                    power_settings_new
+                  </Icon>
 
-        {/* Icon 3 → 4 gap: 32px */}
-        <Icon fontSize="small" sx={{ mr: "60px" }}>
-          speed
-        </Icon>
+                  {/* Icon 3 → 4 gap: 32px */}
+                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                    speed
+                  </Icon>
 
-        {/* Last icon usually no right margin */}
-        <Icon fontSize="small">
-          info_outline
-        </Icon>
-      </MDBox>
-    </TableCell>
-  </TableRow>
-</TableHead>
-
-
+                  {/* Last icon usually no right margin */}
+                  <Icon fontSize="small">info_outline</Icon>
+                </MDBox>
+              </TableCell>
+            </TableRow>
+          </TableHead>
 
           <TableBody>
             {devices.map((d) => (
@@ -242,17 +231,16 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   </Tooltip>
                 </TableCell>
 
-               <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
-  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
-      speed
-    </Icon>
-    <Typography variant="caption" color="text.secondary">
-      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
-    </Typography>
-  </MDBox>
-</TableCell>
-
+                <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
+                  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+                    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
+                      speed
+                    </Icon>
+                    <Typography variant="caption" color="text.secondary">
+                      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
+                    </Typography>
+                  </MDBox>
+                </TableCell>
 
                 {/* Info Column */}
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
@@ -297,29 +285,29 @@ export default function LiveTrack() {
   const [filterStatus, setFilterStatus] = useState("Total");
   const location = useLocation();
 
-  // src/LiveTrack/LiveTrack.js (Updated useEffect)
   useEffect(() => {
     const targetImei = location.state?.targetImei;
-    const targetAccountId = location.state?.targetAccountId; // NEW
+    const targetAccountId = location.state?.targetAccountId;
 
-    ApiService.getAllDevices()
+    ApiService.getAllDevices(targetAccountId) // Pass accountId if available
       .then((devices) => {
         setAllDevices(devices);
 
         let initialSelectedDevice = null;
 
         if (targetImei) {
+          // This will now find the device whether it's VTS or ELK
           initialSelectedDevice = devices.find((d) => d.id === targetImei);
 
-          // **ENHANCEMENT:** Use targetAccountId if the device is found and the state provided it
           if (initialSelectedDevice && targetAccountId) {
             initialSelectedDevice = {
               ...initialSelectedDevice,
-              accountId: targetAccountId, // Override/ensure accountId
+              accountId: targetAccountId,
             };
           }
         }
 
+        // If no target or target not found, default to first device
         if (!initialSelectedDevice && devices.length > 0) {
           initialSelectedDevice = devices[0];
         }
@@ -327,7 +315,7 @@ export default function LiveTrack() {
         setSelectedDevice(initialSelectedDevice);
       })
       .catch(console.error);
-  }, [location.state]); // Dependency on location.state
+  }, [location.state]);
   useEffect(() => {
     if (!selectedDevice?.accountId || !selectedDevice?.id) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -498,13 +486,15 @@ export default function LiveTrack() {
 
   return (
     <DashboardLayout>
-<Box
-  sx={{
-    ...styles.dashboardContainer(isLeftPanelOpen),
-    zIndex: 0,
-    position: 'relative',
-  }}
->        {isLeftPanelOpen && (
+      <Box
+        sx={{
+          ...styles.dashboardContainer(isLeftPanelOpen),
+          zIndex: 0,
+          position: "relative",
+        }}
+      >
+        {" "}
+        {isLeftPanelOpen && (
           <Box sx={styles.leftPanelContainer(LEFT_PANEL_WIDTH)}>
             <Box sx={styles.leftPanelHeader}>
               <Typography variant="subtitle1" fontWeight={700}>
@@ -536,7 +526,6 @@ export default function LiveTrack() {
             />
           </Box>
         )}
-
         {!isLeftPanelOpen && (
           <Box sx={styles.expandButtonWrapper}>
             <Tooltip title="Open sidebar">
@@ -550,7 +539,6 @@ export default function LiveTrack() {
             </Tooltip>
           </Box>
         )}
-
         <Box sx={styles.mapWrapper}>
           <MapContainer
             center={mapCenter}
