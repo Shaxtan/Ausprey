@@ -35,12 +35,49 @@ const ALERT_COLUMNS = [
 function Alerts() {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [dateRangeOption, setDateRangeOption] = useState("last24hours");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   // State for the API response data
   const [alertLogs, setAlertLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Helper to set date range based on option
+  const setDateRange = (option) => {
+    const now = new Date();
+    let from = new Date();
+
+    switch (option) {
+      case "last24hours":
+        from.setHours(from.getHours() - 24);
+        break;
+      case "past7days":
+        from.setDate(from.getDate() - 7);
+        break;
+      case "past10days":
+        from.setDate(from.getDate() - 10);
+        break;
+      case "past15days":
+        from.setDate(from.getDate() - 15);
+        break;
+      default:
+        return;
+    }
+
+    // Set time to start of day for day-based ranges, keep full precision for 24h
+    if (option !== "last24hours") {
+      from.setHours(0, 0, 0, 0);
+    }
+
+    setFromDate(from.toISOString().slice(0, 16));
+    setToDate(now.toISOString().slice(0, 16));
+    setDateRangeOption(option);
+  };
+
+  // Set default to Last 24 Hours on mount
+  useEffect(() => {
+    setDateRange("last24hours");
+  }, []);
 
   // Fetch Accounts on Mount
   useEffect(() => {
@@ -54,6 +91,16 @@ function Alerts() {
       }
     });
   }, []);
+  // Allow manual change to override quick selection
+  const handleFromDateChange = (e) => {
+    setFromDate(e.target.value);
+    setDateRangeOption("custom"); // mark as custom when manually changed
+  };
+
+  const handleToDateChange = (e) => {
+    setToDate(e.target.value);
+    setDateRangeOption("custom");
+  };
 
   // Format Date for API
   const formatDateTime = (dateTimeString) => {
@@ -140,14 +187,36 @@ function Alerts() {
                         </FormControl>
                       </Grid>
 
+                      {/* Quick Date Range Selector */}
+                      <Grid item xs={12} md={4}>
+                        <FormControl variant="outlined" fullWidth sx={inputStyleSx}>
+                          <InputLabel id="date-range-label">Quick Date Range</InputLabel>
+                          <Select
+                            labelId="date-range-label"
+                            value={dateRangeOption}
+                            label="Quick Date Range"
+                            onChange={(e) => setDateRange(e.target.value)}
+                            sx={{ height: 45 }}
+                          >
+                            <MenuItem value="last24hours">Last 24 Hours</MenuItem>
+                            <MenuItem value="past7days">Past 7 Days</MenuItem>
+                            <MenuItem value="past10days">Past 10 Days</MenuItem>
+                            <MenuItem value="past15days">Past 15 Days</MenuItem>
+                            <MenuItem value="custom" disabled={dateRangeOption === "custom"}>
+                              Custom Range
+                            </MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+
                       {/* From Date */}
                       <Grid item xs={12} md={4}>
                         <TextField
-                          label="From Date"
+                          label="From Date & Time"
                           type="datetime-local"
                           fullWidth
                           value={fromDate}
-                          onChange={(e) => setFromDate(e.target.value)}
+                          onChange={handleFromDateChange}
                           variant="outlined"
                           sx={inputStyleSx}
                           InputLabelProps={{ shrink: true }}
@@ -157,11 +226,11 @@ function Alerts() {
                       {/* To Date */}
                       <Grid item xs={12} md={4}>
                         <TextField
-                          label="To Date"
+                          label="To Date & Time"
                           type="datetime-local"
                           fullWidth
                           value={toDate}
-                          onChange={(e) => setToDate(e.target.value)}
+                          onChange={handleToDateChange}
                           variant="outlined"
                           sx={inputStyleSx}
                           InputLabelProps={{ shrink: true }}
