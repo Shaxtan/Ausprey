@@ -12,7 +12,7 @@ import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 import Dashboard from "../src/pages/dashboard";
 // 🔥 Step 1: Import your new component here
 import Dashboard2 from "../src/pages/dashboard2"; 
-
+import TripDashboard from "pages/TripDashboard/TripDashboard";
 import Notifications from "../src/pages/notifications";
 import SignIn from "../src/pages/authentication/sign-in";
 import SignUp from "../src/pages/authentication/sign-up";
@@ -55,6 +55,14 @@ const routes = [
     icon: <Icon fontSize="small">gps_fixed</Icon>,
     route: "/live-track",
     component: <LiveTrack />,
+  },
+   {
+    type: "collapse",
+    name: "Trip Dashboard",
+    key: "live-track",
+    icon: <Icon fontSize="small">gps_fixed</Icon>,
+    route: "/Trip-dashboard",
+    component: <TripDashboard />,
   },
   {
     type: "collapse",

@@ -30,14 +30,44 @@ import { exportCSV, exportExcel, exportPDF } from "./dashUtils";
 
 import {
   checkboxBaseSx,
-  filterToggleBoxSx,
-  filterToggleButtonSx,
-  unreachableToggleButtonSx,
-  tableCardSx,
   tablePaginationHideSelectSx,
   clickableTextSx,
   addressMapLinkSx,
 } from "./Projects.styles";
+
+// ================= SCROLL / STACK STYLES =================
+
+const scrollContainerSx = {
+  height: "calc(100vh - 160px)", // adjust relative to your navbar height
+  overflowY: "auto",
+  overflowX: "hidden",
+  paddingBottom: "20px",
+  position: "relative",
+  "&::-webkit-scrollbar": {
+    width: "6px",
+  },
+  "&::-webkit-scrollbar-track": {
+    background: "#f1f1f1",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    background: "#888",
+    borderRadius: "4px",
+  },
+};
+
+const stickyCardSx = (zIndex) => ({
+  position: "sticky",
+  top: 0,
+  zIndex,
+  minHeight: "100%",           // cover previous card
+  marginBottom: 0,
+  boxShadow: "0 -5px 20px rgba(0,0,0,0.1)",
+  backgroundColor: "#fff",
+  borderTop: "1px solid rgba(0,0,0,0.1)",
+  transition: "transform 0.3s ease",
+});
+
+// ================= SMALL CELL COMPONENTS =================
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -59,6 +89,7 @@ const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, on
     </MDTypography>
   );
 };
+
 DataCell.propTypes = {
   text: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   color: PropTypes.string,
@@ -77,6 +108,7 @@ const Status = ({ status }) => {
     </MDBox>
   );
 };
+
 Status.propTypes = { status: PropTypes.string.isRequired };
 
 const Ignition = ({ status }) => {
@@ -88,6 +120,7 @@ const Ignition = ({ status }) => {
     </MDTypography>
   );
 };
+
 Ignition.propTypes = { status: PropTypes.number.isRequired };
 
 const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
@@ -97,35 +130,35 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
     if (elkType === "L") {
       iconName = "lock";
       color = "success";
-      tooltipText = "**Device Status: LOCKED (Ready to Unlock)**";
+      tooltipText = "Device Status: LOCKED (Ready to Unlock)";
     } else {
       iconName = "lock_open";
       color = "error";
-      tooltipText = "**Device Status: UNLOCKED**";
+      tooltipText = "Device Status: UNLOCKED";
     }
   } else {
     switch (deviceStatus) {
       case "ROPE_CUT":
         iconName = "gpp_bad";
         color = "error";
-        tooltipText = "**Device Alert: Rope Cut Detected**";
+        tooltipText = "Device Alert: Rope Cut Detected";
         break;
       case "CASE_TAMPER":
         iconName = "lock_person";
         color = "warning";
-        tooltipText = "**Device Alert: Case Tamper / String Tamper**";
+        tooltipText = "Device Alert: Case Tamper / String Tamper";
         break;
       case "ROPE_INSERT":
         iconName = "lock_reset";
         color = "info";
-        tooltipText = "**Device Status: Rope Inserted / Pending Lock**";
+        tooltipText = "Device Status: Rope Inserted / Pending Lock";
         break;
       default:
         iconName = isLocked ? "lock" : "lock_open";
         color = isLocked ? "error" : "success";
         tooltipText = isLocked
-          ? "**Trip Status: Locked (Ready to Unlock)**"
-          : "**Trip Status: Unlocked**";
+          ? "Trip Status: Locked (Ready to Unlock)"
+          : "Trip Status: Unlocked";
         break;
     }
   }
@@ -152,6 +185,40 @@ LockUnlock.propTypes = {
   deviceStatus: PropTypes.string,
   elkType: PropTypes.string,
 };
+
+const AddressCell = ({ item }) => (
+  <MDBox display="flex" flexDirection="column" alignItems="flex-start" lineHeight={1.4}>
+    {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
+      <MDTypography variant="caption" color="text">
+        {item.address}
+      </MDTypography>
+    ) : item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
+      <MDTypography
+        variant="caption"
+        color="info"
+        fontWeight="bold"
+        sx={addressMapLinkSx}
+        onClick={() =>
+          window.open(
+            `https://www.google.com/maps?q=${item.lat.toFixed(6)},${item.lng.toFixed(6)}`,
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
+      >
+        Open in Google Maps ↗
+      </MDTypography>
+    ) : (
+      <MDTypography variant="caption" color="textSecondary" fontSize="0.7rem" mt={0.5}>
+        No coordinates available
+      </MDTypography>
+    )}
+  </MDBox>
+);
+
+AddressCell.propTypes = { item: PropTypes.object };
+
+// ================= COLUMNS =================
 
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
@@ -195,17 +262,19 @@ const UNREACHABLE_COLUMNS = [
   { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
+// ================= MAIN COMPONENT =================
+
 function Projects({ accountId }) {
   const navigate = useNavigate();
 
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+
   const [allVtsRows, setAllVtsRows] = useState([]);
   const [allElkRows, setAllElkRows] = useState([]);
   const [unreachableRows, setUnreachableRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
-  const [tripFilterType, setTripFilterType] = useState("vts");
   const [pageSize, setPageSize] = useState(10);
 
   const [unlockDialog, setUnlockDialog] = useState({
@@ -222,102 +291,369 @@ function Projects({ accountId }) {
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
 
-  const handlePageSizeChange = (event) => {
-    setPageSize(event.target.value);
-  };
-
   const handleToggleSelect = useCallback((imei) => {
     setSelectedRows((prev) => ({ ...prev, [imei]: !prev[imei] }));
   }, []);
 
-  const handleBulkUnlockClick = () => {
-    closeMenu();
-    const imeisSelected = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
-
-    if (imeiSelected.length === 0) {
-      alert("No devices selected. Please check the boxes next to the devices you want to act on.");
-      return;
-    }
-
-    if (tripFilterType === "elk") {
-      const lockedImeisSet = new Set(
-        allElkRows.filter((row) => row._isLockedInitial).map((row) => row._imei)
-      );
-      const selectedLockedCount = imeisSelected.filter((i) => lockedImeisSet.has(i)).length;
-      const action = selectedLockedCount > 0 ? "unlock" : "lock";
-
-      setUnlockDialog({
-        open: true,
-        imei: null,
-        vehicleNo: "",
-        isBulk: true,
-        bulkCount: imeisSelected.length,
-        bulkImeis: imeisSelected,
-        bulkLockedCount: selectedLockedCount,
-        action,
-      });
-    } else {
-      setUnlockDialog({
-        open: true,
-        imei: null,
-        vehicleNo: "",
-        isBulk: true,
-        bulkCount: imeisSelected.length,
-        bulkImeis: imeisSelected,
-        bulkLockedCount: imeisSelected.length,
-        action: "unlock",
-      });
-    }
-  };
-
   const handleImeiClick = useCallback(
     (imei, accId) => {
-      if (!imei || imei === "N/A") {
-        console.warn("Invalid IMEI clicked");
-        return;
-      }
-
+      if (!imei || imei === "N/A") return;
       const targetAccountId = accId || accountId;
-
       navigate(`/live-track?imei=${imei}`, {
-        state: {
-          targetImei: imei,
-          targetAccountId,
-        },
+        state: { targetImei: imei, targetAccountId },
       });
     },
     [navigate, accountId]
   );
 
+  // -------- DATA FETCHING --------
+
+  const fetchVtsData = useCallback(
+    (currentAccountId) => {
+      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
+          const devices = res.data.data.data.VTS.available;
+          const fetchedRows = devices.map((item, index) => {
+            const imei = item.imei || "N/A";
+            const speed = Number(item.speed) || 0;
+            const isLocked = speed === 0 && item.ign === "Y";
+            const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
+
+            return {
+              no: (
+                <MDBox display="flex" alignItems="center" gap={0.5}>
+                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
+                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                  </Icon>
+                  <MDTypography
+                    variant="caption"
+                    fontWeight="bold"
+                    color={item.ign === "Y" ? "success" : "error"}
+                  >
+                    {index + 1}
+                  </MDTypography>
+                </MDBox>
+              ),
+              accountName: (
+                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
+              ),
+              vehicleNo: (
+                <DataCell
+                  text={item.vehnum || item.name || "N/A"}
+                  fontWeight="bold"
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              gpsStatus: <Status status={gpsDisplay} />,
+              ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+              imei: (
+                <DataCell
+                  text={imei}
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              simNo: <DataCell text={item.simNo || "N/A"} />,
+              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+              latitude: (
+                <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />
+              ),
+              longitude: (
+                <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />
+              ),
+              address: <AddressCell item={item} />,
+              avgSpeed: (
+                <DataCell
+                  text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"}
+                />
+              ),
+              currentSpeed: (
+                <DataCell
+                  text={`${speed} km/h`}
+                  color={speed > 0 ? "success" : "text"}
+                  fontWeight="bold"
+                />
+              ),
+              lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
+              checkbox: null,
+              _imei: imei,
+              _isLockedInitial: isLocked,
+            };
+          });
+          setAllVtsRows(fetchedRows);
+        } else {
+          setAllVtsRows([]);
+        }
+      });
+    },
+    [handleImeiClick]
+  );
+
+  const fetchElkData = useCallback(
+    (currentAccountId) => {
+      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
+        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
+          const devices = res.data.data.data.ELK.available;
+          const fetchedRows = devices.map((item, index) => {
+            const imei = item.imei || "N/A";
+            const speed = Number(item.speed) || 0;
+            const elkTypeStatus = item.type;
+            const isLocked = elkTypeStatus === "L";
+
+            return {
+              no: (
+                <MDBox display="flex" alignItems="center" gap={0.5}>
+                  <Icon fontSize="small" color={isLocked ? "error" : "success"}>
+                    {isLocked ? "offline_bolt" : "online_prediction"}
+                  </Icon>
+                  <MDTypography
+                    variant="caption"
+                    fontWeight="bold"
+                    color={isLocked ? "error" : "success"}
+                  >
+                    {index + 1}
+                  </MDTypography>
+                </MDBox>
+              ),
+              accountName: (
+                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
+              ),
+              vehicleNo: (
+                <DataCell
+                  text={item.vehnum || item.name || "N/A"}
+                  fontWeight="bold"
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              imei: (
+                <DataCell
+                  text={imei}
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              simNo: <DataCell text={item.simNo || "N/A"} />,
+              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+              latitude: (
+                <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />
+              ),
+              longitude: (
+                <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />
+              ),
+              address: <AddressCell item={item} />,
+              currentSpeed: (
+                <DataCell
+                  text={`${speed} km/h`}
+                  color={speed > 0 ? "success" : "text"}
+                  fontWeight="bold"
+                />
+              ),
+              gpsStatus: (
+                <Status status={item.gps === "A" ? "Active" : "Inactive"} />
+              ),
+              lockUnlock: (
+                <LockUnlock
+                  isLocked={isLocked}
+                  deviceStatus={item.status || null}
+                  elkType={elkTypeStatus}
+                />
+              ),
+              checkbox: null,
+              _imei: imei,
+              _isLockedInitial: isLocked,
+            };
+          });
+          setAllElkRows(fetchedRows);
+        } else {
+          setAllElkRows([]);
+        }
+      });
+    },
+    [handleImeiClick]
+  );
+
+  const fetchUnreachableData = useCallback(
+    (currentAccountId) => {
+      ApiService.getUnreachableDevices({ accid: currentAccountId }, (res) => {
+        const devices = res?.data?.data || [];
+        if (res?.data?.resultCode === 1 && Array.isArray(devices)) {
+          const fetchedRows = devices.map((item, index) => {
+            const imei = item.imei || "N/A";
+            return {
+              no: <DataCell text={index + 1} fontWeight="bold" />,
+              accountName: (
+                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
+              ),
+              accountId: <DataCell text={item.accid || "N/A"} />,
+              vehicleNo: (
+                <DataCell
+                  text={item.vehnum || "N/A"}
+                  fontWeight="bold"
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              imei: (
+                <DataCell
+                  text={imei}
+                  isClickable
+                  onClick={() => handleImeiClick(imei, item.accid)}
+                />
+              ),
+              deviceType: <DataCell text={item.deviceType || "N/A"} />,
+              createdOn: <DataCell text={item.createdOn || "N/A"} />,
+            };
+          });
+          setUnreachableRows(fetchedRows);
+        } else {
+          setUnreachableRows([]);
+        }
+      });
+    },
+    [handleImeiClick]
+  );
+
+  useEffect(() => {
+    setLoading(true);
+    fetchVtsData(accountId);
+    fetchElkData(accountId);
+    fetchUnreachableData(accountId);
+    // small delay for smoother loading state
+    const t = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(t);
+  }, [accountId, fetchVtsData, fetchElkData, fetchUnreachableData]);
+
+  // -------- FILTERING --------
+
+  const { filteredVts, filteredElk, filteredUnreachable } = useMemo(() => {
+    const matchesSearch = (row) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      const fields = [
+        row.accountName?.props?.text,
+        row.vehicleNo?.props?.text,
+        row._imei,
+        row.address?.props?.children?.props?.children,
+      ].filter(Boolean);
+      return fields.some((f) => String(f).toLowerCase().includes(term));
+    };
+
+    const vts = allVtsRows.filter(matchesSearch).map((row) => ({
+      ...row,
+      checkbox: (
+        <MDBox display="flex" justifyContent="center">
+          <Checkbox
+            checked={!!selectedRows[row._imei]}
+            onChange={() => handleToggleSelect(row._imei)}
+            color="primary"
+            sx={checkboxBaseSx}
+          />
+        </MDBox>
+      ),
+    }));
+
+    const elk = allElkRows.filter(matchesSearch).map((row) => ({
+      ...row,
+      checkbox: (
+        <MDBox display="flex" justifyContent="center">
+          <Checkbox
+            checked={!!selectedRows[row._imei]}
+            onChange={() => handleToggleSelect(row._imei)}
+            color="primary"
+            sx={checkboxBaseSx}
+          />
+        </MDBox>
+      ),
+    }));
+
+    const unreachable = unreachableRows.filter((row) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      const fields = [
+        row.accountName?.props?.text,
+        row.vehicleNo?.props?.text,
+        row.imei?.props?.text,
+      ].filter(Boolean);
+      return fields.some((f) => String(f).toLowerCase().includes(term));
+    });
+
+    return { filteredVts: vts, filteredElk: elk, filteredUnreachable: unreachable };
+  }, [allVtsRows, allElkRows, unreachableRows, searchTerm, selectedRows, handleToggleSelect]);
+
+  // -------- BULK UNLOCK / LOCK --------
+
+  const handleBulkUnlockClick = () => {
+    closeMenu();
+    const imeisSelected = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
+    if (imeisSelected.length === 0) {
+      alert("No devices selected.");
+      return;
+    }
+
+    const lockedImeisSet = new Set(
+      allElkRows.filter((row) => row._isLockedInitial).map((row) => row._imei)
+    );
+    const selectedLockedCount = imeisSelected.filter((i) => lockedImeisSet.has(i)).length;
+    const action = selectedLockedCount > 0 ? "unlock" : "lock";
+
+    setUnlockDialog({
+      open: true,
+      imei: null,
+      vehicleNo: "",
+      isBulk: true,
+      bulkCount: imeisSelected.length,
+      bulkImeis: imeisSelected,
+      bulkLockedCount: selectedLockedCount,
+      action,
+    });
+  };
+
+  const handleConfirmUnlock = () => {
+    const { imei, isBulk, bulkImeis, action } = unlockDialog;
+    setUnlockDialog((p) => ({ ...p, open: false }));
+
+    const imeisToSend = isBulk ? bulkImeis : imei ? [imei] : [];
+    if (!imeisToSend.length) return;
+
+    const command = action === "lock" ? "LOCK" : "UNLOCK";
+
+    imeisToSend.forEach((targetImei) => {
+      ApiService.sendCommand({ imei: targetImei, command }, () => {});
+    });
+
+    alert(`${command} command initiated for ${imeisToSend.length} device(s).`);
+
+    if (isBulk) setSelectedRows({});
+
+    fetchVtsData(accountId);
+    fetchElkData(accountId);
+  };
+
   const handleExportData = (format) => {
     closeMenu();
 
-    // 1. Prepare the raw data by extracting text from the table rows
-    const dataToExport = filteredRows.map((row) => {
-      return {
-        accountName: row.accountName.props.text,
-        vehnum: row.vehicleNo.props.text,
-        imei: row._imei,
-        simNo: row.simNo.props.text,
-        devTs: row.date.props.text,
-        address: row.address.props.item.address || "N/A",
-        lat: row.latitude.props.text,
-        lng: row.longitude.props.text,
-        gps: row.gpsStatus.props.status,
-        ign: row.ignitionStatus.props.status === 1 ? "On" : "Off",
-        avg: row.avgSpeed?.props?.text || "0",
-        speed: row.currentSpeed.props.text,
-      };
-    });
+    const allRows = [...filteredVts, ...filteredElk, ...filteredUnreachable];
 
-    if (dataToExport.length === 0) {
+    const dataToExport = allRows.map((row) => ({
+      accountName: row.accountName?.props?.text || "",
+      vehnum: row.vehicleNo?.props?.text || "",
+      imei: row._imei || row.imei?.props?.text || "",
+      simNo: row.simNo?.props?.text || "",
+      devTs: row.date?.props?.text || "",
+      address: row.address?.props?.item?.address || "N/A",
+      lat: row.latitude?.props?.text || "",
+      lng: row.longitude?.props?.text || "",
+    }));
+
+    if (!dataToExport.length) {
       alert("No data available to export.");
       return;
     }
 
-    const filename = `${tripFilterType}_Report_${new Date().toISOString().split("T")[0]}`;
+    const filename = `Dashboard_Report_${new Date().toISOString().split("T")[0]}`;
 
-    // 2. Call the respective utility function
     switch (format) {
       case "csv":
         exportCSV(dataToExport, `${filename}.csv`);
@@ -333,611 +669,245 @@ function Projects({ accountId }) {
     }
   };
 
-  const handleCloseUnlockDialog = () => {
-    setUnlockDialog({
-      open: false,
-      imei: null,
-      vehicleNo: "",
-      isBulk: false,
-      bulkCount: 0,
-      bulkImeis: [],
-      bulkLockedCount: 0,
-      action: "unlock",
-    });
-  };
-
-  const handleConfirmUnlock = () => {
-    const { imei, isBulk, bulkImeis, action } = unlockDialog;
-    handleCloseUnlockDialog();
-
-    let imeisToSend = [];
-
-    if (isBulk && bulkImeis.length > 0) {
-      imeisToSend = bulkImeis;
-    } else if (imei) {
-      imeisToSend = [imei];
-    }
-
-    if (imeisToSend.length === 0) return;
-
-    const command = action === "lock" ? "LOCK" : "UNLOCK";
-
-    imeisToSend.forEach((targetImei) => {
-      ApiService.sendCommand(
-        {
-          imei: targetImei,
-          command,
-        },
-        (res) => {
-          if (res?.data?.resultCode === 1) {
-            console.log(`${command} sent for ${targetImei}`);
-          }
-        }
-      );
-    });
-
-    alert(`${command} command initiated for ${imeisToSend.length} device(s).`);
-
-    if (isBulk) setSelectedRows({});
-
-    if (tripFilterType === "elk") fetchElkData(accountId);
-    if (tripFilterType === "vts") fetchVtsData(accountId);
-  };
-
-  const fetchVtsData = useCallback(
-    (currentAccountId) => {
-      setLoading(true);
-      ApiService.getDashboardData(
-        { accid: currentAccountId },
-        (res) => {
-          if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
-            const devices = res.data.data.data.VTS.available;
-            const fetchedRows = devices.map((item, index) => {
-              const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
-              const imei = item.imei || "N/A";
-              const speed = Number(item.speed) || 0;
-              const isLocked = speed === 0 && item.ign === "Y";
-
-              return {
-                no: (
-                  <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
-                    <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                      {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
-                    </Icon>
-                    <MDTypography
-                      variant="caption"
-                      fontWeight="bold"
-                      color={item.ign === "Y" ? "success" : "error"}
-                    >
-                      {index + 1}
-                    </MDTypography>
-                  </MDBox>
-                ),
-                accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-                vehicleNo: (
-                  <DataCell
-                    text={item.vehnum || item.name || "N/A"}
-                    fontWeight="bold"
-                    isClickable={true}
-                    onClick={() => handleImeiClick(imei, item.accid)}
-                  />
-                ),
-                gpsStatus: <Status status={gpsDisplay} />,
-                ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-                imei: (
-                  <DataCell
-                    text={imei}
-                    isClickable={true}
-                    onClick={() => handleImeiClick(imei, item.accid)}
-                  />
-                ),
-                simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
-                date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-                latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-                longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-                address: <AddressCell item={item} />,
-                avgSpeed: (
-                  <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />
-                ),
-                currentSpeed: (
-                  <DataCell
-                    text={`${speed} km/h`}
-                    color={speed > 0 ? "success" : "text"}
-                    fontWeight="bold"
-                  />
-                ),
-                lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
-                checkbox: null,
-                _imei: imei,
-                _isLockedInitial: isLocked,
-              };
-            });
-            setAllVtsRows(fetchedRows);
-            setSelectedRows({});
-          } else {
-            setAllVtsRows([]);
-          }
-          setLoading(false);
-        },
-        true,
-        1
-      );
-    },
-    [handleImeiClick]
-  );
-
-  const fetchElkData = useCallback(
-    (currentAccountId) => {
-      setLoading(true);
-      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
-          const devices = res.data.data.data.ELK.available;
-          const fetchedRows = devices.map((item, index) => {
-            const imei = item.imei || "N/A";
-            const speed = Number(item.speed) || 0;
-            const elkTypeStatus = item.type;
-            const vehicleAccountId = item.accid;
-
-            const isLocked = elkTypeStatus === "L";
-
-            return {
-              no: (
-  <MDBox display="flex" alignItems="center" gap={0.5} justifyContent="flex-start">
-    <Icon fontSize="small" color={isLocked ? "error" : "success"}>
-      {isLocked ? "offline_bolt" : "online_prediction"}
-    </Icon>
-    <MDTypography
-      variant="caption"
-      fontWeight="bold"
-      color={isLocked ? "error" : "success"}
-    >
-      {index + 1}
-    </MDTypography>
-  </MDBox>
-),
-
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              vehicleNo: (
-                <DataCell
-                  text={item.vehnum || item.name || "N/A"}
-                  fontWeight="bold"
-                  isClickable={true}
-                  onClick={() => handleImeiClick(imei, vehicleAccountId)}
-                />
-              ),
-              imei: (
-                <DataCell
-                  text={imei}
-                  isClickable={true}
-                  onClick={() => handleImeiClick(imei, vehicleAccountId)}
-                />
-              ),
-              simNo: <DataCell text={item.simNo || "N/A"} fontWeight="medium" />,
-              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: <AddressCell item={item} />,
-              currentSpeed: (
-                <DataCell
-                  text={`${speed} km/h`}
-                  color={speed > 0 ? "success" : "text"}
-                  fontWeight="bold"
-                />
-              ),
-              lockUnlock: (
-                <LockUnlock
-                  isLocked={isLocked}
-                  deviceStatus={item.status || null}
-                  elkType={elkTypeStatus}
-                />
-              ),
-              checkbox: null,
-              _imei: imei,
-              _isLockedInitial: isLocked,
-            };
-          });
-          setAllElkRows(fetchedRows);
-          setSelectedRows({});
-        } else {
-          setAllElkRows([]);
-        }
-        setLoading(false);
-      });
-    },
-    [handleImeiClick]
-  );
-
-  const fetchUnreachableData = useCallback(
-    (currentAccountId) => {
-      setLoading(true);
-      ApiService.getUnreachableDevices({ accid: currentAccountId }, (res) => {
-        const unreachableDevices = res?.data?.data || [];
-        if (res?.data?.resultCode === 1 && Array.isArray(unreachableDevices)) {
-          const fetchedRows = unreachableDevices.map((item, index) => {
-            const imei = item.imei || "N/A";
-            return {
-              no: <DataCell text={index + 1} fontWeight="bold" />,
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              accountId: <DataCell text={item.accid || "N/A"} fontWeight="medium" />,
-              vehicleNo: (
-                <DataCell
-                  text={item.vehnum || "N/A"}
-                  fontWeight="bold"
-                  isClickable={true}
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              imei: (
-                <DataCell
-                  text={imei}
-                  isClickable={true}
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              deviceType: <DataCell text={item.deviceType || "N/A"} fontWeight="medium" />,
-              createdOn: <DataCell text={item.createdOn || "N/A"} fontWeight="medium" />,
-            };
-          });
-          setUnreachableRows(fetchedRows);
-        } else {
-          setUnreachableRows([]);
-        }
-        setLoading(false);
-      });
-    },
-    [handleImeiClick]
-  );
-
-  useEffect(() => {
-    if (tripFilterType === "vts") {
-      fetchVtsData(accountId);
-    } else if (tripFilterType === "elk") {
-      fetchElkData(accountId);
-    } else if (tripFilterType === "unreachable") {
-      fetchUnreachableData(accountId);
-    }
-  }, [tripFilterType, accountId, fetchVtsData, fetchUnreachableData, fetchElkData]);
-
-  const rowsByType = {
-    vts: allVtsRows,
-    elk: allElkRows,
-    unreachable: unreachableRows,
-  };
-
-  const columnsByType = {
-    vts: VTS_COLUMNS,
-    elk: ELK_COLUMNS,
-    unreachable: UNREACHABLE_COLUMNS,
-  };
-
-  const currentRows = rowsByType[tripFilterType] || [];
-  const currentColumns = columnsByType[tripFilterType] || [];
-
-  const filteredRows = useMemo(() => {
-    const matchesSearch = (row) => {
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      const fields = [
-        row.accountName?.props?.text,
-        row.vehicleNo?.props?.text,
-        row._imei,
-        row.address?.props?.children?.props?.children,
-      ].filter(Boolean);
-      return fields.some((f) => String(f).toLowerCase().includes(term));
-    };
-
-    if (tripFilterType === "vts") {
-      return currentRows
-        .map((row) => {
-          const imei = row._imei;
-          const checkboxComponent = (
-            <MDBox display="flex" justifyContent="center">
-              <Checkbox
-                checked={!!selectedRows[imei]}
-                onChange={() => handleToggleSelect(imei)}
-                color="primary"
-                sx={checkboxBaseSx}
-              />
-            </MDBox>
-          );
-          return { ...row, checkbox: checkboxComponent };
-        })
-        .filter(matchesSearch);
-    } else if (tripFilterType === "elk") {
-      return currentRows
-        .map((row) => {
-          const imei = row._imei;
-          const checkboxComponent = (
-            <MDBox display="flex" justifyContent="center">
-              <Checkbox
-                checked={!!selectedRows[imei]}
-                onChange={() => handleToggleSelect(imei)}
-                color="primary"
-                inputProps={{ "aria-label": "lock-unlock checkbox" }}
-                sx={checkboxBaseSx}
-              />
-            </MDBox>
-          );
-
-          return { ...row, checkbox: checkboxComponent };
-        })
-        .filter(matchesSearch);
-    }
-
-    if (tripFilterType === "unreachable") {
-      return currentRows.filter((row) => {
-        if (!searchTerm) return true;
-        const term = searchTerm.toLowerCase();
-        const fields = [
-          row.accountName?.props?.text,
-          row.accountId?.props?.text,
-          row.vehicleNo?.props?.text,
-          row.imei?.props?.text,
-        ].filter(Boolean);
-        return fields.some((f) => String(f).toLowerCase().includes(term));
-      });
-    }
-    return [];
-  }, [currentRows, searchTerm, selectedRows, handleToggleSelect, tripFilterType]);
-
-  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
-
   if (loading) {
     return (
       <Card>
-        <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <MDBox
+          p={3}
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="200px"
+        >
           <CircularProgress color="info" size={30} />
           <MDTypography variant="h6" ml={2}>
-            Loading Data...
+            Loading Dashboard...
           </MDTypography>
         </MDBox>
       </Card>
     );
   }
 
-  const dialogTitle = unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
+  const selectedCount = Object.values(selectedRows).filter(Boolean).length;
 
-  const dialogMessage = unlockDialog.isBulk ? (
-    unlockDialog.action === "lock" ? (
-      <>
-        Are you sure you want to <strong>lock</strong> <strong>{unlockDialog.bulkCount}</strong>{" "}
-        selected device(s)?
-      </>
-    ) : (
-      <>
-        Are you sure you want to <strong>unlock</strong> <strong>{unlockDialog.bulkCount}</strong>{" "}
-        selected device(s)?
-      </>
-    )
-  ) : unlockDialog.action === "lock" ? (
+  const dialogTitle =
+    unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
+
+  const dialogContent = unlockDialog.isBulk ? (
     <>
-      Are you sure you want to <strong>lock</strong> device{" "}
-      <strong>{unlockDialog.vehicleNo}</strong> (IMEI: {unlockDialog.imei})?
+      Are you sure you want to <strong>{unlockDialog.action}</strong>{" "}
+      <strong>{unlockDialog.bulkCount}</strong> selected devices?
     </>
   ) : (
     <>
-      Are you sure you want to <strong>unlock</strong> device{" "}
+      Are you sure you want to <strong>{unlockDialog.action}</strong> device{" "}
       <strong>{unlockDialog.vehicleNo}</strong> (IMEI: {unlockDialog.imei})?
     </>
   );
 
   return (
-    <>
-      <Card sx={tableCardSx}>
-        <MDBox position="relative" px={3} pt={3} pb={1}>
-          <MDBox display="inline-flex" sx={filterToggleBoxSx}>
-            <MDButton
-              variant={tripFilterType === "vts" ? "contained" : "text"}
-              color={tripFilterType === "vts" ? "info" : "dark"}
-              size="small"
-              onClick={() => {
-                setTripFilterType("vts");
-                setSelectedRows({});
-              }}
-              sx={filterToggleButtonSx}
-            >
-              VTS
-            </MDButton>
-            <MDButton
-              variant={tripFilterType === "elk" ? "contained" : "text"}
-              color={tripFilterType === "elk" ? "info" : "dark"}
-              size="small"
-              onClick={() => {
-                setTripFilterType("elk");
-                setSelectedRows({});
-              }}
-              sx={filterToggleButtonSx}
-            >
-              PADLOCK
-            </MDButton>
-            <MDButton
-              variant={tripFilterType === "unreachable" ? "contained" : "text"}
-              color={tripFilterType === "unreachable" ? "warning" : "dark"}
-              size="small"
-              onClick={() => {
-                setTripFilterType("unreachable");
-                setSelectedRows({});
-              }}
-              sx={unreachableToggleButtonSx}
-            >
-              UNREACHABLE
-            </MDButton>
+    <MDBox>
+      {/* FIXED HEADER (NOT SCROLLING) */}
+      <Card sx={{ mb: 2 }}>
+        <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
+          <MDBox>
+            <MDTypography variant="h5" fontWeight="medium">
+              Trip Dashboard
+            </MDTypography>
+            <MDTypography variant="button" color="text">
+              {filteredVts.length + filteredElk.length + filteredUnreachable.length} total
+              rows
+            </MDTypography>
           </MDBox>
 
-          <MDBox display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
-            <MDBox display="flex" alignItems="center" width="100%">
-              <MDBox mr={3}>
-                <MDTypography variant="h6">
-                  {tripFilterType === "vts"
-                    ? "Live Trip Report"
-                    : tripFilterType === "elk"
-                    ? "Padlock Devices"
-                    : "Unreachable Devices"}
-                  <MDTypography variant="button" color="text" ml={1}>
-                    (<strong>{filteredRows.length}</strong> displayed)
-                  </MDTypography>
-                </MDTypography>
-              </MDBox>
-
-              {selectedCount > 0 && (tripFilterType === "vts" || tripFilterType === "elk") && (
-                <MDBox ml={2}>
-                  <MDButton
-                    size="small"
-                    variant="gradient"
-                    color="error"
-                    onClick={handleBulkUnlockClick}
-                  >
-                    Unlock Selected ({selectedCount})
-                  </MDButton>
-                </MDBox>
-              )}
-
-              <MDBox
-                ml="auto"
-                mr={2}
-                width="50%"
-                display="flex"
-                alignItems="center"
-                justifyContent="flex-end"
+          <MDBox display="flex" gap={2} alignItems="center">
+            {selectedCount > 0 && (
+              <MDButton
+                size="small"
+                variant="gradient"
+                color="error"
+                onClick={handleBulkUnlockClick}
               >
-                <MDBox flexGrow={1} mr={2}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Icon>search</Icon>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </MDBox>
+                Unlock / Lock Selected ({selectedCount})
+              </MDButton>
+            )}
 
-                <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
-                  <Select
-                    value={pageSize}
-                    onChange={handlePageSizeChange}
-                    displayEmpty
-                    sx={{ height: "44px" }}
-                  >
-                    <MenuItem value={10}>10</MenuItem>
-                    <MenuItem value={20}>20</MenuItem>
-                    <MenuItem value={50}>50</MenuItem>
-                    <MenuItem value={100}>100</MenuItem>
-                  </Select>
-                </FormControl>
-              </MDBox>
+            <TextField
+              size="small"
+              variant="outlined"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Icon>search</Icon>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-              <MDBox>
-                <Icon sx={{ cursor: "pointer" }} fontSize="small" onClick={openMenu}>
-                  more_vert
-                </Icon>
-              </MDBox>
-            </MDBox>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 90 }}>
+              <Select
+                value={pageSize}
+                onChange={(e) => setPageSize(e.target.value)}
+                displayEmpty
+                sx={{ height: "40px" }}
+              >
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={20}>20</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+                <MenuItem value={100}>100</MenuItem>
+              </Select>
+            </FormControl>
 
+            <IconButton onClick={openMenu}>
+              <Icon>more_vert</Icon>
+            </IconButton>
             <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-              {/* {(tripFilterType === "vts" || tripFilterType === "elk") && (
-                <MenuItem onClick={handleBulkUnlockClick}>Bulk Unlock</MenuItem>
-              )} */}
-              {/* <MenuItem
-                onClick={() => {
-                  closeMenu();
-                  if (tripFilterType === "vts") fetchVtsData(accountId);
-                  if (tripFilterType === "elk") fetchElkData(accountId);
-                  if (tripFilterType === "unreachable") fetchUnreachableData(accountId);
-                }}
-              >
-                Refresh
-              </MenuItem> */}
-
-              {/* --- NEW EXPORT OPTIONS --- */}
-              <hr style={{ margin: "4px 0", opacity: 0.2 }} />
               <MenuItem onClick={() => handleExportData("csv")}>Export CSV</MenuItem>
               <MenuItem onClick={() => handleExportData("excel")}>Export Excel</MenuItem>
               <MenuItem onClick={() => handleExportData("pdf")}>Export PDF</MenuItem>
             </Menu>
           </MDBox>
         </MDBox>
-
-        <MDBox>
-          <DataTable
-            key={pageSize}
-            table={{ columns: currentColumns, rows: filteredRows }}
-            isSorted={false}
-            entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
-            showTotalEntries={true}
-            pagination={{ variant: "gradient", color: "info" }}
-            noEndBorder
-            sx={tablePaginationHideSelectSx}
-          />
-        </MDBox>
-
-        <Dialog
-          open={unlockDialog.open}
-          onClose={handleCloseUnlockDialog}
-          aria-labelledby="alert-dialog-title"
-          aria-describedby="alert-dialog-description"
-        >
-          <DialogTitle id="alert-dialog-title">{dialogTitle}</DialogTitle>
-          <DialogContent>
-            <DialogContentText id="alert-dialog-description">{dialogMessage}</DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <MDButton onClick={handleCloseUnlockDialog} color="dark">
-              Cancel
-            </MDButton>
-            <MDButton onClick={handleConfirmUnlock} color="info" autoFocus>
-              Confirm
-            </MDButton>
-          </DialogActions>
-        </Dialog>
       </Card>
-    </>
+
+      {/* SCROLLING AREA WITH STACKED STICKY CARDS */}
+      <MDBox sx={scrollContainerSx}>
+        {/* CARD 1: VTS */}
+        <Card sx={stickyCardSx(10)}>
+          <MDBox p={3} pb={0}>
+            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+              <MDBox display="flex" alignItems="center" gap={1}>
+                <Icon color="info" fontSize="large">
+                  local_shipping
+                </Icon>
+                <MDBox>
+                  <MDTypography variant="h6" color="info">
+                    VTS Vehicles
+                  </MDTypography>
+                  <MDTypography variant="caption" color="text">
+                    Live Trip Report
+                  </MDTypography>
+                </MDBox>
+              </MDBox>
+              <MDTypography variant="button" fontWeight="bold">
+                {filteredVts.length} rows
+              </MDTypography>
+            </MDBox>
+          </MDBox>
+
+          <MDBox p={3}>
+            <DataTable
+              table={{ columns: VTS_COLUMNS, rows: filteredVts }}
+              isSorted={false}
+              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              showTotalEntries
+              pagination={{ variant: "gradient", color: "info" }}
+              noEndBorder
+              sx={tablePaginationHideSelectSx}
+            />
+          </MDBox>
+        </Card>
+
+        {/* CARD 2: PADLOCK / ELK */}
+        <Card sx={stickyCardSx(20)}>
+          <MDBox p={3} pb={0}>
+            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+              <MDBox display="flex" alignItems="center" gap={1}>
+                <Icon color="warning" fontSize="large">
+                  lock
+                </Icon>
+                <MDBox>
+                  <MDTypography variant="h6" color="warning">
+                    Padlock Devices
+                  </MDTypography>
+                  <MDTypography variant="caption" color="text">
+                    Lock status overview
+                  </MDTypography>
+                </MDBox>
+              </MDBox>
+              <MDTypography variant="button" fontWeight="bold">
+                {filteredElk.length} rows
+              </MDTypography>
+            </MDBox>
+          </MDBox>
+
+          <MDBox p={3}>
+            <DataTable
+              table={{ columns: ELK_COLUMNS, rows: filteredElk }}
+              isSorted={false}
+              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              showTotalEntries
+              pagination={{ variant: "gradient", color: "warning" }}
+              noEndBorder
+              sx={tablePaginationHideSelectSx}
+            />
+          </MDBox>
+        </Card>
+
+        {/* CARD 3: UNREACHABLE */}
+        <Card sx={stickyCardSx(30)}>
+          <MDBox p={3} pb={0}>
+            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+              <MDBox display="flex" alignItems="center" gap={1}>
+                <Icon color="error" fontSize="large">
+                  signal_wifi_off
+                </Icon>
+                <MDBox>
+                  <MDTypography variant="h6" color="error">
+                    Unreachable Devices
+                  </MDTypography>
+                  <MDTypography variant="caption" color="text">
+                    Offline / no data
+                  </MDTypography>
+                </MDBox>
+              </MDBox>
+              <MDTypography variant="button" fontWeight="bold">
+                {filteredUnreachable.length} rows
+              </MDTypography>
+            </MDBox>
+          </MDBox>
+
+          <MDBox p={3}>
+            <DataTable
+              table={{ columns: UNREACHABLE_COLUMNS, rows: filteredUnreachable }}
+              isSorted={false}
+              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              showTotalEntries
+              pagination={{ variant: "gradient", color: "error" }}
+              noEndBorder
+              sx={tablePaginationHideSelectSx}
+            />
+          </MDBox>
+        </Card>
+      </MDBox>
+
+      {/* UNLOCK DIALOG */}
+      <Dialog
+        open={unlockDialog.open}
+        onClose={() => setUnlockDialog((p) => ({ ...p, open: false }))}
+      >
+        <DialogTitle>{dialogTitle}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{dialogContent}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <MDButton
+            onClick={() => setUnlockDialog((p) => ({ ...p, open: false }))}
+            color="dark"
+          >
+            Cancel
+          </MDButton>
+          <MDButton onClick={handleConfirmUnlock} color="info" autoFocus>
+            Confirm
+          </MDButton>
+        </DialogActions>
+      </Dialog>
+    </MDBox>
   );
 }
-
-const AddressCell = ({ item }) => (
-  <MDBox display="flex" flexDirection="column" alignItems="flex-start" lineHeight={1.4}>
-    {item.address && item.address !== "NA" && item.address.trim() !== "" ? (
-      <MDTypography variant="caption" color="text">
-        {item.address}
-      </MDTypography>
-    ) : (
-      <>
-        <MDTypography variant="caption" color="text" fontStyle="italic">
-          {/* Location Not Available */}
-        </MDTypography>
-        {item.lat && item.lng && !isNaN(item.lat) && !isNaN(item.lng) ? (
-          <MDTypography
-            variant="caption"
-            color="info"
-            fontWeight="bold"
-            sx={addressMapLinkSx}
-            onClick={() =>
-              window.open(
-                `https://www.google.com/maps?q=${item.lat.toFixed(6)},${item.lng.toFixed(6)}`,
-                "_blank",
-                "noopener,noreferrer"
-              )
-            }
-          >
-            Open in Google Maps ↗
-          </MDTypography>
-        ) : (
-          <MDTypography variant="caption" color="textSecondary" fontSize="0.7rem" mt={0.5}>
-            No coordinates available
-          </MDTypography>
-        )}
-      </>
-    )}
-  </MDBox>
-);
-AddressCell.propTypes = { item: PropTypes.object };
 
 Projects.propTypes = {
   accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,

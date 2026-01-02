@@ -98,21 +98,21 @@ const MapView = () => {
   const indiaCenter = { lat: 22.5589409, lng: 75.6089374 };
   const baseMaps = createTileLayers();
 
-  
-  const filteredVehicles = useMemo(
-    () =>
-      vehicleList.filter((veh) => {
-        const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter =
-          filter === "All" ||
-          (filter === "Motion" && veh.status === "MOTION") ||
-          (filter === "Idle" && veh.status === "IDLE") ||
-          (filter === "Stop" && veh.status === "STOP") ||
-          (filter === "Lock" && veh.lock === "1");
-        return matchesSearch && matchesFilter;
-      }),
-    [vehicleList, filter, searchTerm]
-  );
+  // -----------------------------
+  // Filtered Vehicles
+  // -----------------------------
+  const filteredVehicles = useMemo(() => {
+    return vehicleList.filter((veh) => {
+      const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        filter === "All" ||
+        (filter === "Motion" && veh.status === "MOTION") ||
+        (filter === "Idle" && veh.status === "IDLE") ||
+        (filter === "Stop" && veh.status === "STOP") ||
+        (filter === "Lock" && veh.lock === "1");
+      return matchesSearch && matchesFilter;
+    });
+  }, [vehicleList, filter, searchTerm]);
 
   // -----------------------------
   // Status Label & Color
@@ -219,6 +219,7 @@ const MapView = () => {
         const ignition = (ign || "N").toString().toUpperCase();
         const isLocked = lock === "1" || lock === true;
 
+        // Correct Status Logic
         let status;
         if (speedNum === 0 && ignition === "N") {
           status = "STOP";
@@ -227,7 +228,7 @@ const MapView = () => {
         } else if (speedNum < 5) {
           status = "IDLE";
         } else {
-          status = "IDLE";
+          status = "IDLE"; // fallback
         }
 
         const effectiveStatus = isLocked ? "LOCKED" : status;
@@ -264,12 +265,8 @@ const MapView = () => {
         });
       });
 
-      const uniqueVehicles = Array.from(
-        new Map(vehicles.map((v) => [v.vehnum, v])).values()
-      );
-
       setVehicleStats({ total, inMotion, idle, stopped, locked });
-      setVehicleList(uniqueVehicles);
+      setVehicleList(vehicles);
 
       if (allLatLngs.length > 0) {
         mapRef.current.fitBounds(allLatLngs, { padding: [50, 50] });
@@ -284,6 +281,7 @@ const MapView = () => {
     const marker = markerMapRef.current[veh.vehnum];
     if (!marker || !mapRef.current) return;
 
+    // Reset previous highlight
     if (highlightedVeh) {
       const oldVeh = vehicleList.find((v) => v.vehnum === highlightedVeh);
       const oldMarker = markerMapRef.current[highlightedVeh];
@@ -292,6 +290,7 @@ const MapView = () => {
       }
     }
 
+    // Highlight current
     marker.setIcon(highlightIcon);
     setHighlightedVeh(veh.vehnum);
 

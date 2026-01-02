@@ -234,7 +234,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     <Typography
                       variant="caption"
                       display="block"
-                      color="text.secondary"
+                      color="text.secondary"  
                       sx={{ mt: 0.5 }}
                     >
                       {d.lastUpdate}
