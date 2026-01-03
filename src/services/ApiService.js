@@ -2,12 +2,21 @@ import axios from "axios";
 import authHeader from "./auth-header";
 import { callAlert } from "./CommonService";
 
+// const SERVICES = {
+//   main: process.env.REACT_APP_BASE_URL + ":8070",
+//   mainn: process.env.REACT_APP_BASE_URL + ":8071",
+//   report: process.env.REACT_APP_BASE_URL + ":8075",
+//   dashboard: process.env.REACT_APP_BASE_URL + ":8075",
+//   commands: process.env.REACT_APP_BASE_URL + ":8010",
+// };
 const SERVICES = {
-  main: process.env.REACT_APP_BASE_URL + ":8070",
-  mainn: process.env.REACT_APP_BASE_URL + ":8071",
-  report: process.env.REACT_APP_BASE_URL + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + ":8075",
-  commands: process.env.REACT_APP_BASE_URL + ":8010",
+  main: process.env.REACT_APP_BASE_URL + "/users",
+  mainn: process.env.REACT_APP_BASE_URL + "/accounts",
+  report: process.env.REACT_APP_BASE_URL + "/usage",
+  // report: 'http://103.178.113.129' + ":8075",
+  // dashboard: 'http://103.178.113.129' + ":8075",
+  dashboard: process.env.REACT_APP_BASE_URL + "/usage",
+  commands: process.env.REACT_APP_BASE_URL + "/commands",
 };
 
 axios.interceptors.response.use(
