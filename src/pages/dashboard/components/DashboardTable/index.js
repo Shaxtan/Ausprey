@@ -38,7 +38,7 @@ import {
 // ================= SCROLL / STACK STYLES =================
 
 const scrollContainerSx = {
-  height: "calc(100vh - 160px)", // adjust relative to your navbar height
+  height: "calc(100vh - 160px)",
   overflowY: "auto",
   overflowX: "hidden",
   paddingBottom: "20px",
@@ -55,11 +55,23 @@ const scrollContainerSx = {
   },
 };
 
+const btnStyle = {
+  minWidth: "auto",
+  padding: "4px 8px",
+  fontSize: "0.7rem",
+  textTransform: "none",
+  whiteSpace: "nowrap",
+  display: "flex",
+  alignItems: "center",
+  gap: "4px"
+};
+
+
 const stickyCardSx = (zIndex) => ({
   position: "sticky",
   top: 0,
   zIndex,
-  minHeight: "100%",           // cover previous card
+  minHeight: "100%",
   marginBottom: 0,
   boxShadow: "0 -5px 20px rgba(0,0,0,0.1)",
   backgroundColor: "#fff",
@@ -276,6 +288,10 @@ function Projects({ accountId }) {
   const [unreachableRows, setUnreachableRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
   const [pageSize, setPageSize] = useState(10);
+  
+  // Tab states for VTS and ELK - now includes motion/idle/stopped
+  const [vtsTab, setVtsTab] = useState("all"); // "all", "online", "offline", "motion", "idle", "stopped"
+  const [elkTab, setElkTab] = useState("all"); // "all", "online", "offline"
 
   const [unlockDialog, setUnlockDialog] = useState({
     open: false,
@@ -318,6 +334,17 @@ function Projects({ accountId }) {
             const speed = Number(item.speed) || 0;
             const isLocked = speed === 0 && item.ign === "Y";
             const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
+            const isOnline = item.ign === "Y";
+            
+            // Determine vehicle status: motion, idle, or stopped
+            let vehicleStatus = "stopped"; // default
+            if (isOnline) {
+              if (speed > 0) {
+                vehicleStatus = "motion";
+              } else {
+                vehicleStatus = "idle";
+              }
+            }
 
             return {
               no: (
@@ -379,6 +406,9 @@ function Projects({ accountId }) {
               checkbox: null,
               _imei: imei,
               _isLockedInitial: isLocked,
+              _isOnline: isOnline,
+              _speed: speed,
+              _vehicleStatus: vehicleStatus, // "motion", "idle", or "stopped"
             };
           });
           setAllVtsRows(fetchedRows);
@@ -400,6 +430,7 @@ function Projects({ accountId }) {
             const speed = Number(item.speed) || 0;
             const elkTypeStatus = item.type;
             const isLocked = elkTypeStatus === "L";
+            const isOnline = item.ign === "Y";
 
             return {
               no: (
@@ -463,6 +494,7 @@ function Projects({ accountId }) {
               checkbox: null,
               _imei: imei,
               _isLockedInitial: isLocked,
+              _isOnline: isOnline,
             };
           });
           setAllElkRows(fetchedRows);
@@ -520,14 +552,26 @@ function Projects({ accountId }) {
     fetchVtsData(accountId);
     fetchElkData(accountId);
     fetchUnreachableData(accountId);
-    // small delay for smoother loading state
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
   }, [accountId, fetchVtsData, fetchElkData, fetchUnreachableData]);
 
   // -------- FILTERING --------
 
-  const { filteredVts, filteredElk, filteredUnreachable } = useMemo(() => {
+  const { 
+    filteredVts, 
+    filteredElk, 
+    filteredUnreachable, 
+    vtsAllCount, 
+    vtsOnlineCount, 
+    vtsOfflineCount,
+    vtsMotionCount,
+    vtsIdleCount,
+    vtsStoppedCount,
+    elkAllCount, 
+    elkOnlineCount, 
+    elkOfflineCount 
+  } = useMemo(() => {
     const matchesSearch = (row) => {
       if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
@@ -540,7 +584,17 @@ function Projects({ accountId }) {
       return fields.some((f) => String(f).toLowerCase().includes(term));
     };
 
-    const vts = allVtsRows.filter(matchesSearch).map((row) => ({
+    // Filter VTS by status
+    const vtsFilteredByStatus = allVtsRows.filter((row) => {
+      if (vtsTab === "online") return row._isOnline;
+      if (vtsTab === "offline") return !row._isOnline;
+      if (vtsTab === "motion") return row._vehicleStatus === "motion";
+      if (vtsTab === "idle") return row._vehicleStatus === "idle";
+      if (vtsTab === "stopped") return row._vehicleStatus === "stopped";
+      return true; // "all"
+    });
+
+    const vts = vtsFilteredByStatus.filter(matchesSearch).map((row) => ({
       ...row,
       checkbox: (
         <MDBox display="flex" justifyContent="center">
@@ -554,7 +608,14 @@ function Projects({ accountId }) {
       ),
     }));
 
-    const elk = allElkRows.filter(matchesSearch).map((row) => ({
+    // Filter ELK by online/offline status
+    const elkFilteredByStatus = allElkRows.filter((row) => {
+      if (elkTab === "online") return row._isOnline;
+      if (elkTab === "offline") return !row._isOnline;
+      return true;
+    });
+
+    const elk = elkFilteredByStatus.filter(matchesSearch).map((row) => ({
       ...row,
       checkbox: (
         <MDBox display="flex" justifyContent="center">
@@ -579,8 +640,33 @@ function Projects({ accountId }) {
       return fields.some((f) => String(f).toLowerCase().includes(term));
     });
 
-    return { filteredVts: vts, filteredElk: elk, filteredUnreachable: unreachable };
-  }, [allVtsRows, allElkRows, unreachableRows, searchTerm, selectedRows, handleToggleSelect]);
+    // Count devices by status
+    const vtsAll = allVtsRows.length;
+    const vtsOnline = allVtsRows.filter((row) => row._isOnline).length;
+    const vtsOffline = allVtsRows.filter((row) => !row._isOnline).length;
+    const vtsMotion = allVtsRows.filter((row) => row._vehicleStatus === "motion").length;
+    const vtsIdle = allVtsRows.filter((row) => row._vehicleStatus === "idle").length;
+    const vtsStopped = allVtsRows.filter((row) => row._vehicleStatus === "stopped").length;
+    
+    const elkAll = allElkRows.length;
+    const elkOnline = allElkRows.filter((row) => row._isOnline).length;
+    const elkOffline = allElkRows.filter((row) => !row._isOnline).length;
+
+    return { 
+      filteredVts: vts, 
+      filteredElk: elk, 
+      filteredUnreachable: unreachable,
+      vtsAllCount: vtsAll,
+      vtsOnlineCount: vtsOnline,
+      vtsOfflineCount: vtsOffline,
+      vtsMotionCount: vtsMotion,
+      vtsIdleCount: vtsIdle,
+      vtsStoppedCount: vtsStopped,
+      elkAllCount: elkAll,
+      elkOnlineCount: elkOnline,
+      elkOfflineCount: elkOffline
+    };
+  }, [allVtsRows, allElkRows, unreachableRows, searchTerm, selectedRows, handleToggleSelect, vtsTab, elkTab]);
 
   // -------- BULK UNLOCK / LOCK --------
 
@@ -712,7 +798,7 @@ function Projects({ accountId }) {
         <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
           <MDBox>
             <MDTypography variant="h5" fontWeight="medium">
-              Trip Dashboard
+              Trips List
             </MDTypography>
             <MDTypography variant="button" color="text">
               {filteredVts.length + filteredElk.length + filteredUnreachable.length} total
@@ -778,7 +864,7 @@ function Projects({ accountId }) {
         {/* CARD 1: VTS */}
         <Card sx={stickyCardSx(10)}>
           <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
               <MDBox display="flex" alignItems="center" gap={1}>
                 <Icon color="info" fontSize="large">
                   local_shipping
@@ -792,9 +878,57 @@ function Projects({ accountId }) {
                   </MDTypography>
                 </MDBox>
               </MDBox>
-              <MDTypography variant="button" fontWeight="bold">
-                {filteredVts.length} rows
-              </MDTypography>
+              
+             <MDBox display="flex" alignItems="center" gap={2}>
+  <MDTypography variant="button" fontWeight="bold">
+    {filteredVts.length} rows
+  </MDTypography>
+
+  {/* VTS Filter Buttons - Single Row */}
+  <MDBox
+    display="flex"
+    alignItems="center"
+    gap={0.5}
+    sx={{
+      border: "1px solid #e0e0e0",
+      borderRadius: "8px",
+      padding: "2px",
+      backgroundColor: "#f5f5f5",
+      flexWrap: "nowrap",   // 🔥 forces single line
+      overflowX: "auto"     // optional safety for small screens
+    }}
+  >
+    <MDButton size="small" variant={vtsTab === "all" ? "gradient" : "text"} color={vtsTab === "all" ? "info" : "dark"} onClick={() => setVtsTab("all")} sx={btnStyle}>
+      All ({vtsAllCount})
+    </MDButton>
+
+    <MDButton size="small" variant={vtsTab === "online" ? "gradient" : "text"} color={vtsTab === "online" ? "success" : "dark"} onClick={() => setVtsTab("online")} sx={btnStyle}>
+      <Icon fontSize="small">online_prediction</Icon>
+      Online ({vtsOnlineCount})
+    </MDButton>
+
+    <MDButton size="small" variant={vtsTab === "offline" ? "gradient" : "text"} color={vtsTab === "offline" ? "error" : "dark"} onClick={() => setVtsTab("offline")} sx={btnStyle}>
+      <Icon fontSize="small">offline_bolt</Icon>
+      Offline ({vtsOfflineCount})
+    </MDButton>
+
+    <MDButton size="small" variant={vtsTab === "motion" ? "gradient" : "text"} color={vtsTab === "motion" ? "success" : "dark"} onClick={() => setVtsTab("motion")} sx={btnStyle}>
+      <Icon fontSize="small">directions_run</Icon>
+      Motion ({vtsMotionCount})
+    </MDButton>
+
+    <MDButton size="small" variant={vtsTab === "idle" ? "gradient" : "text"} color={vtsTab === "idle" ? "warning" : "dark"} onClick={() => setVtsTab("idle")} sx={btnStyle}>
+      <Icon fontSize="small">hourglass_empty</Icon>
+      Idle ({vtsIdleCount})
+    </MDButton>
+
+    <MDButton size="small" variant={vtsTab === "stopped" ? "gradient" : "text"} color={vtsTab === "stopped" ? "error" : "dark"} onClick={() => setVtsTab("stopped")} sx={btnStyle}>
+      <Icon fontSize="small">stop</Icon>
+      Stopped ({vtsStoppedCount})
+    </MDButton>
+  </MDBox>
+</MDBox>
+
             </MDBox>
           </MDBox>
 
@@ -814,7 +948,7 @@ function Projects({ accountId }) {
         {/* CARD 2: PADLOCK / ELK */}
         <Card sx={stickyCardSx(20)}>
           <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
               <MDBox display="flex" alignItems="center" gap={1}>
                 <Icon color="warning" fontSize="large">
                   lock
@@ -828,9 +962,65 @@ function Projects({ accountId }) {
                   </MDTypography>
                 </MDBox>
               </MDBox>
-              <MDTypography variant="button" fontWeight="bold">
-                {filteredElk.length} rows
-              </MDTypography>
+              
+              <MDBox display="flex" alignItems="center" gap={2}>
+                <MDTypography variant="button" fontWeight="bold">
+                  {filteredElk.length} rows
+                </MDTypography>
+                
+                {/* ELK Filter Buttons */}
+                <MDBox display="flex" gap={0.5} sx={{ 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: '8px',
+                  padding: '2px',
+                  backgroundColor: '#f5f5f5'
+                }}>
+                  <MDButton
+                    size="small"
+                    variant={elkTab === "all" ? "gradient" : "text"}
+                    color={elkTab === "all" ? "warning" : "dark"}
+                    onClick={() => setElkTab("all")}
+                    sx={{ 
+                      minWidth: '60px', 
+                      padding: '4px 8px',
+                      fontSize: '0.7rem',
+                      textTransform: 'none'
+                    }}
+                  >
+                    All ({elkAllCount})
+                  </MDButton>
+                  <MDButton
+                    size="small"
+                    variant={elkTab === "online" ? "gradient" : "text"}
+                    color={elkTab === "online" ? "success" : "dark"}
+                    onClick={() => setElkTab("online")}
+                    sx={{ 
+                      minWidth: '70px', 
+                      padding: '4px 8px',
+                      fontSize: '0.7rem',
+                      textTransform: 'none'
+                    }}
+                  >
+                    <Icon fontSize="small" sx={{ mr: 0.5 }}>online_prediction</Icon>
+                    Online ({elkOnlineCount})
+                  </MDButton>
+                  <MDButton
+                    size="small"
+                    variant={elkTab === "offline" ? "gradient" : "text"}
+                    color={elkTab === "offline" ? "error" : "dark"}
+                    onClick={() => setElkTab("offline")}
+                    sx={{ 
+                      minWidth: '70px', 
+                      padding: '4px 8px',
+                      fontSize: '0.7rem',
+                      textTransform: 'none'
+                    }}
+                  >
+                    <Icon fontSize="small" sx={{ mr: 0.5 }}>offline_bolt</Icon>
+                    Offline ({elkOfflineCount})
+                  </MDButton>
+                </MDBox>
+              </MDBox>
             </MDBox>
           </MDBox>
 
