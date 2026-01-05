@@ -2,39 +2,25 @@
 =========================================================
 * Material Dashboard 2 React - v2.2.0
 =========================================================
-
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
-
-// ** CORRECT IMPORT FOR ALERTS **
-import Alerts from "layouts/Alerts/Alerts";
-// ** NEW IMPORT FOR LOAD CELL REPORT **
-import LoadCellReport from "layouts/LoadCellReport/LoadCellReport";
-// ** ✅ NEW IMPORT FOR DEVICE CONFIGURATION **
-import DeviceConfiguration from "../src/layouts/Alerts/DeviceConfiguration";
+import LiveTrack from "pages/LiveTrack/LiveTrack";
+import Alerts from "../src/pages/Alerts/Alerts";
+import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
+import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 
 // Material Dashboard 2 React layouts
-import Dashboard from "layouts/dashboard";
-import Tables from "layouts/tables";
-import Billing from "layouts/billing";
-// import RTL from "layouts/rtl";
-import Notifications from "layouts/notifications";
-import Profile from "layouts/profile";
-import SignIn from "layouts/authentication/sign-in";
-import SignUp from "layouts/authentication/sign-up";
-// The path for your TripReport component
-import TripReport from "layouts/tables/data/TripReport";
+import Dashboard from "../src/pages/dashboard";
+// 🔥 Step 1: Import your new component here
+import Dashboard2 from "../src/pages/dashboard2"; 
+import TripDashboard from "pages/TripDashboard/TripDashboard";
+import Notifications from "../src/pages/notifications";
+import SignIn from "../src/pages/authentication/sign-in";
+import SignUp from "../src/pages/authentication/sign-up";
+// import TripReport from "../src/pages/tables/data/TripReport";
 
 // @mui icons
 import Icon from "@mui/material/Icon";
-import MapView from "layouts/LoadCellReport/MapView";
+import MapView from "../src/pages/LoadCellReport/MapView";
 
 const routes = [
   {
@@ -45,19 +31,64 @@ const routes = [
     route: "/dashboard",
     component: <Dashboard />,
   },
-
-  // ----------------------------------------------------------------------
-  // ** ✅ NEW ROUTE: DEVICE CONFIGURATION **
+  // 🔥 Step 2: Add the new route object here
+  // {
+  //   type: "collapse",
+  //   name: "Dashboard 2",
+  //   key: "dashboard2",
+  //   icon: <Icon fontSize="small">analytics</Icon>, // You can change the icon (e.g., 'speed', 'grid_view')
+  //   route: "/dashboard2",
+  //   component: <Dashboard2 />,
+  // },
+  // {
+  //   type: "collapse",
+  //   name: "Device Config",
+  //   key: "device-configuration",
+  //   icon: <Icon fontSize="small">settings_cell</Icon>,
+  //   route: "/device-configuration",
+  //   component: <DeviceConfiguration />,
+  // },
   {
     type: "collapse",
-    name: "Device Config", // Display name in the sidebar
-    key: "device-configuration", // Unique key
-    icon: <Icon fontSize="small">settings_cell</Icon>, // Using a relevant icon
-    route: "/device-configuration", // Unique route path
-    component: <DeviceConfiguration />, // Your new component
+    name: "Live Track",
+    key: "live-track",
+    icon: <Icon fontSize="small">gps_fixed</Icon>,
+    route: "/live-track",
+    component: <LiveTrack />,
   },
+   {
+    type: "collapse",
+    name: "Trip Dashboard",
+    key: "live-track",
+    icon: <Icon fontSize="small">gps_fixed</Icon>,
+    route: "/Trip-dashboard",
+    component: <TripDashboard />,
+  },
+  {
+    type: "collapse",
+    name: "Map View",
+    key: "map-view",
+    icon: <Icon fontSize="small">map</Icon>,
+    route: "/map-view",
+    component: <MapView />,
+  },
+  
   // ----------------------------------------------------------------------
+  // 🔥 PARENT: REPORTS (Empty Component as placeholder)
+  // ----------------------------------------------------------------------
+  {
+    type: "collapse",
+    name: "Reports",
+    key: "reports",
+    icon: <Icon fontSize="small">assessment</Icon>,
+    route: "/reports", 
+    component: <Dashboard />, 
+    noRoute: true, 
+  },
 
+  // ----------------------------------------------------------------------
+  // 🔥 CHILDREN: LINKED VIA 'parent: "reports"'
+  // ----------------------------------------------------------------------
   {
     type: "collapse",
     name: "Alerts",
@@ -65,43 +96,35 @@ const routes = [
     icon: <Icon fontSize="small">warning</Icon>,
     route: "/alerts",
     component: <Alerts />,
-  }, // ---------------------------------------------------------------------- // ** ✅ NEW ROUTE: TRIP DASHBOARD **
-
-  {
-    type: "collapse",
-    name: "Trip Dashboard",
-    key: "trip-dashboard", // New unique key
-    icon: <Icon fontSize="small">table_view</Icon>, // Reusing the icon for tables
-    route: "/trip-dashboard", // New unique route
-    component: <TripReport />, // Renders your imported TripReport component
-  }, // ---------------------------------------------------------------------- // { //   type: "collapse", //   name: "Trip Dashboard", //   key: "tables", //   icon: <Icon fontSize="small">table_view</Icon>, //   route: "/tables", //   component: <Tables />, // }, // NOTE: Keeping old Billing route as is // { //   type: "collapse", //   name: "Billing (Old)", //   key: "billing-old", //   icon: <Icon fontSize="small">receipt_long</Icon>, //   route: "/billing", //   component: <Billing />, // },
+    parent: "reports",
+  },
   {
     type: "collapse",
     name: "Track Play",
     key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
+    icon: <Icon fontSize="small">location_on</Icon>
+,
     route: "/notifications",
     component: <Notifications />,
-  }, // { //   type: "collapse", //   name: "Map View", //   key: "notifications", //   icon: <Icon fontSize="small">notifications</Icon>, //   route: "/mapview", //   component: <MapView />, // }, // ---------------------------------------------------------------------- // ** CORRECTED LOAD CELL REPORT ROUTE **
+    parent: "reports",
+  },
   {
     type: "collapse",
     name: "Load Sensor",
-    key: "load-cell-report", // CRUCIAL: Changed key from 'profile' to 'load-cell-report'
-    icon: <Icon fontSize="small">scale</Icon>, // Changed icon to a more fitting one (scale)
-    route: "/load-cell-report", // CRUCIAL: Changed route from '/profile' to '/load-cell-report'
-    component: <LoadCellReport />, // CRUCIAL: Now renders your new component
-  }, // ---------------------------------------------------------------------- // NOTE: Moving the original 'Profile' route here for completeness, // if you still want a Profile page accessible. // { //   type: "collapse", //   name: "User Profile", //   key: "profile", //   icon: <Icon fontSize="small">person</Icon>, //   route: "/profile", //   component: <Profile />, // },
+    key: "load-cell-report",
+    icon: <Icon fontSize="small">scale</Icon>,
+    route: "/load-cell-report",
+    component: <LoadCellReport />,
+    parent: "reports",
+  },
+
   {
-    // type: "collapse",
-    // name: "Sign In",
-    key: "sign-in", // icon: <Icon fontSize="small">login</Icon>,
+    key: "sign-in",
     route: "/authentication/sign-in",
     component: <SignIn />,
   },
   {
-    // type: "collapse",
-    // name: "Sign Up",
-    key: "sign-up", // icon: <Icon fontSize="small">assignment</Icon>,
+    key: "sign-up",
     route: "/authentication/sign-up",
     component: <SignUp />,
   },
