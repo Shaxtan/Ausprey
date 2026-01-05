@@ -181,11 +181,13 @@ SidenavCollapse.defaultProps = {
   subRoutes: null,
 };
 
+// SidenavCollapse.propTypes
 SidenavCollapse.propTypes = {
   icon: PropTypes.node.isRequired,
-  name: PropTypes.string.isRequired,
+  name: PropTypes.oneOfType([PropTypes.string, PropTypes.node]).isRequired,
   active: PropTypes.bool,
   subRoutes: PropTypes.arrayOf(PropTypes.object),
 };
+
 
 export default SidenavCollapse;

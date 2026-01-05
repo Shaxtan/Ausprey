@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 
-// Material UI Imports
 import Card from "@mui/material/Card";
 import Grid from "@mui/material/Grid";
 import Icon from "@mui/material/Icon";
@@ -24,24 +23,21 @@ import TableRow from "@mui/material/TableRow";
 import TablePagination from "@mui/material/TablePagination";
 import Button from "@mui/material/Button";
 
-// Custom Components
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
+import MDButton from "../../assets/components/MDButton";
 
-// Import Leaflet CSS and JS from CDN
 const LEAFLET_CSS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
 const LEAFLET_JS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
 
-// --- STYLES ---
 
 const clickableTextSx = {
   cursor: "pointer",
   "&:hover": { textDecoration: "underline", color: "#1A73E8" },
 };
 
-// Fixed Table Layout
 const tableSx = {
   tableLayout: "fixed",
   width: "100%",
@@ -74,7 +70,6 @@ const tableBodySx = {
   },
 };
 
-// --- HELPER COMPONENT ---
 const DataCell = ({
   text,
   color = "text",
@@ -135,10 +130,10 @@ const mockTrips = [
     distance: "148 km",
     eta: "2h 15m",
     route: [
-      { lat: 19.076, lng: 72.8777 }, // Mumbai
+      { lat: 19.076, lng: 72.8777 },
       { lat: 18.9, lng: 73.2 },
       { lat: 18.7, lng: 73.4 },
-      { lat: 18.5204, lng: 73.8567 }, // Pune
+      { lat: 18.5204, lng: 73.8567 },
     ],
   },
   {
@@ -154,10 +149,10 @@ const mockTrips = [
     distance: "280 km",
     eta: "4h 30m",
     route: [
-      { lat: 28.6139, lng: 77.209 }, // Delhi
+      { lat: 28.6139, lng: 77.209 },
       { lat: 28.3, lng: 76.8 },
       { lat: 27.5, lng: 76.9 },
-      { lat: 26.9124, lng: 75.7873 }, // Jaipur
+      { lat: 26.9124, lng: 75.7873 },
     ],
   },
   {
@@ -173,10 +168,10 @@ const mockTrips = [
     distance: "346 km",
     eta: "Arrived",
     route: [
-      { lat: 12.9716, lng: 77.5946 }, // Bangalore
+      { lat: 12.9716, lng: 77.5946 },
       { lat: 12.6, lng: 78.5 },
       { lat: 12.2, lng: 79.2 },
-      { lat: 13.0827, lng: 80.2707 }, // Chennai
+      { lat: 13.0827, lng: 80.2707 },
     ],
   },
   {
@@ -192,10 +187,10 @@ const mockTrips = [
     distance: "110 km",
     eta: "1h 45m",
     route: [
-      { lat: 23.0225, lng: 72.5714 }, // Ahmedabad
+      { lat: 23.0225, lng: 72.5714 },
       { lat: 22.8, lng: 72.9 },
       { lat: 22.5, lng: 73.0 },
-      { lat: 22.3072, lng: 73.1812 }, // Vadodara
+      { lat: 22.3072, lng: 73.1812 },
     ],
   },
   {
@@ -211,15 +206,14 @@ const mockTrips = [
     distance: "502 km",
     eta: "7h 20m",
     route: [
-      { lat: 13.0827, lng: 80.2707 }, // Chennai
+      { lat: 13.0827, lng: 80.2707 },
       { lat: 12.4, lng: 79.8 },
       { lat: 11.8, lng: 78.6 },
-      { lat: 11.0168, lng: 76.9558 }, // Coimbatore
+      { lat: 11.0168, lng: 76.9558 },
     ],
   },
 ];
 
-// --- MAP COMPONENT WITH MOVING MARKER ---
 const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
   const mapRef = React.useRef(null);
   const mapInstanceRef = React.useRef(null);
@@ -234,7 +228,6 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
 
     const L = window.L;
 
-    // Cleanup previous instance
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
     }
@@ -270,7 +263,6 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
     };
   }, [route, tripId, vehicleNumber]);
 
-  // Update marker position when currentRouteIndex changes
   useEffect(() => {
     if (!markerRef.current || !mapInstanceRef.current) return;
     const L = window.L;
@@ -300,7 +292,6 @@ LeafletMap.propTypes = {
   tripId: PropTypes.string.isRequired,
 };
 
-// --- PROGRESS BAR COMPONENT ---
 const TripProgress = ({ steps, currentIndex }) => {
   return (
     <Box sx={{ width: "100%", mb: 3 }}>
@@ -524,7 +515,6 @@ function TripDashboard({ accountId }) {
         const maxStepIndex = BASE_STEPS.length - 1;
         const maxRouteIndex = t.route.length - 1;
 
-        // restart if already at end
         const atEnd =
           t.progressIndex >= maxStepIndex && t.routeIndex >= maxRouteIndex;
         return {
@@ -541,6 +531,13 @@ function TripDashboard({ accountId }) {
     setTrips((prev) =>
       prev.map((t) => (t.id === id ? { ...t, isPlaying: false } : t))
     );
+  };
+
+  const handleCreateTrip = () => {
+    // implement navigation or dialog open here
+    // example:
+    // navigate("/trips/create");
+    alert("Create Trip clicked");
   };
 
   const filteredTrips = useMemo(() => {
@@ -572,10 +569,22 @@ function TripDashboard({ accountId }) {
               bgColor="info"
               borderRadius="lg"
               coloredShadow="info"
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
             >
               <MDTypography variant="h6" color="white">
                 Trip Dashboard
               </MDTypography>
+
+              <MDButton
+                variant="contained"
+                color="white"
+                size="small"
+                onClick={handleCreateTrip}
+              >
+                Create Trip
+              </MDButton>
             </MDBox>
 
             <MDBox p={3}>
@@ -745,7 +754,11 @@ function TripDashboard({ accountId }) {
                               style={{ paddingBottom: 0, paddingTop: 0 }}
                               colSpan={8}
                             >
-                              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Collapse
+                                in={isExpanded}
+                                timeout="auto"
+                                unmountOnExit
+                              >
                                 <Box
                                   sx={{
                                     margin: 2,
