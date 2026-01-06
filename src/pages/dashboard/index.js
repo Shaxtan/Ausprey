@@ -204,32 +204,32 @@ function Dashboard() {
   }, [alertApiData]);
 
   // Static chart data (Mock)
-  const fuelPieData = useMemo(() => ({
-    labels: ["Efficient", "Average", "High Usage"],
-    datasets: {
-      label: "Fuel",
-      backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-      data: [30, 40, 30],
-    },
-  }), []);
+  // const fuelPieData = useMemo(() => ({
+  //   labels: ["Efficient", "Average", "High Usage"],
+  //   datasets: {
+  //     label: "Fuel",
+  //     backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
+  //     data: [30, 40, 30],
+  //   },
+  // }), []);
 
-  const geofencePieData = useMemo(() => ({
-    labels: ["Inside", "Outside", "Violations"],
-    datasets: {
-      label: "Geofence",
-      backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-      data: [60, 20, 20],
-    },
-  }), []);
+  // const geofencePieData = useMemo(() => ({
+  //   labels: ["Inside", "Outside", "Violations"],
+  //   datasets: {
+  //     label: "Geofence",
+  //     backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
+  //     data: [60, 20, 20],
+  //   },
+  // }), []);
 
-  const healthPieData = useMemo(() => ({
-    labels: ["Good", "Service Due", "Critical"],
-    datasets: {
-      label: "Health",
-      backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-      data: [70, 20, 10],
-    },
-  }), []);
+  // const healthPieData = useMemo(() => ({
+  //   labels: ["Good", "Service Due", "Critical"],
+  //   datasets: {
+  //     label: "Health",
+  //     backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
+  //     data: [70, 20, 10],
+  //   },
+  // }), []);
 
   const renderChart1 = useMemo(() => (
     <PieChart
@@ -269,29 +269,29 @@ function Dashboard() {
     );
   }, [dynamicAlertPieData]);
 
-  const renderChart4 = useMemo(() => (
-    <PieChart
-      icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-      title="Fuel Usage"
-      chart={fuelPieData}
-    />
-  ), [fuelPieData]);
+  // const renderChart4 = useMemo(() => (
+  //   <PieChart
+  //     icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
+  //     title="Fuel Usage"
+  //     chart={fuelPieData}
+  //   />
+  // ), [fuelPieData]);
 
-  const renderChart5 = useMemo(() => (
-    <PieChart
-      icon={{ color: "error", component: <Icon>security</Icon> }}
-      title="Geofence Violations"
-      chart={geofencePieData}
-    />
-  ), [geofencePieData]);
+  // const renderChart5 = useMemo(() => (
+  //   <PieChart
+  //     icon={{ color: "error", component: <Icon>security</Icon> }}
+  //     title="Geofence Violations"
+  //     chart={geofencePieData}
+  //   />
+  // ), [geofencePieData]);
 
-  const renderChart6 = useMemo(() => (
-    <PieChart
-      icon={{ color: "info", component: <Icon>healing</Icon> }}
-      title="Vehicle Health"
-      chart={healthPieData}
-    />
-  ), [healthPieData]);
+  // const renderChart6 = useMemo(() => (
+  //   <PieChart
+  //     icon={{ color: "info", component: <Icon>healing</Icon> }}
+  //     title="Vehicle Health"
+  //     chart={healthPieData}
+  //   />
+  // ), [healthPieData]);
 
   return (
     <DashboardLayout>
@@ -395,7 +395,7 @@ function Dashboard() {
                 {renderChart3}
               </MDBox>
             </Grid>
-            <Grid item xs={12} md={6} lg={4}>
+            {/* <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart4}</MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
@@ -403,12 +403,12 @@ function Dashboard() {
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart6}</MDBox>
-            </Grid>
+            </Grid> */}
           </Grid>
         </MDBox>
 
         {/* Updated section with ref for scrolling */}
-        <MDBox ref={projectsRef}>
+        <MDBox sx={{ marginTop: "-105px" }} ref={projectsRef} >
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <MDBox sx={{ width: "100%", overflowX: "auto" }}>

@@ -35,7 +35,6 @@ import {
   addressMapLinkSx,
 } from "./Projects.styles";
 
-// ================= SCROLL / STACK STYLES =================
 
 const scrollContainerSx = {
   height: "calc(100vh - 160px)",
@@ -63,9 +62,8 @@ const btnStyle = {
   whiteSpace: "nowrap",
   display: "flex",
   alignItems: "center",
-  gap: "4px"
+  gap: "4px",
 };
-
 
 const stickyCardSx = (zIndex) => ({
   position: "sticky",
@@ -79,7 +77,6 @@ const stickyCardSx = (zIndex) => ({
   transition: "transform 0.3s ease",
 });
 
-// ================= SMALL CELL COMPONENTS =================
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -230,7 +227,6 @@ const AddressCell = ({ item }) => (
 
 AddressCell.propTypes = { item: PropTypes.object };
 
-// ================= COLUMNS =================
 
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
@@ -274,7 +270,26 @@ const UNREACHABLE_COLUMNS = [
   { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
-// ================= MAIN COMPONENT =================
+
+const getBackendStatus = (item) => {
+  const ignOn = item.ign === "Y";
+  const speed = Number(item.speed) || 0;
+
+  const rawTs = item.devTs || item.cts;
+  if (rawTs) {
+    const deviceTime = new Date(rawTs);
+    if (!isNaN(deviceTime.getTime())) {
+      const diffMs = Date.now() - deviceTime.getTime();
+      const oneHourMs = 60 * 60 * 1000;
+      if (diffMs > oneHourMs) return "offline";
+    }
+  }
+
+  if (!ignOn) return "stopped";
+  if (speed > 5) return "motion";
+  return "idle";
+};
+
 
 function Projects({ accountId }) {
   const navigate = useNavigate();
@@ -288,10 +303,9 @@ function Projects({ accountId }) {
   const [unreachableRows, setUnreachableRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
   const [pageSize, setPageSize] = useState(10);
-  
-  // Tab states for VTS and ELK - now includes motion/idle/stopped
-  const [vtsTab, setVtsTab] = useState("all"); // "all", "online", "offline", "motion", "idle", "stopped"
-  const [elkTab, setElkTab] = useState("all"); // "all", "online", "offline"
+
+  const [vtsTab, setVtsTab] = useState("all");
+  const [elkTab, setElkTab] = useState("all"); 
 
   const [unlockDialog, setUnlockDialog] = useState({
     open: false,
@@ -322,7 +336,6 @@ function Projects({ accountId }) {
     [navigate, accountId]
   );
 
-  // -------- DATA FETCHING --------
 
   const fetchVtsData = useCallback(
     (currentAccountId) => {
@@ -334,28 +347,22 @@ function Projects({ accountId }) {
             const speed = Number(item.speed) || 0;
             const isLocked = speed === 0 && item.ign === "Y";
             const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
-            const isOnline = item.ign === "Y";
-            
-            // Determine vehicle status: motion, idle, or stopped
-            let vehicleStatus = "stopped"; // default
-            if (isOnline) {
-              if (speed > 0) {
-                vehicleStatus = "motion";
-              } else {
-                vehicleStatus = "idle";
-              }
-            }
+
+            const vehicleStatus = getBackendStatus(item);
 
             return {
               no: (
                 <MDBox display="flex" alignItems="center" gap={0.5}>
-                  <Icon fontSize="small" color={item.ign === "Y" ? "success" : "error"}>
-                    {item.ign === "Y" ? "online_prediction" : "offline_bolt"}
+                  <Icon
+                    fontSize="small"
+                    color={vehicleStatus === "offline" ? "error" : "success"}
+                  >
+                    {vehicleStatus === "offline" ? "offline_bolt" : "online_prediction"}
                   </Icon>
                   <MDTypography
                     variant="caption"
                     fontWeight="bold"
-                    color={item.ign === "Y" ? "success" : "error"}
+                    color={vehicleStatus === "offline" ? "error" : "success"}
                   >
                     {index + 1}
                   </MDTypography>
@@ -406,9 +413,8 @@ function Projects({ accountId }) {
               checkbox: null,
               _imei: imei,
               _isLockedInitial: isLocked,
-              _isOnline: isOnline,
               _speed: speed,
-              _vehicleStatus: vehicleStatus, // "motion", "idle", or "stopped"
+              _status: vehicleStatus,
             };
           });
           setAllVtsRows(fetchedRows);
@@ -431,6 +437,8 @@ function Projects({ accountId }) {
             const elkTypeStatus = item.type;
             const isLocked = elkTypeStatus === "L";
             const isOnline = item.ign === "Y";
+
+            const status = getBackendStatus(item);
 
             return {
               no: (
@@ -495,6 +503,7 @@ function Projects({ accountId }) {
               _imei: imei,
               _isLockedInitial: isLocked,
               _isOnline: isOnline,
+              _status: status, 
             };
           });
           setAllElkRows(fetchedRows);
@@ -556,21 +565,21 @@ function Projects({ accountId }) {
     return () => clearTimeout(t);
   }, [accountId, fetchVtsData, fetchElkData, fetchUnreachableData]);
 
-  // -------- FILTERING --------
 
-  const { 
-    filteredVts, 
-    filteredElk, 
-    filteredUnreachable, 
-    vtsAllCount, 
-    vtsOnlineCount, 
-    vtsOfflineCount,
+  const {
+    filteredVts,
+    filteredElk,
+    filteredUnreachable,
+    vtsAllCount,
     vtsMotionCount,
     vtsIdleCount,
     vtsStoppedCount,
-    elkAllCount, 
-    elkOnlineCount, 
-    elkOfflineCount 
+    vtsOfflineCount,
+    elkAllCount,
+    elkMotionCount,
+    elkIdleCount,
+    elkStoppedCount,
+    elkOfflineCount,
   } = useMemo(() => {
     const matchesSearch = (row) => {
       if (!searchTerm) return true;
@@ -584,14 +593,13 @@ function Projects({ accountId }) {
       return fields.some((f) => String(f).toLowerCase().includes(term));
     };
 
-    // Filter VTS by status
     const vtsFilteredByStatus = allVtsRows.filter((row) => {
-      if (vtsTab === "online") return row._isOnline;
-      if (vtsTab === "offline") return !row._isOnline;
-      if (vtsTab === "motion") return row._vehicleStatus === "motion";
-      if (vtsTab === "idle") return row._vehicleStatus === "idle";
-      if (vtsTab === "stopped") return row._vehicleStatus === "stopped";
-      return true; // "all"
+      if (vtsTab === "all") return true;
+      if (vtsTab === "motion") return row._status === "motion";
+      if (vtsTab === "idle") return row._status === "idle";
+      if (vtsTab === "stopped") return row._status === "stopped";
+      if (vtsTab === "offline") return row._status === "offline";
+      return true;
     });
 
     const vts = vtsFilteredByStatus.filter(matchesSearch).map((row) => ({
@@ -608,10 +616,12 @@ function Projects({ accountId }) {
       ),
     }));
 
-    // Filter ELK by online/offline status
     const elkFilteredByStatus = allElkRows.filter((row) => {
-      if (elkTab === "online") return row._isOnline;
-      if (elkTab === "offline") return !row._isOnline;
+      if (elkTab === "all") return true;
+      if (elkTab === "motion") return row._status === "motion";
+      if (elkTab === "idle") return row._status === "idle";
+      if (elkTab === "stopped") return row._status === "stopped";
+      if (elkTab === "offline") return row._status === "offline";
       return true;
     });
 
@@ -640,35 +650,44 @@ function Projects({ accountId }) {
       return fields.some((f) => String(f).toLowerCase().includes(term));
     });
 
-    // Count devices by status
     const vtsAll = allVtsRows.length;
-    const vtsOnline = allVtsRows.filter((row) => row._isOnline).length;
-    const vtsOffline = allVtsRows.filter((row) => !row._isOnline).length;
-    const vtsMotion = allVtsRows.filter((row) => row._vehicleStatus === "motion").length;
-    const vtsIdle = allVtsRows.filter((row) => row._vehicleStatus === "idle").length;
-    const vtsStopped = allVtsRows.filter((row) => row._vehicleStatus === "stopped").length;
-    
-    const elkAll = allElkRows.length;
-    const elkOnline = allElkRows.filter((row) => row._isOnline).length;
-    const elkOffline = allElkRows.filter((row) => !row._isOnline).length;
+    const vtsMotion = allVtsRows.filter((row) => row._status === "motion").length;
+    const vtsIdle = allVtsRows.filter((row) => row._status === "idle").length;
+    const vtsStopped = allVtsRows.filter((row) => row._status === "stopped").length;
+    const vtsOffline = allVtsRows.filter((row) => row._status === "offline").length;
 
-    return { 
-      filteredVts: vts, 
-      filteredElk: elk, 
+    const elkAll = allElkRows.length;
+    const elkMotion = allElkRows.filter((row) => row._status === "motion").length;
+    const elkIdle = allElkRows.filter((row) => row._status === "idle").length;
+    const elkStopped = allElkRows.filter((row) => row._status === "stopped").length;
+    const elkOffline = allElkRows.filter((row) => row._status === "offline").length;
+
+    return {
+      filteredVts: vts,
+      filteredElk: elk,
       filteredUnreachable: unreachable,
       vtsAllCount: vtsAll,
-      vtsOnlineCount: vtsOnline,
-      vtsOfflineCount: vtsOffline,
       vtsMotionCount: vtsMotion,
       vtsIdleCount: vtsIdle,
       vtsStoppedCount: vtsStopped,
+      vtsOfflineCount: vtsOffline,
       elkAllCount: elkAll,
-      elkOnlineCount: elkOnline,
-      elkOfflineCount: elkOffline
+      elkMotionCount: elkMotion,
+      elkIdleCount: elkIdle,
+      elkStoppedCount: elkStopped,
+      elkOfflineCount: elkOffline,
     };
-  }, [allVtsRows, allElkRows, unreachableRows, searchTerm, selectedRows, handleToggleSelect, vtsTab, elkTab]);
+  }, [
+    allVtsRows,
+    allElkRows,
+    unreachableRows,
+    searchTerm,
+    selectedRows,
+    handleToggleSelect,
+    vtsTab,
+    elkTab,
+  ]);
 
-  // -------- BULK UNLOCK / LOCK --------
 
   const handleBulkUnlockClick = () => {
     closeMenu();
@@ -793,8 +812,7 @@ function Projects({ accountId }) {
 
   return (
     <MDBox>
-      {/* FIXED HEADER (NOT SCROLLING) */}
-      <Card sx={{ mb: 2 }}>
+      <Card sx={{ mb: 1 }}>
         <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
           <MDBox>
             <MDTypography variant="h5" fontWeight="medium">
@@ -859,9 +877,7 @@ function Projects({ accountId }) {
         </MDBox>
       </Card>
 
-      {/* SCROLLING AREA WITH STACKED STICKY CARDS */}
       <MDBox sx={scrollContainerSx}>
-        {/* CARD 1: VTS */}
         <Card sx={stickyCardSx(10)}>
           <MDBox p={3} pb={0}>
             <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
@@ -878,57 +894,80 @@ function Projects({ accountId }) {
                   </MDTypography>
                 </MDBox>
               </MDBox>
-              
-             <MDBox display="flex" alignItems="center" gap={2}>
-  <MDTypography variant="button" fontWeight="bold">
-    {filteredVts.length} rows
-  </MDTypography>
 
-  {/* VTS Filter Buttons - Single Row */}
-  <MDBox
-    display="flex"
-    alignItems="center"
-    gap={0.5}
-    sx={{
-      border: "1px solid #e0e0e0",
-      borderRadius: "8px",
-      padding: "2px",
-      backgroundColor: "#f5f5f5",
-      flexWrap: "nowrap",   // 🔥 forces single line
-      overflowX: "auto"     // optional safety for small screens
-    }}
-  >
-    <MDButton size="small" variant={vtsTab === "all" ? "gradient" : "text"} color={vtsTab === "all" ? "info" : "dark"} onClick={() => setVtsTab("all")} sx={btnStyle}>
-      All ({vtsAllCount})
-    </MDButton>
+              <MDBox display="flex" alignItems="center" gap={2}>
+                <MDTypography variant="button" fontWeight="bold">
+                  {filteredVts.length} rows
+                </MDTypography>
 
-    <MDButton size="small" variant={vtsTab === "online" ? "gradient" : "text"} color={vtsTab === "online" ? "success" : "dark"} onClick={() => setVtsTab("online")} sx={btnStyle}>
-      <Icon fontSize="small">online_prediction</Icon>
-      Online ({vtsOnlineCount})
-    </MDButton>
+                <MDBox
+                  display="flex"
+                  alignItems="center"
+                  gap={0.5}
+                  sx={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "8px",
+                    padding: "2px",
+                    backgroundColor: "#f5f5f5",
+                    flexWrap: "nowrap",
+                    overflowX: "auto",
+                  }}
+                >
+                  <MDButton
+                    size="small"
+                    variant={vtsTab === "all" ? "gradient" : "text"}
+                    color={vtsTab === "all" ? "info" : "dark"}
+                    onClick={() => setVtsTab("all")}
+                    sx={btnStyle}
+                  >
+                    All ({vtsAllCount})
+                  </MDButton>
 
-    <MDButton size="small" variant={vtsTab === "offline" ? "gradient" : "text"} color={vtsTab === "offline" ? "error" : "dark"} onClick={() => setVtsTab("offline")} sx={btnStyle}>
-      <Icon fontSize="small">offline_bolt</Icon>
-      Offline ({vtsOfflineCount})
-    </MDButton>
+                  <MDButton
+                    size="small"
+                    variant={vtsTab === "motion" ? "gradient" : "text"}
+                    color={vtsTab === "motion" ? "success" : "dark"}
+                    onClick={() => setVtsTab("motion")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">directions_run</Icon>
+                    Motion ({vtsMotionCount})
+                  </MDButton>
 
-    <MDButton size="small" variant={vtsTab === "motion" ? "gradient" : "text"} color={vtsTab === "motion" ? "success" : "dark"} onClick={() => setVtsTab("motion")} sx={btnStyle}>
-      <Icon fontSize="small">directions_run</Icon>
-      Motion ({vtsMotionCount})
-    </MDButton>
+                  <MDButton
+                    size="small"
+                    variant={vtsTab === "idle" ? "gradient" : "text"}
+                    color={vtsTab === "idle" ? "warning" : "dark"}
+                    onClick={() => setVtsTab("idle")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">hourglass_empty</Icon>
+                    Idle ({vtsIdleCount})
+                  </MDButton>
 
-    <MDButton size="small" variant={vtsTab === "idle" ? "gradient" : "text"} color={vtsTab === "idle" ? "warning" : "dark"} onClick={() => setVtsTab("idle")} sx={btnStyle}>
-      <Icon fontSize="small">hourglass_empty</Icon>
-      Idle ({vtsIdleCount})
-    </MDButton>
+                  <MDButton
+                    size="small"
+                    variant={vtsTab === "stopped" ? "gradient" : "text"}
+                    color={vtsTab === "stopped" ? "error" : "dark"}
+                    onClick={() => setVtsTab("stopped")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">stop</Icon>
+                    Stopped ({vtsStoppedCount})
+                  </MDButton>
 
-    <MDButton size="small" variant={vtsTab === "stopped" ? "gradient" : "text"} color={vtsTab === "stopped" ? "error" : "dark"} onClick={() => setVtsTab("stopped")} sx={btnStyle}>
-      <Icon fontSize="small">stop</Icon>
-      Stopped ({vtsStoppedCount})
-    </MDButton>
-  </MDBox>
-</MDBox>
-
+                  <MDButton
+                    size="small"
+                    variant={vtsTab === "offline" ? "gradient" : "text"}
+                    color={vtsTab === "offline" ? "error" : "dark"}
+                    onClick={() => setVtsTab("offline")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">offline_bolt</Icon>
+                    Offline ({vtsOfflineCount})
+                  </MDButton>
+                </MDBox>
+              </MDBox>
             </MDBox>
           </MDBox>
 
@@ -945,7 +984,6 @@ function Projects({ accountId }) {
           </MDBox>
         </Card>
 
-        {/* CARD 2: PADLOCK / ELK */}
         <Card sx={stickyCardSx(20)}>
           <MDBox p={3} pb={0}>
             <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
@@ -962,61 +1000,73 @@ function Projects({ accountId }) {
                   </MDTypography>
                 </MDBox>
               </MDBox>
-              
+
               <MDBox display="flex" alignItems="center" gap={2}>
                 <MDTypography variant="button" fontWeight="bold">
                   {filteredElk.length} rows
                 </MDTypography>
-                
-                {/* ELK Filter Buttons */}
-                <MDBox display="flex" gap={0.5} sx={{ 
-                  border: '1px solid #e0e0e0', 
-                  borderRadius: '8px',
-                  padding: '2px',
-                  backgroundColor: '#f5f5f5'
-                }}>
+
+                <MDBox
+                  display="flex"
+                  gap={0.5}
+                  sx={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "8px",
+                    padding: "2px",
+                    backgroundColor: "#f5f5f5",
+                  }}
+                >
                   <MDButton
                     size="small"
                     variant={elkTab === "all" ? "gradient" : "text"}
                     color={elkTab === "all" ? "warning" : "dark"}
                     onClick={() => setElkTab("all")}
-                    sx={{ 
-                      minWidth: '60px', 
-                      padding: '4px 8px',
-                      fontSize: '0.7rem',
-                      textTransform: 'none'
-                    }}
+                    sx={btnStyle}
                   >
                     All ({elkAllCount})
                   </MDButton>
+
                   <MDButton
                     size="small"
-                    variant={elkTab === "online" ? "gradient" : "text"}
-                    color={elkTab === "online" ? "success" : "dark"}
-                    onClick={() => setElkTab("online")}
-                    sx={{ 
-                      minWidth: '70px', 
-                      padding: '4px 8px',
-                      fontSize: '0.7rem',
-                      textTransform: 'none'
-                    }}
+                    variant={elkTab === "motion" ? "gradient" : "text"}
+                    color={elkTab === "motion" ? "success" : "dark"}
+                    onClick={() => setElkTab("motion")}
+                    sx={btnStyle}
                   >
-                    <Icon fontSize="small" sx={{ mr: 0.5 }}>online_prediction</Icon>
-                    Online ({elkOnlineCount})
+                    <Icon fontSize="small">directions_run</Icon>
+                    Motion ({elkMotionCount})
                   </MDButton>
+
+                  <MDButton
+                    size="small"
+                    variant={elkTab === "idle" ? "gradient" : "text"}
+                    color={elkTab === "idle" ? "warning" : "dark"}
+                    onClick={() => setElkTab("idle")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">hourglass_empty</Icon>
+                    Idle ({elkIdleCount})
+                  </MDButton>
+
+                  <MDButton
+                    size="small"
+                    variant={elkTab === "stopped" ? "gradient" : "text"}
+                    color={elkTab === "stopped" ? "error" : "dark"}
+                    onClick={() => setElkTab("stopped")}
+                    sx={btnStyle}
+                  >
+                    <Icon fontSize="small">stop</Icon>
+                    Stopped ({elkStoppedCount})
+                  </MDButton>
+
                   <MDButton
                     size="small"
                     variant={elkTab === "offline" ? "gradient" : "text"}
                     color={elkTab === "offline" ? "error" : "dark"}
                     onClick={() => setElkTab("offline")}
-                    sx={{ 
-                      minWidth: '70px', 
-                      padding: '4px 8px',
-                      fontSize: '0.7rem',
-                      textTransform: 'none'
-                    }}
+                    sx={btnStyle}
                   >
-                    <Icon fontSize="small" sx={{ mr: 0.5 }}>offline_bolt</Icon>
+                    <Icon fontSize="small">offline_bolt</Icon>
                     Offline ({elkOfflineCount})
                   </MDButton>
                 </MDBox>
@@ -1037,7 +1087,6 @@ function Projects({ accountId }) {
           </MDBox>
         </Card>
 
-        {/* CARD 3: UNREACHABLE */}
         <Card sx={stickyCardSx(30)}>
           <MDBox p={3} pb={0}>
             <MDBox display="flex" alignItems="center" justifyContent="space-between">
@@ -1074,7 +1123,6 @@ function Projects({ accountId }) {
         </Card>
       </MDBox>
 
-      {/* UNLOCK DIALOG */}
       <Dialog
         open={unlockDialog.open}
         onClose={() => setUnlockDialog((p) => ({ ...p, open: false }))}
