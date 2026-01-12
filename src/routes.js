@@ -8,7 +8,7 @@ import LiveTrack from "pages/LiveTrack/LiveTrack";
 import Alerts from "../src/pages/Alerts/Alerts";
 import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
 import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
-
+import TripDashboard2 from "pages/TripDashboard/TripDashboard2";
 // Material Dashboard 2 React layouts
 import Dashboard from "../src/pages/dashboard";
 // 🔥 Optional extra dashboard
@@ -60,29 +60,38 @@ const routes = [
     component: <LiveTrack />,
   },
 
+  // Exam menu item (goes to TripDashboard2)
   {
-  type: "collapse",
-  name: (
-    <span
-      style={{
-        lineHeight: 1.1,
-        textAlign: "center",
-        display: "inline-block",
-        color: "#ffffff",          
-      }}
-    >
-      Trip
-      <br />
-      Dashboard
-    </span>
-  ),
-  key: "trip-dashboard",
-  icon: <Icon fontSize="small">timeline</Icon>,
-  route: "/trip-dashboard",
-  component: <TripDashboard />,
-},
+    type: "collapse",
+    name: "Exam",
+    key: "trip-dashboard2", // must match route segment for active logic
+    icon: <Icon fontSize="small">gps_fixed</Icon>,
+    route: "/trip-dashboard2",
+    component: <TripDashboard2 />,
+  },
 
-
+  // Trip Dashboard menu item (separate from Exam)
+  {
+    type: "collapse",
+    name: (
+      <span
+        style={{
+          lineHeight: 1.1,
+          textAlign: "center",
+          display: "inline-block",
+          color: "#ffffff",
+        }}
+      >
+        Trip
+        <br />
+        Dashboard
+      </span>
+    ),
+    key: "trip-dashboard", // matches '/trip-dashboard'
+    icon: <Icon fontSize="small">timeline</Icon>,
+    route: "/trip-dashboard",
+    component: <TripDashboard />,
+  },
 
   {
     type: "collapse",

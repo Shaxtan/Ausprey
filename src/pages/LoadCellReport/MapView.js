@@ -14,7 +14,7 @@ import Card from "@mui/material/Card";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
+// import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
 
 import ApiService from "../../services/ApiService";
 
@@ -101,18 +101,20 @@ const MapView = () => {
   // -----------------------------
   // Filtered Vehicles
   // -----------------------------
-  const filteredVehicles = useMemo(() => {
-    return vehicleList.filter((veh) => {
-      const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter =
-        filter === "All" ||
-        (filter === "Motion" && veh.status === "MOTION") ||
-        (filter === "Idle" && veh.status === "IDLE") ||
-        (filter === "Stop" && veh.status === "STOP") ||
-        (filter === "Lock" && veh.lock === "1");
-      return matchesSearch && matchesFilter;
-    });
-  }, [vehicleList, filter, searchTerm]);
+  const filteredVehicles = useMemo(
+    () =>
+      vehicleList.filter((veh) => {
+        const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesFilter =
+          filter === "All" ||
+          (filter === "Motion" && veh.status === "MOTION") ||
+          (filter === "Idle" && veh.status === "IDLE") ||
+          (filter === "Stop" && veh.status === "STOP") ||
+          (filter === "Lock" && veh.lock === "1");
+        return matchesSearch && matchesFilter;
+      }),
+    [vehicleList, filter, searchTerm]
+  );
 
   // -----------------------------
   // Status Label & Color
@@ -219,17 +221,11 @@ const MapView = () => {
         const ignition = (ign || "N").toString().toUpperCase();
         const isLocked = lock === "1" || lock === true;
 
-        // Correct Status Logic
         let status;
-        if (speedNum === 0 && ignition === "N") {
-          status = "STOP";
-        } else if (speedNum > 5 && ignition === "Y") {
-          status = "MOTION";
-        } else if (speedNum < 5) {
-          status = "IDLE";
-        } else {
-          status = "IDLE"; // fallback
-        }
+        if (speedNum === 0 && ignition === "N") status = "STOP";
+        else if (speedNum > 5 && ignition === "Y") status = "MOTION";
+        else if (speedNum < 5) status = "IDLE";
+        else status = "IDLE";
 
         const effectiveStatus = isLocked ? "LOCKED" : status;
         const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
@@ -281,7 +277,6 @@ const MapView = () => {
     const marker = markerMapRef.current[veh.vehnum];
     if (!marker || !mapRef.current) return;
 
-    // Reset previous highlight
     if (highlightedVeh) {
       const oldVeh = vehicleList.find((v) => v.vehnum === highlightedVeh);
       const oldMarker = markerMapRef.current[highlightedVeh];
@@ -290,7 +285,6 @@ const MapView = () => {
       }
     }
 
-    // Highlight current
     marker.setIcon(highlightIcon);
     setHighlightedVeh(veh.vehnum);
 
@@ -304,8 +298,8 @@ const MapView = () => {
   // -----------------------------
   const overlayPanelStyle = {
     position: "absolute",
-    top: "24px",
-    right: "24px",
+    top: "16px",
+    right: "16px",
     zIndex: 1000,
     width: "380px",
     maxWidth: "90vw",
@@ -313,22 +307,40 @@ const MapView = () => {
 
   return (
     <DashboardLayout>
-      {/* <DashboardNavbar /> */}
-      <MDBox pt={2} pb={3}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Card sx={{ height: "85vh", position: "relative", overflow: "hidden" }}>
-              <MDBox p={3} pb={1}>
-                <MDTypography variant="h5" fontWeight="medium">
-                  Live Vehicle Tracking
-                </MDTypography>
-              </MDBox>
-
-              <div ref={mapContainerRef} style={{ height: "calc(100% - 70px)", width: "100%" }} />
+      <MDBox
+        sx={{
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          p: 0,
+        }}
+      >
+        <Grid container sx={{ flex: 1, m: 0 }}>
+          <Grid item xs={12} sx={{ height: "100%" }}>
+            <Card
+              sx={{
+                marginTop:"-55px",
+                height: "100%",
+                width:"100%",
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 0,
+                boxShadow: "none",
+              }}
+            >
+              <div
+                ref={mapContainerRef}
+                style={{ height: "100%", width: "100%" }}
+              />
 
               <div style={overlayPanelStyle}>
                 <Card
-                  sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 6 }}
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    boxShadow: 6,
+                  }}
                 >
                   <MDBox
                     p={2}
@@ -422,31 +434,37 @@ const MapView = () => {
                             >
                               <MDBox
                                 display="flex"
-                                justifyContent="space-between"
-                                alignItems="center"
+                                flexDirection="column"
+                                alignItems="flex-start"
+                                gap={0.5}
                               >
-                                <MDBox>
-                                  <MDTypography variant="subtitle2" fontWeight="bold">
-                                    {veh.vehnum}
-                                  </MDTypography>
-                                  <MDTypography variant="caption" color="text.secondary">
-                                    {veh.location}
-                                  </MDTypography>
-                                </MDBox>
+                                {/* Colored container for vehicle number */}
                                 <MDBox
                                   sx={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
                                     px: 1.5,
                                     py: 0.5,
                                     borderRadius: 1,
                                     backgroundColor: getStatusColor(veh.status, veh.lock),
                                     color: "white",
-                                    fontSize: "0.75rem",
-                                    fontWeight: "bold",
                                   }}
                                 >
-                                  {getStatusLabel(veh.status, veh.lock)}
+                                  <MDTypography
+                                    variant="subtitle2"
+                                    fontWeight="bold"
+                                    sx={{ color: "inherit" }}
+                                  >
+                                    {veh.vehnum}
+                                  </MDTypography>
                                 </MDBox>
+
+                                {/* Location below the colored pill */}
+                                <MDTypography variant="caption" color="text.secondary">
+                                  {veh.location}
+                                </MDTypography>
                               </MDBox>
+
                               <MDTypography
                                 variant="caption"
                                 color="text.secondary"

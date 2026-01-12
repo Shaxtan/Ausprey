@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -172,42 +172,24 @@ function DeviceTable({ devices, selectedId, onSelect }) {
 
       <TableContainer component={Paper} sx={styles.tableContainer}>
         <Table stickyHeader size="small" sx={styles.tableRoot}>
-       <TableHead>
-  <TableRow>
-    <TableCell
-      align="left"
-      sx={styles.cell("45%", "left", { px: 2 })}
-    >
-      <MDBox
-        display="flex"
-        alignItems="center"
-        justifyContent="flex-start"
-      >
-        {/* Icon 1 → 2 gap: 4px */}
-        <Icon fontSize="small" sx={{ mr: "65px" }}>
-          directions_car
-        </Icon>
-
-        {/* Icon 2 → 3 gap: 16px */}
-        <Icon fontSize="small" sx={{ mr: "60px" }}>
-          power_settings_new
-        </Icon>
-
-        {/* Icon 3 → 4 gap: 32px */}
-        <Icon fontSize="small" sx={{ mr: "60px" }}>
-          speed
-        </Icon>
-
-        {/* Last icon usually no right margin */}
-        <Icon fontSize="small">
-          info_outline
-        </Icon>
-      </MDBox>
-    </TableCell>
-  </TableRow>
-</TableHead>
-
-
+          <TableHead>
+            <TableRow>
+              <TableCell align="left" sx={styles.cell("45%", "left", { px: 2 })}>
+                <MDBox display="flex" alignItems="center" justifyContent="flex-start">
+                  <Icon fontSize="small" sx={{ mr: "65px" }}>
+                    directions_car
+                  </Icon>
+                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                    power_settings_new
+                  </Icon>
+                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                    speed
+                  </Icon>
+                  <Icon fontSize="small">info_outline</Icon>
+                </MDBox>
+              </TableCell>
+            </TableRow>
+          </TableHead>
 
           <TableBody>
             {devices.map((d) => (
@@ -219,7 +201,13 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                 sx={styles.tableRow(selectedId === d.id)}
               >
                 {/* Vehicle Column */}
-                <TableCell sx={styles.cell("45%", "left", { px: 2, py: 1, overflow: "hidden" })}>
+                <TableCell
+                  sx={styles.cell("45%", "left", {
+                    px: 2,
+                    py: 1,
+                    overflow: "hidden",
+                  })}
+                >
                   <Typography variant="body2" fontWeight={600} noWrap>
                     {d.name}
                   </Typography>
@@ -234,7 +222,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     <Typography
                       variant="caption"
                       display="block"
-                      color="text.secondary"  
+                      color="text.secondary"
                       sx={{ mt: 0.5 }}
                     >
                       {d.lastUpdate}
@@ -242,17 +230,17 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   </Tooltip>
                 </TableCell>
 
-               <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
-  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
-      speed
-    </Icon>
-    <Typography variant="caption" color="text.secondary">
-      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
-    </Typography>
-  </MDBox>
-</TableCell>
-
+                {/* Speed Column */}
+                <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
+                  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+                    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
+                      speed
+                    </Icon>
+                    <Typography variant="caption" color="text.secondary">
+                      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
+                    </Typography>
+                  </MDBox>
+                </TableCell>
 
                 {/* Info Column */}
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
@@ -281,6 +269,10 @@ DeviceTable.propTypes = {
   onSelect: PropTypes.func.isRequired,
 };
 
+/* ============================
+  MAIN COMPONENT
+ ============================ */
+
 export default function LiveTrack() {
   const LEFT_PANEL_WIDTH = 350;
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
@@ -295,29 +287,73 @@ export default function LiveTrack() {
   const intervalRef = useRef(null);
   const [liveMetrics, setLiveMetrics] = useState({});
   const [filterStatus, setFilterStatus] = useState("Total");
+
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // src/LiveTrack/LiveTrack.js (Updated useEffect)
+  // IMEI from state OR from query string
+  const imeiFromQuery = searchParams.get("imei");
+  const imeiFromState = location.state?.targetImei;
+  const targetImei = imeiFromState || imeiFromQuery;
+  const targetAccountId = location.state?.targetAccountId;
+
   useEffect(() => {
-    const targetImei = location.state?.targetImei;
-    const targetAccountId = location.state?.targetAccountId; // NEW
+  ApiService.getAllDevices()
+    .then((devices) => {
+      console.log("LiveTrack targetImei:", targetImei);
+      console.log("LiveTrack devices sample:", devices?.slice?.(0, 3));
 
+      setAllDevices(devices || []);
+
+      let initialSelectedDevice = null;
+
+      if (targetImei) {
+        // TEMP: show exactly what matches
+        initialSelectedDevice =
+          devices.find((d) => d.id === targetImei) ||
+          devices.find((d) => d.imei === targetImei) ||
+          devices.find((d) => d.deviceId === targetImei); // try other likely keys
+
+        console.log("Matched initialSelectedDevice:", initialSelectedDevice);
+      }
+
+      if (initialSelectedDevice && targetAccountId) {
+        initialSelectedDevice = {
+          ...initialSelectedDevice,
+          accountId: targetAccountId,
+        };
+      }
+
+      if (!initialSelectedDevice && devices.length > 0) {
+        initialSelectedDevice = devices[0];
+      }
+
+      setSelectedDevice(initialSelectedDevice);
+    })
+    .catch(console.error);
+}, [targetImei, targetAccountId]);
+
+
+  // Load all devices and select correct initial one
+  useEffect(() => {
     ApiService.getAllDevices()
       .then((devices) => {
-        setAllDevices(devices);
+        setAllDevices(devices || []);
 
         let initialSelectedDevice = null;
 
         if (targetImei) {
-          initialSelectedDevice = devices.find((d) => d.id === targetImei);
+          // Try match by id first, then by imei (adjust field if needed)
+          initialSelectedDevice =
+            devices.find((d) => d.id === targetImei) ||
+            devices.find((d) => d.imei === targetImei);
+        }
 
-          // **ENHANCEMENT:** Use targetAccountId if the device is found and the state provided it
-          if (initialSelectedDevice && targetAccountId) {
-            initialSelectedDevice = {
-              ...initialSelectedDevice,
-              accountId: targetAccountId, // Override/ensure accountId
-            };
-          }
+        if (initialSelectedDevice && targetAccountId) {
+          initialSelectedDevice = {
+            ...initialSelectedDevice,
+            accountId: targetAccountId,
+          };
         }
 
         if (!initialSelectedDevice && devices.length > 0) {
@@ -327,7 +363,9 @@ export default function LiveTrack() {
         setSelectedDevice(initialSelectedDevice);
       })
       .catch(console.error);
-  }, [location.state]); // Dependency on location.state
+  }, [targetImei, targetAccountId]);
+
+  // Live updates for selected device
   useEffect(() => {
     if (!selectedDevice?.accountId || !selectedDevice?.id) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -358,8 +396,8 @@ export default function LiveTrack() {
 
           const newLocation = [rawData.lat, rawData.lng];
 
-          setAllDevices((prevDevices) => {
-            return prevDevices.map((d) => {
+          setAllDevices((prevDevices) =>
+            prevDevices.map((d) => {
               if (d.id === imei) {
                 const accumulatedRoute = [...(d.route || []), newLocation].slice(-100);
                 const updatedDevice = {
@@ -378,8 +416,8 @@ export default function LiveTrack() {
                 return updatedDevice;
               }
               return d;
-            });
-          });
+            })
+          );
         }
       } catch (error) {
         console.error(`Failed to fetch live update for ${imei}:`, error);
@@ -391,6 +429,7 @@ export default function LiveTrack() {
     return () => clearInterval(liveInterval);
   }, [selectedDevice?.id, selectedDevice?.accountId]);
 
+  // Filter devices and counts
   const { filteredDevices, counts } = useMemo(() => {
     const statusMap = { Running: 0, Stopped: 0, Idle: 0, Inactive: 0, "No Data": 0 };
     let total = 0;
@@ -414,6 +453,7 @@ export default function LiveTrack() {
     return { filteredDevices: devicesToRender, counts: { ...statusMap, Total: total } };
   }, [filterStatus, allDevices]);
 
+  // Selected trip view model
   const selectedTrip = useMemo(() => {
     if (!selectedDevice) return null;
     const liveData = selectedDevice.id === liveMetrics.id ? liveMetrics : selectedDevice;
@@ -498,13 +538,14 @@ export default function LiveTrack() {
 
   return (
     <DashboardLayout>
-<Box
-  sx={{
-    ...styles.dashboardContainer(isLeftPanelOpen),
-    zIndex: 0,
-    position: 'relative',
-  }}
->        {isLeftPanelOpen && (
+      <Box
+        sx={{
+          ...styles.dashboardContainer(isLeftPanelOpen),
+          zIndex: 0,
+          position: "relative",
+        }}
+      >
+        {isLeftPanelOpen && (
           <Box sx={styles.leftPanelContainer(LEFT_PANEL_WIDTH)}>
             <Box sx={styles.leftPanelHeader}>
               <Typography variant="subtitle1" fontWeight={700}>
@@ -564,7 +605,7 @@ export default function LiveTrack() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {selectedDevice && selectedDevice.route?.length > 0 && (
+            {selectedDevice && selectedTrip?.route?.length > 0 && (
               <Marker
                 position={selectedTrip.route[selectedTrip.route.length - 1]}
                 icon={L.divIcon({

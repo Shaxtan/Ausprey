@@ -247,6 +247,89 @@ class ApiService {
         throw error;
       });
   }
+  getAllDevices(accountId = null) {
+    if (!accountId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+        accountId = user?.accid || 1;
+      } catch {
+        accountId = 1;
+      }
+    }
+
+    return this.postRequest(
+      "/reports/report/dashboard",
+      { accid: accountId },
+      true,
+      SERVICES.dashboard
+    )
+      .then((res) => {
+        // 1. Extract both lists from the nested response
+        const vtsDevices = res?.data?.data?.data?.VTS?.available || [];
+        const elkDevices = res?.data?.data?.data?.ELK?.available || [];
+
+        // 2. Combine them into one array
+        const allRawDevices = [
+          ...vtsDevices.map((d) => ({ ...d, deviceSource: "VTS" })),
+          ...elkDevices.map((d) => ({ ...d, deviceSource: "ELK" })),
+        ];
+
+        if (allRawDevices.length === 0) {
+          console.warn("No devices found in dashboard response");
+          return [];
+        }
+
+        // 3. Normalize them to the format LiveTrack expects
+        const normalizedDevices = allRawDevices.map((d) => {
+          const speedNum = Number(d.speed) || 0;
+          const ign = (d.ign || "").toUpperCase();
+          const lat = parseFloat(d.lat);
+          const lng = parseFloat(d.lng);
+
+          // Map status
+          let status = "Inactive";
+          if (d.deviceSource === "ELK") {
+            // For ELK, status might depend on lock state or speed
+            status = speedNum > 0 ? "Running" : "Stopped";
+          } else {
+            if (ign === "Y") {
+              status = speedNum > 5 ? "Running" : "Idle";
+            } else {
+              status = speedNum === 0 ? "Stopped" : "Inactive";
+            }
+          }
+
+          const location = lat && lng ? `${lat},${lng}` : null;
+          const initialRoute = location ? [[lat, lng]] : [];
+
+          return {
+            id: d.imei,
+            name: d.vehnum || d.name || d.imei,
+            tripId: d.deviceSource === "ELK" ? "Padlock" : d.imei,
+            status,
+            speed: speedNum,
+            // ELK might use different battery field, fallback to 50
+            battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50,
+            ignition: ign === "Y",
+            lastUpdate: new Date(d.devTs || Date.now()).toLocaleTimeString(),
+            driverName: "N/A",
+            vehicleType: d.deviceSource === "ELK" ? "Lock" : "Truck",
+            route: initialRoute,
+            location,
+            accountId: d.accid || accountId,
+            deviceSource: d.deviceSource, // Carry this over to help LiveTrack logic
+            raw: d,
+          };
+        });
+
+        return normalizedDevices;
+      })
+      .catch((error) => {
+        callAlert("Error", "Failed to load devices");
+        console.error("getAllDevices error:", error);
+        return [];
+      });
+  }
 
   testData(data = {}, header = true) {
     return (
@@ -267,74 +350,7 @@ class ApiService {
         })
     );
   }
-  getAllDevices(accountId = null) {
-    // If no accountId passed, try to get from localStorage
-    if (!accountId) {
-      try {
-        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
-        accountId = user?.accid || 1;
-      } catch {
-        accountId = 1;
-      }
-    }
-
-    return this.postRequest(
-      "/reports/report/dashboard",
-      { accid: accountId },
-      true,
-      SERVICES.dashboard
-    )
-      .then((res) => {
-        // CRITICAL: Correct path to devices
-        const availableDevices = res?.data?.data?.data?.VTS?.available || [];
-
-        if (!Array.isArray(availableDevices) || availableDevices.length === 0) {
-          console.warn("No devices found in dashboard response");
-          return [];
-        }
-
-        const normalizedDevices = availableDevices.map((d) => {
-          const speedNum = Number(d.speed) || 0;
-          const ign = (d.ign || "").toUpperCase();
-          const lat = parseFloat(d.lat);
-          const lng = parseFloat(d.lng);
-
-          let status = "Inactive";
-          if (ign === "Y") {
-            status = speedNum > 5 ? "Running" : "Idle";
-          } else {
-            status = speedNum === 0 ? "Stopped" : "Inactive";
-          }
-
-          const location = lat && lng ? `${lat},${lng}` : null;
-          const initialRoute = location ? [[lat, lng]] : [];
-
-          return {
-            id: d.imei,
-            name: d.vehnum || d.name || d.imei,
-            tripId: d.imei,
-            status,
-            speed: speedNum,
-            battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50,
-            ignition: ign === "Y",
-            lastUpdate: new Date(d.devTs || Date.now()).toLocaleTimeString(),
-            driverName: "N/A",
-            vehicleType: "Truck",
-            route: initialRoute,
-            location,
-            accountId: d.accid || accountId,
-            raw: d, // for debugging
-          };
-        });
-
-        return normalizedDevices;
-      })
-      .catch((error) => {
-        callAlert("Error", "Failed to load devices");
-        console.error("getAllDevices error:", error);
-        return [];
-      });
-  }
+   
   testData(accountId, imei, header = true) {
     // Update the hardcoded URL to use the passed parameters
     return this.postRequest(

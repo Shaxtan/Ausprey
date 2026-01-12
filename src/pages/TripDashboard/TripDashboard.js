@@ -22,6 +22,10 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TablePagination from "@mui/material/TablePagination";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
@@ -31,7 +35,6 @@ const LEAFLET_CSS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
 const LEAFLET_JS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
-
 
 const clickableTextSx = {
   cursor: "pointer",
@@ -115,7 +118,7 @@ const BASE_STEPS = [
   { key: "Mahabaleswar", label: "Mahabaleswar" },
 ];
 
-// --- MOCK DATA with simple routes (lat/long path) ---
+// --- MOCK DATA ---
 const mockTrips = [
   {
     id: "TRP001",
@@ -233,7 +236,10 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
     }
 
     const startPoint = route[0];
-    const map = L.map(mapRef.current).setView([startPoint.lat, startPoint.lng], 7);
+    const map = L.map(mapRef.current).setView(
+      [startPoint.lat, startPoint.lng],
+      7
+    );
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap",
@@ -442,6 +448,18 @@ function TripDashboard({ accountId }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // CREATE TRIP DIALOG STATE
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    vehicleNumber: "",
+    accountName: "",
+    source: "",
+    destination: "",
+    imei: "",
+    driver: "",
+  });
+  const [createErrors, setCreateErrors] = useState({});
+
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
 
@@ -506,7 +524,8 @@ function TripDashboard({ accountId }) {
   const toggleTripDetails = (id) =>
     setExpandedTripId((prev) => (prev === id ? null : id));
 
-  const handleImeiClick = (imei) => alert(`Maps to Live Track: ${imei}`);
+  const handleImeiClick = (imei) =>
+    alert(`Maps to Live Track: ${imei}`);
 
   const handlePlayProgress = (id) => {
     setTrips((prev) =>
@@ -533,11 +552,69 @@ function TripDashboard({ accountId }) {
     );
   };
 
+  // OPEN DIALOG
   const handleCreateTrip = () => {
-    // implement navigation or dialog open here
-    // example:
-    // navigate("/trips/create");
-    alert("Create Trip clicked");
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateDialogClose = () => {
+    setCreateDialogOpen(false);
+    setCreateForm({
+      vehicleNumber: "",
+      accountName: "",
+      source: "",
+      destination: "",
+      imei: "",
+      driver: "",
+    });
+    setCreateErrors({});
+  };
+
+  const handleCreateFieldChange = (field) => (e) => {
+    setCreateForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleCreateDialogSubmit = () => {
+    const requiredFields = [
+      "vehicleNumber",
+      "accountName",
+      "source",
+      "destination",
+      "imei",
+      "driver",
+    ];
+    const newErrors = {};
+    requiredFields.forEach((f) => {
+      if (!createForm[f]?.trim()) newErrors[f] = "Required";
+    });
+    if (Object.keys(newErrors).length > 0) {
+      setCreateErrors(newErrors);
+      return;
+    }
+
+    const newTrip = {
+      id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
+      vehicleNumber: createForm.vehicleNumber,
+      accountName: createForm.accountName,
+      source: createForm.source,
+      destination: createForm.destination,
+      imei: createForm.imei,
+      createdTime: new Date().toISOString(),
+      status: "In Transit",
+      driver: createForm.driver,
+      distance: "0 km",
+      eta: "N/A",
+      route: [
+        { lat: 19.076, lng: 72.8777 },
+        { lat: 18.5204, lng: 73.8567 },
+      ],
+      progressIndex: 0,
+      routeIndex: 0,
+      isPlaying: false,
+    };
+
+    setTrips((prev) => [newTrip, ...prev]);
+    handleCreateDialogClose();
   };
 
   const filteredTrips = useMemo(() => {
@@ -555,9 +632,216 @@ function TripDashboard({ accountId }) {
     page * rowsPerPage + rowsPerPage
   );
 
+  // Summary stats for 5 boxes
+  const tripStats = useMemo(() => {
+    const total = trips.length;
+    const inTransit = trips.filter((t) => t.status === "In Transit").length;
+    const stopped = trips.filter((t) => t.status === "Stopped").length;
+    const alerts = trips.filter((t) => t.status === "Alert").length;
+    const unreachable = trips.filter((t) => t.status === "Unreachable").length;
+    const atSource = trips.filter((t) => t.status === "At Source").length;
+    const atDestination = trips.filter(
+      (t) => t.status === "At Destination"
+    ).length;
+
+    return { total, inTransit, atSource, atDestination, alerts, stopped, unreachable };
+  }, [trips]);
+
   return (
     <MDBox pt={6} pb={3} ml={11}>
-      <Grid container spacing={6}>
+      <Grid container spacing={3}>
+        {/* QUICK VIEW container */}
+        <Grid item xs={12}>
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
+              overflow: "hidden",
+              marginBottom: "44px",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background:
+                  "linear-gradient(135deg, #1A73E8 0%, #49a3f1 50%, #63b3ed 100%)",
+                margin: "16px",
+                marginTop: "14px",
+                padding: "14px 22px",
+                borderRadius: "14px",
+                boxShadow: "0 10px 30px rgba(26, 115, 232, 0.45)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h6
+                style={{
+                  color: "#ffffff",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  margin: 0,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Quick View
+              </h6>
+            </div>
+
+            {/* Stats Grid */}
+            <div style={{ padding: "20px 24px 24px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(190px, 1fr))",
+                  gap: "18px",
+                }}
+              >
+                {[
+                  {
+                    label: "Total Trips",
+                    value: tripStats.total,
+                    icon: "list_alt",
+                    iconBg: "#e3f2fd",
+                    iconColor: "#1976d2",
+                    valueColor: "#111827",
+                    subtitle: "All trips in the system",
+                  },
+                  {
+                    label: "In Transit",
+                    value: tripStats.inTransit,
+                    icon: "local_shipping",
+                    iconBg: "#e3f2fd",
+                    iconColor: "#1d4ed8",
+                    valueColor: "#1d4ed8",
+                    subtitle: "Vehicles currently moving",
+                  },
+                  {
+                    label: "At Source",
+                    value: tripStats.stopped,
+                    icon: "stop_circle",
+                    iconBg: "#fff3e0",
+                    iconColor: "#f57c00",
+                    valueColor: "#f57c00",
+                    subtitle: "Ignition off / halted",
+                  },
+                  {
+                    label: "At Destination",
+                    value: tripStats.atDestination,
+                    icon: "flag",
+                    iconBg: "#e0f7fa",
+                    iconColor: "#006064",
+                    valueColor: "#006064",
+                    subtitle: "Trips completed",
+                  },
+                  {
+                    label: "Alerts",
+                    value: tripStats.alerts,
+                    icon: "warning",
+                    iconBg: "#ffebee",
+                    iconColor: "#d32f2f",
+                    valueColor: "#d32f2f",
+                    subtitle: "Trips needing attention",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "14px",
+                      padding: "16px 18px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      columnGap: "14px",
+                      border: "1px solid #e5e7eb",
+                      boxShadow: "0 4px 12px rgba(15, 23, 42, 0.06)",
+                      transition:
+                        "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.boxShadow =
+                        "0 14px 28px rgba(15, 23, 42, 0.16)";
+                      e.currentTarget.style.borderColor = "#bfdbfe";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow =
+                        "0 4px 12px rgba(15, 23, 42, 0.06)";
+                      e.currentTarget.style.borderColor = "#e5e7eb";
+                    }}
+                  >
+                    {/* Icon / badge */}
+                    <div
+                      style={{
+                        backgroundColor: item.iconBg,
+                        borderRadius: "12px",
+                        padding: "10px",
+                        minWidth: "44px",
+                        minHeight: "44px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon
+                        style={{
+                          color: item.iconColor,
+                          fontSize: "26px",
+                        }}
+                      >
+                        {item.icon}
+                      </Icon>
+                    </div>
+
+                    {/* Text content */}
+                    <div style={{ flex: 1, textAlign: "right" }}>
+                      <p
+                        style={{
+                          margin: "0 0 4px 0",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          color: "#6b7280",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {item.label}
+                      </p>
+                      <h5
+                        style={{
+                          margin: 0,
+                          fontSize: "1.45rem",
+                          fontWeight: 700,
+                          color: item.valueColor,
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {item.value}
+                      </h5>
+                      <p
+                        style={{
+                          margin: "4px 0 0 0",
+                          fontSize: "0.7rem",
+                          color: "#9ca3af",
+                        }}
+                      >
+                        {item.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Grid>
+
+        {/* Existing Trip Dashboard card */}
         <Grid item xs={12}>
           <Card>
             <MDBox
@@ -577,14 +861,24 @@ function TripDashboard({ accountId }) {
                 Trip Dashboard
               </MDTypography>
 
-              <MDButton
-                variant="contained"
-                color="white"
-                size="small"
-                onClick={handleCreateTrip}
-              >
-                Create Trip
-              </MDButton>
+              <MDBox display="flex" gap={1}>
+                <MDButton
+                  variant="contained"
+                  color="white"
+                  size="small"
+                  onClick={handleCreateTrip}
+                >
+                  Create Trip
+                </MDButton>
+                <MDButton
+                  variant="contained"
+                  color="white"
+                  size="small"
+                  onClick={handleCreateTrip}
+                >
+                  Create Bulk Trip
+                </MDButton>
+              </MDBox>
             </MDBox>
 
             <MDBox p={3}>
@@ -595,11 +889,7 @@ function TripDashboard({ accountId }) {
                 mb={3}
               >
                 <MDBox display="flex" alignItems="center">
-                  <MDTypography
-                    variant="button"
-                    color="text"
-                    fontWeight="regular"
-                  >
+                  <MDTypography variant="button" color="text" fontWeight="regular">
                     Showing <strong>{filteredTrips.length}</strong> active trips
                   </MDTypography>
                 </MDBox>
@@ -754,11 +1044,7 @@ function TripDashboard({ accountId }) {
                               style={{ paddingBottom: 0, paddingTop: 0 }}
                               colSpan={8}
                             >
-                              <Collapse
-                                in={isExpanded}
-                                timeout="auto"
-                                unmountOnExit
-                              >
+                              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                 <Box
                                   sx={{
                                     margin: 2,
@@ -785,9 +1071,7 @@ function TripDashboard({ accountId }) {
                                             variant="contained"
                                             color="success"
                                             startIcon={<Icon>play_arrow</Icon>}
-                                            onClick={() =>
-                                              handlePlayProgress(trip.id)
-                                            }
+                                            onClick={() => handlePlayProgress(trip.id)}
                                             disabled={isPlaying}
                                           >
                                             Play
@@ -797,9 +1081,7 @@ function TripDashboard({ accountId }) {
                                             variant="outlined"
                                             color="inherit"
                                             startIcon={<Icon>pause</Icon>}
-                                            onClick={() =>
-                                              handlePauseProgress(trip.id)
-                                            }
+                                            onClick={() => handlePauseProgress(trip.id)}
                                             disabled={!isPlaying}
                                           >
                                             Pause
@@ -925,6 +1207,94 @@ function TripDashboard({ accountId }) {
           </Card>
         </Grid>
       </Grid>
+
+      {/* CREATE TRIP DIALOG */}
+      <Dialog
+        open={createDialogOpen}
+        onClose={handleCreateDialogClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Create Trip</DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} mt={0.5}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Vehicle Number"
+                value={createForm.vehicleNumber}
+                onChange={handleCreateFieldChange("vehicleNumber")}
+                size="small"
+                error={!!createErrors.vehicleNumber}
+                helperText={createErrors.vehicleNumber}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Account Name"
+                value={createForm.accountName}
+                onChange={handleCreateFieldChange("accountName")}
+                size="small"
+                error={!!createErrors.accountName}
+                helperText={createErrors.accountName}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Source"
+                value={createForm.source}
+                onChange={handleCreateFieldChange("source")}
+                size="small"
+                error={!!createErrors.source}
+                helperText={createErrors.source}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Destination"
+                value={createForm.destination}
+                onChange={handleCreateFieldChange("destination")}
+                size="small"
+                error={!!createErrors.destination}
+                helperText={createErrors.destination}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="IMEI"
+                value={createForm.imei}
+                onChange={handleCreateFieldChange("imei")}
+                size="small"
+                error={!!createErrors.imei}
+                helperText={createErrors.imei}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Driver Name"
+                value={createForm.driver}
+                onChange={handleCreateFieldChange("driver")}
+                size="small"
+                error={!!createErrors.driver}
+                helperText={createErrors.driver}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCreateDialogClose} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleCreateDialogSubmit} variant="contained" color="primary">
+            Create Trip
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MDBox>
   );
 }

@@ -35,12 +35,11 @@ import {
   addressMapLinkSx,
 } from "./Projects.styles";
 
-
 const scrollContainerSx = {
   height: "calc(100vh - 160px)",
   overflowY: "auto",
   overflowX: "hidden",
-  paddingBottom: "20px",
+  paddingBottom: "12px", // slightly smaller so bottom pagination is visible
   position: "relative",
   "&::-webkit-scrollbar": {
     width: "6px",
@@ -54,6 +53,18 @@ const scrollContainerSx = {
   },
 };
 
+// keep sticky, but do NOT stretch full height
+const stickyCardSx = (zIndex, topOffset = 0, extraMb = 15) => ({
+  position: "sticky",
+  top: `${topOffset}px`,            // allow vertical stacking of sticky cards
+  zIndex,
+  marginBottom: extraMb,           // can add gap between specific cards
+  boxShadow: "0 -5px 20px rgba(0,0,0,0.1)",
+  backgroundColor: "#fff",
+  borderTop: "1px solid rgba(0,0,0,0.1)",
+  transition: "transform 0.3s ease",
+});
+
 const btnStyle = {
   minWidth: "auto",
   padding: "4px 8px",
@@ -64,19 +75,6 @@ const btnStyle = {
   alignItems: "center",
   gap: "4px",
 };
-
-const stickyCardSx = (zIndex) => ({
-  position: "sticky",
-  top: 0,
-  zIndex,
-  minHeight: "100%",
-  marginBottom: 0,
-  boxShadow: "0 -5px 20px rgba(0,0,0,0.1)",
-  backgroundColor: "#fff",
-  borderTop: "1px solid rgba(0,0,0,0.1)",
-  transition: "transform 0.3s ease",
-});
-
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -227,7 +225,7 @@ const AddressCell = ({ item }) => (
 
 AddressCell.propTypes = { item: PropTypes.object };
 
-
+// columns
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -270,7 +268,6 @@ const UNREACHABLE_COLUMNS = [
   { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
-
 const getBackendStatus = (item) => {
   const ignOn = item.ign === "Y";
   const speed = Number(item.speed) || 0;
@@ -290,22 +287,28 @@ const getBackendStatus = (item) => {
   return "idle";
 };
 
-
-function Projects({ accountId }) {
+function Projects({
+  accountId,
+  vtsData = [],
+  elkData = [],
+  unreachableData = [],
+}) {
   const navigate = useNavigate();
 
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [tripFilterType, setTripFilterType] = useState("vts");
 
   const [allVtsRows, setAllVtsRows] = useState([]);
   const [allElkRows, setAllElkRows] = useState([]);
   const [unreachableRows, setUnreachableRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState({});
+
   const [pageSize, setPageSize] = useState(10);
 
   const [vtsTab, setVtsTab] = useState("all");
-  const [elkTab, setElkTab] = useState("all"); 
+  const [elkTab, setElkTab] = useState("all");
 
   const [unlockDialog, setUnlockDialog] = useState({
     open: false,
@@ -335,7 +338,6 @@ function Projects({ accountId }) {
     },
     [navigate, accountId]
   );
-
 
   const fetchVtsData = useCallback(
     (currentAccountId) => {
@@ -503,7 +505,7 @@ function Projects({ accountId }) {
               _imei: imei,
               _isLockedInitial: isLocked,
               _isOnline: isOnline,
-              _status: status, 
+              _status: status,
             };
           });
           setAllElkRows(fetchedRows);
@@ -564,7 +566,6 @@ function Projects({ accountId }) {
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
   }, [accountId, fetchVtsData, fetchElkData, fetchUnreachableData]);
-
 
   const {
     filteredVts,
@@ -688,7 +689,6 @@ function Projects({ accountId }) {
     elkTab,
   ]);
 
-
   const handleBulkUnlockClick = () => {
     closeMenu();
     const imeisSelected = Object.keys(selectedRows).filter((imei) => selectedRows[imei]);
@@ -810,6 +810,11 @@ function Projects({ accountId }) {
     </>
   );
 
+  const entriesPerPageConfig = {
+    defaultValue: pageSize,
+    entries: [10, 20, 50, 100],
+  };
+
   return (
     <MDBox>
       <Card sx={{ mb: 1 }}>
@@ -868,17 +873,141 @@ function Projects({ accountId }) {
             <IconButton onClick={openMenu}>
               <Icon>more_vert</Icon>
             </IconButton>
-            <Menu anchorEl={menu} open={Boolean(menu)} onClose={closeMenu}>
-              <MenuItem onClick={() => handleExportData("csv")}>Export CSV</MenuItem>
-              <MenuItem onClick={() => handleExportData("excel")}>Export Excel</MenuItem>
-              <MenuItem onClick={() => handleExportData("pdf")}>Export PDF</MenuItem>
+            <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)}>
+              <MenuItem
+                onClick={() => {
+                  setMenu(null);
+
+                  let rawData;
+                  let fileName;
+                  if (tripFilterType === "vts") {
+                    rawData = vtsData;
+                    fileName = "VTS_Report.csv";
+                  } else if (tripFilterType === "elk") {
+                    rawData = elkData;
+                    fileName = "Padlock_Report.csv";
+                  } else {
+                    rawData = unreachableData;
+                    fileName = "Unreachable_Report.csv";
+                  }
+
+                  const searchFilteredRaw = rawData.filter((item) => {
+                    let searchStr;
+                    if (tripFilterType === "vts") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else if (tripFilterType === "elk") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else {
+                      searchStr = `${item.accountName} ${item.vehnum} ${
+                        item.imei
+                      }`.toLowerCase();
+                    }
+                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+                  });
+
+                  exportCSV(searchFilteredRaw, fileName);
+                }}
+              >
+                Export CSV
+              </MenuItem>
+
+              <MenuItem
+                onClick={() => {
+                  setMenu(null);
+
+                  let rawData;
+                  let fileName;
+                  if (tripFilterType === "vts") {
+                    rawData = vtsData;
+                    fileName = "VTS_Report.xlsx";
+                  } else if (tripFilterType === "elk") {
+                    rawData = elkData;
+                    fileName = "Padlock_Report.xlsx";
+                  } else {
+                    rawData = unreachableData;
+                    fileName = "Unreachable_Report.xlsx";
+                  }
+
+                  const searchFilteredRaw = rawData.filter((item) => {
+                    let searchStr;
+                    if (tripFilterType === "vts") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else if (tripFilterType === "elk") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else {
+                      searchStr = `${item.accountName} ${item.vehnum} ${
+                        item.imei
+                      }`.toLowerCase();
+                    }
+                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+                  });
+
+                  exportExcel(searchFilteredRaw, fileName);
+                }}
+              >
+                Export Excel
+              </MenuItem>
+
+              <MenuItem
+                onClick={() => {
+                  setMenu(null);
+
+                  let rawData;
+                  let fileName;
+                  let typeKey;
+                  if (tripFilterType === "vts") {
+                    rawData = vtsData;
+                    fileName = "VTS_Report.pdf";
+                    typeKey = "vts";
+                  } else if (tripFilterType === "elk") {
+                    rawData = elkData;
+                    fileName = "Padlock_Report.pdf";
+                    typeKey = "elk";
+                  } else {
+                    rawData = unreachableData;
+                    fileName = "Unreachable_Report.pdf";
+                    typeKey = "unreachable";
+                  }
+
+                  const searchFilteredRaw = rawData.filter((item) => {
+                    let searchStr;
+                    if (tripFilterType === "vts") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else if (tripFilterType === "elk") {
+                      searchStr = `${item.accountName} ${
+                        item.vehnum || item.name
+                      } ${item.imei}`.toLowerCase();
+                    } else {
+                      searchStr = `${item.accountName} ${item.vehnum} ${
+                        item.imei
+                      }`.toLowerCase();
+                    }
+                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+                  });
+
+                  exportPDF(searchFilteredRaw, fileName, typeKey);
+                }}
+              >
+                Export PDF
+              </MenuItem>
             </Menu>
           </MDBox>
         </MDBox>
       </Card>
 
       <MDBox sx={scrollContainerSx}>
-        <Card sx={stickyCardSx(10)}>
+        {/* VTS TABLE */}
+        <Card sx={stickyCardSx(10, 0, 6)}>
           <MDBox p={3} pb={0}>
             <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
               <MDBox display="flex" alignItems="center" gap={1}>
@@ -971,20 +1100,22 @@ function Projects({ accountId }) {
             </MDBox>
           </MDBox>
 
-          <MDBox p={3}>
+          <MDBox p={2}>
             <DataTable
               table={{ columns: VTS_COLUMNS, rows: filteredVts }}
               isSorted={false}
-              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              entriesPerPage={entriesPerPageConfig}
               showTotalEntries
               pagination={{ variant: "gradient", color: "info" }}
               noEndBorder
-              sx={tablePaginationHideSelectSx}
             />
           </MDBox>
         </Card>
 
-        <Card sx={stickyCardSx(20)}>
+        {/* PADLOCK TABLE */}
+        <Card
+          sx={stickyCardSx(20, 60, 34)} // small top offset + extra bottom gap
+        >
           <MDBox p={3} pb={0}>
             <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
               <MDBox display="flex" alignItems="center" gap={1}>
@@ -1008,12 +1139,15 @@ function Projects({ accountId }) {
 
                 <MDBox
                   display="flex"
+                  alignItems="center"
                   gap={0.5}
                   sx={{
                     border: "1px solid #e0e0e0",
                     borderRadius: "8px",
                     padding: "2px",
                     backgroundColor: "#f5f5f5",
+                    flexWrap: "nowrap",
+                    overflowX: "auto",
                   }}
                 >
                   <MDButton
@@ -1074,50 +1208,52 @@ function Projects({ accountId }) {
             </MDBox>
           </MDBox>
 
-          <MDBox p={3}>
+          <MDBox p={2}>
             <DataTable
               table={{ columns: ELK_COLUMNS, rows: filteredElk }}
               isSorted={false}
-              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              entriesPerPage={entriesPerPageConfig}
               showTotalEntries
               pagination={{ variant: "gradient", color: "warning" }}
               noEndBorder
-              sx={tablePaginationHideSelectSx}
             />
           </MDBox>
         </Card>
 
-        <Card sx={stickyCardSx(30)}>
+        {/* UNREACHABLE TABLE */}
+        <Card sx={stickyCardSx(30, 120, 0)}>
           <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between">
+            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
               <MDBox display="flex" alignItems="center" gap={1}>
                 <Icon color="error" fontSize="large">
-                  signal_wifi_off
+                  signal_wifi_connected_no_internet_4
                 </Icon>
                 <MDBox>
                   <MDTypography variant="h6" color="error">
                     Unreachable Devices
                   </MDTypography>
                   <MDTypography variant="caption" color="text">
-                    Offline / no data
+                    Devices not reachable
                   </MDTypography>
                 </MDBox>
               </MDBox>
-              <MDTypography variant="button" fontWeight="bold">
-                {filteredUnreachable.length} rows
-              </MDTypography>
+
+              <MDBox display="flex" alignItems="center" gap={2}>
+                <MDTypography variant="button" fontWeight="bold">
+                  {filteredUnreachable.length} rows
+                </MDTypography>
+              </MDBox>
             </MDBox>
           </MDBox>
 
-          <MDBox p={3}>
+          <MDBox p={2}>
             <DataTable
               table={{ columns: UNREACHABLE_COLUMNS, rows: filteredUnreachable }}
               isSorted={false}
-              entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+              entriesPerPage={entriesPerPageConfig}
               showTotalEntries
               pagination={{ variant: "gradient", color: "error" }}
               noEndBorder
-              sx={tablePaginationHideSelectSx}
             />
           </MDBox>
         </Card>
@@ -1132,13 +1268,10 @@ function Projects({ accountId }) {
           <DialogContentText>{dialogContent}</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <MDButton
-            onClick={() => setUnlockDialog((p) => ({ ...p, open: false }))}
-            color="dark"
-          >
+          <MDButton onClick={() => setUnlockDialog((p) => ({ ...p, open: false }))}>
             Cancel
           </MDButton>
-          <MDButton onClick={handleConfirmUnlock} color="info" autoFocus>
+          <MDButton color="error" onClick={handleConfirmUnlock}>
             Confirm
           </MDButton>
         </DialogActions>
@@ -1148,7 +1281,10 @@ function Projects({ accountId }) {
 }
 
 Projects.propTypes = {
-  accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  accountId: PropTypes.string,
+  vtsData: PropTypes.array,
+  elkData: PropTypes.array,
+  unreachableData: PropTypes.array,
 };
 
 export default Projects;

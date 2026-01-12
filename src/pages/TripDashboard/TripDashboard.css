@@ -1,0 +1,314 @@
+/* Root layout */
+.trip-dashboard-root {
+  padding-top: 24px;
+  padding-bottom: 24px;
+  margin-left: 88px; /* matches ml={11} if 1 unit = 8px */
+}
+
+/* Lock quick view container */
+.lock-quick-view-wrapper {
+  padding: 24px;
+}
+
+/* Lock quick view grid */
+.lock-quick-view-grid {
+  padding: 0 0 4px;
+}
+
+.lock-quick-view-grid-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+}
+
+/* Lock quick view card */
+.lock-quick-card {
+  background-color: #ffffff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  cursor: default;
+}
+
+.lock-quick-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+  border-color: #bfdbfe;
+}
+
+/* Icon / badge */
+.lock-quick-card-icon {
+  border-radius: 12px;
+  padding: 10px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon color helpers */
+.icon-bg-blue {
+  background-color: #e3f2fd;
+}
+
+.icon-bg-teal {
+  background-color: #e0f2f1;
+}
+
+.icon-bg-green {
+  background-color: #e8f5e9;
+}
+
+.icon-bg-amber {
+  background-color: #fff7ed;
+}
+
+.icon-bg-red {
+  background-color: #fef2f2;
+}
+
+.icon-color-blue-600 {
+  color: #1976d2;
+}
+
+.icon-color-teal-600 {
+  color: #059669;
+}
+
+.icon-color-green-600 {
+  color: #16a34a;
+}
+
+.icon-color-amber-600 {
+  color: #ea580c;
+}
+
+.icon-color-red-700 {
+  color: #b91c1c;
+}
+
+/* Text content */
+.lock-quick-card-content {
+  flex: 1;
+  text-align: right;
+}
+
+.lock-quick-card-label {
+  margin: 0 0 4px 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lock-quick-card-value {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.value-color-dark {
+  color: #111827;
+}
+
+.value-color-teal {
+  color: #059669;
+}
+
+.value-color-green {
+  color: #16a34a;
+}
+
+.value-color-amber {
+  color: #ea580c;
+}
+
+.value-color-red {
+  color: #b91c1c;
+}
+
+.lock-quick-card-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+/* Table clickable cell */
+.data-cell-clickable {
+  cursor: pointer;
+}
+
+.data-cell-clickable:hover {
+  text-decoration: underline;
+  color: #1a73e8;
+}
+
+/* Trip progress */
+.trip-progress-root {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.trip-progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.trip-progress-track-bg {
+  position: absolute;
+  top: 50%;
+  left: 6%;
+  right: 6%;
+  height: 4px;
+  background-color: #e0e0e0;
+  z-index: 0;
+}
+
+.trip-progress-track-fill {
+  position: absolute;
+  top: 50%;
+  left: 6%;
+  height: 4px;
+  background-color: #4caf50;
+  z-index: 1;
+  transition: width 0.4s ease;
+}
+
+/* Each step */
+.trip-progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+
+.trip-progress-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border-width: 3px;
+  border-style: solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  margin-bottom: 4px;
+  transition: all 0.3s ease;
+}
+
+.trip-progress-step-circle-completed {
+  border-color: #4caf50;
+  background-color: #4caf50;
+}
+
+.trip-progress-step-circle-pending {
+  border-color: #e0e0e0;
+  background-color: #ffffff;
+}
+
+.trip-progress-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+}
+
+/* Trip progress bottom row */
+.trip-progress-bottom {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Trip dashboard header */
+.trip-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Table container overrides */
+.trip-table-container {
+  box-shadow: none !important;
+  border: 1px solid #f0f2f5;
+  border-radius: 8px;
+  margin-left: 15px;
+  width: calc(100% - 15px);
+}
+
+/* Table head */
+.trip-table-head .MuiTableCell-root {
+  background-color: #f8f9fa;
+  color: #7b809a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.7;
+  border-bottom: 1px solid #f0f2f5;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 12px 16px;
+}
+
+/* Table body */
+.trip-table-body .MuiTableRow-root:hover {
+  background-color: #f5f5f5;
+}
+
+.trip-table-body .MuiTableCell-root {
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #f0f2f5;
+  vertical-align: middle;
+}
+
+/* Expanded row box */
+.trip-details-box {
+  margin: 16px;
+  padding: 16px;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+/* Map placeholder */
+.map-placeholder {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+}
+
+/* --- alignment fixes for lock table --- */
+
+.trip-table-head .MuiTableCell-root {
+  text-align: center;          /* keep headers centered */
+  white-space: nowrap;         /* prevent multi-line headers */
+}
+
+.trip-table-body .MuiTableCell-root {
+  text-align: center;          /* center body cells by default */
+}
+
+/* ensure clickable header has full width for centering */
+.trip-table-head .data-cell-clickable {
+  width: 100%;
+  justify-content: center;
+}
