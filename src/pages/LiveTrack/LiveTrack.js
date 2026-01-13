@@ -247,13 +247,16 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
-                      <Icon
-                        color={d.ignition ? "success" : "error"}
-                        sx={{ fontSize: "1.2rem !important" }}
-                      >
-                        {d.ignition ? "power_settings_new" : "vpn_key_off"}
-                      </Icon>
-                    </Tooltip>
+  <Icon
+    // green when ON, red when OFF
+    color={d.ignition ? "success" : "error"}
+    sx={{ fontSize: "1.2rem !important" }}
+  >
+    {/* always use the same icon */}
+    vpn_key_off
+  </Icon>
+</Tooltip>
+
                   </Stack>
                 </TableCell>
               </TableRow>
