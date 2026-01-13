@@ -79,6 +79,7 @@
   },
   "devDependencies": {
     "ajv": "^7.2.4",
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "8.39.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-import": "2.27.5",
