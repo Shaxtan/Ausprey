@@ -179,9 +179,10 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   <Icon fontSize="small" sx={{ mr: "65px" }}>
                     directions_car
                   </Icon>
-                  <Icon fontSize="small" sx={{ mr: "60px" }}>
-                    power_settings_new
-                  </Icon>
+                 <Icon fontSize="small" sx={{ mr: "60px" }}>
+  access_time
+</Icon>
+
                   <Icon fontSize="small" sx={{ mr: "60px" }}>
                     speed
                   </Icon>
@@ -682,7 +683,7 @@ export default function LiveTrack() {
 
               <Box sx={{ mt: 1 }}>
                 <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
-                  <Button
+                  {/* <Button
                     variant="contained"
                     color={isPlaying ? "error" : "primary"}
                     startIcon={<Icon>{isPlaying ? "pause" : "play_arrow"}</Icon>}
@@ -701,7 +702,7 @@ export default function LiveTrack() {
                     sx={styles.stopButton}
                   >
                     Stop
-                  </Button>
+                  </Button> */}
                 </Stack>
               </Box>
             </Card>

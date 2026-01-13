@@ -33,48 +33,12 @@ import {
   tablePaginationHideSelectSx,
   clickableTextSx,
   addressMapLinkSx,
+  filterToggleBoxSx,
+  filterToggleButtonSx,
+  tableCardSx,
 } from "./Projects.styles";
 
-const scrollContainerSx = {
-  height: "calc(100vh - 160px)",
-  overflowY: "auto",
-  overflowX: "hidden",
-  paddingBottom: "12px", // slightly smaller so bottom pagination is visible
-  position: "relative",
-  "&::-webkit-scrollbar": {
-    width: "6px",
-  },
-  "&::-webkit-scrollbar-track": {
-    background: "#f1f1f1",
-  },
-  "&::-webkit-scrollbar-thumb": {
-    background: "#888",
-    borderRadius: "4px",
-  },
-};
-
-// keep sticky, but do NOT stretch full height
-const stickyCardSx = (zIndex, topOffset = 0, extraMb = 15) => ({
-  position: "sticky",
-  top: `${topOffset}px`,            // allow vertical stacking of sticky cards
-  zIndex,
-  marginBottom: extraMb,           // can add gap between specific cards
-  boxShadow: "0 -5px 20px rgba(0,0,0,0.1)",
-  backgroundColor: "#fff",
-  borderTop: "1px solid rgba(0,0,0,0.1)",
-  transition: "transform 0.3s ease",
-});
-
-const btnStyle = {
-  minWidth: "auto",
-  padding: "4px 8px",
-  fontSize: "0.7rem",
-  textTransform: "none",
-  whiteSpace: "nowrap",
-  display: "flex",
-  alignItems: "center",
-  gap: "4px",
-};
+// helpers / small components
 
 const DataCell = ({ text, color = "text", fontWeight = "medium", isClickable, onClick }) => {
   if (isClickable) {
@@ -163,9 +127,7 @@ const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
       default:
         iconName = isLocked ? "lock" : "lock_open";
         color = isLocked ? "error" : "success";
-        tooltipText = isLocked
-          ? "Trip Status: Locked (Ready to Unlock)"
-          : "Trip Status: Unlocked";
+        tooltipText = isLocked ? "Trip Status: Locked (Ready to Unlock)" : "Trip Status: Unlocked";
         break;
     }
   }
@@ -226,6 +188,7 @@ const AddressCell = ({ item }) => (
 AddressCell.propTypes = { item: PropTypes.object };
 
 // columns
+
 const VTS_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
@@ -243,19 +206,11 @@ const VTS_COLUMNS = [
 ];
 
 const ELK_COLUMNS = [
-  { Header: "No", accessor: "no", width: "5%", align: "left" },
-  { Header: "Acc Name", accessor: "accountName", width: "12%", align: "left" },
-  { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
-  { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
-  { Header: "SIM NO", accessor: "simNo", width: "12%", align: "center" },
-  { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
-  { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
-  { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
-  { Header: "LONGITUDE", accessor: "longitude", width: "10%", align: "center" },
+  ...VTS_COLUMNS.slice(0, 7),
   { Header: "GPS STATUS", accessor: "gpsStatus", width: "8%", align: "center" },
   { Header: "CURRENT SPEED", accessor: "currentSpeed", width: "8%", align: "center" },
-  { Header: "LOCK STATUS", accessor: "lockUnlock", width: "8%", align: "center" },
-  { Header: "UNLOCK", accessor: "checkbox", width: "5%", align: "center" },
+  { Header: "Lock Status", accessor: "lockUnlock", width: "8%", align: "center" },
+  { Header: "Select", accessor: "checkbox", width: "5%", align: "center" },
 ];
 
 const UNREACHABLE_COLUMNS = [
@@ -268,6 +223,7 @@ const UNREACHABLE_COLUMNS = [
   { Header: "Created On", accessor: "createdOn", width: "15%", align: "left" },
 ];
 
+// util to infer backend status (used for vts/elk tabs)
 const getBackendStatus = (item) => {
   const ignOn = item.ign === "Y";
   const speed = Number(item.speed) || 0;
@@ -287,29 +243,34 @@ const getBackendStatus = (item) => {
   return "idle";
 };
 
-function Projects({
-  accountId,
-  vtsData = [],
-  elkData = [],
-  unreachableData = [],
-}) {
+// --- Main Component ---
+
+function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] }) {
   const navigate = useNavigate();
 
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // MAIN TABS: vts / elk / unreachable
   const [tripFilterType, setTripFilterType] = useState("vts");
 
-  const [allVtsRows, setAllVtsRows] = useState([]);
-  const [allElkRows, setAllElkRows] = useState([]);
-  const [unreachableRows, setUnreachableRows] = useState([]);
+  // for checkboxes in ELK
   const [selectedRows, setSelectedRows] = useState({});
 
+  // pagination
   const [pageSize, setPageSize] = useState(10);
 
+  // status sub-tabs for VTS & ELK
   const [vtsTab, setVtsTab] = useState("all");
   const [elkTab, setElkTab] = useState("all");
 
+  // rows mapped from API
+  const [allVtsRows, setAllVtsRows] = useState([]);
+  const [allElkRows, setAllElkRows] = useState([]);
+  const [unreachableRows, setUnreachableRows] = useState([]);
+
+  // dialog for lock/unlock
   const [unlockDialog, setUnlockDialog] = useState({
     open: false,
     imei: null,
@@ -339,6 +300,8 @@ function Projects({
     [navigate, accountId]
   );
 
+  // fetchers
+
   const fetchVtsData = useCallback(
     (currentAccountId) => {
       ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
@@ -355,10 +318,7 @@ function Projects({
             return {
               no: (
                 <MDBox display="flex" alignItems="center" gap={0.5}>
-                  <Icon
-                    fontSize="small"
-                    color={vehicleStatus === "offline" ? "error" : "success"}
-                  >
+                  <Icon fontSize="small" color={vehicleStatus === "offline" ? "error" : "success"}>
                     {vehicleStatus === "offline" ? "offline_bolt" : "online_prediction"}
                   </Icon>
                   <MDTypography
@@ -370,9 +330,7 @@ function Projects({
                   </MDTypography>
                 </MDBox>
               ),
-              accountName: (
-                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
-              ),
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               vehicleNo: (
                 <DataCell
                   text={item.vehnum || item.name || "N/A"}
@@ -392,18 +350,10 @@ function Projects({
               ),
               simNo: <DataCell text={item.simNo || "N/A"} />,
               date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: (
-                <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />
-              ),
-              longitude: (
-                <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />
-              ),
+              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: <AddressCell item={item} />,
-              avgSpeed: (
-                <DataCell
-                  text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"}
-                />
-              ),
+              avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
               currentSpeed: (
                 <DataCell
                   text={`${speed} km/h`}
@@ -417,6 +367,7 @@ function Projects({
               _isLockedInitial: isLocked,
               _speed: speed,
               _status: vehicleStatus,
+              _raw: item,
             };
           });
           setAllVtsRows(fetchedRows);
@@ -457,9 +408,7 @@ function Projects({
                   </MDTypography>
                 </MDBox>
               ),
-              accountName: (
-                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
-              ),
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               vehicleNo: (
                 <DataCell
                   text={item.vehnum || item.name || "N/A"}
@@ -477,12 +426,8 @@ function Projects({
               ),
               simNo: <DataCell text={item.simNo || "N/A"} />,
               date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: (
-                <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />
-              ),
-              longitude: (
-                <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />
-              ),
+              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
               address: <AddressCell item={item} />,
               currentSpeed: (
                 <DataCell
@@ -491,9 +436,7 @@ function Projects({
                   fontWeight="bold"
                 />
               ),
-              gpsStatus: (
-                <Status status={item.gps === "A" ? "Active" : "Inactive"} />
-              ),
+              gpsStatus: <Status status={item.gps === "A" ? "Active" : "Inactive"} />,
               lockUnlock: (
                 <LockUnlock
                   isLocked={isLocked}
@@ -506,6 +449,7 @@ function Projects({
               _isLockedInitial: isLocked,
               _isOnline: isOnline,
               _status: status,
+              _raw: item,
             };
           });
           setAllElkRows(fetchedRows);
@@ -526,9 +470,7 @@ function Projects({
             const imei = item.imei || "N/A";
             return {
               no: <DataCell text={index + 1} fontWeight="bold" />,
-              accountName: (
-                <DataCell text={item.accountName || "N/A"} fontWeight="medium" />
-              ),
+              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
               accountId: <DataCell text={item.accid || "N/A"} />,
               vehicleNo: (
                 <DataCell
@@ -547,6 +489,7 @@ function Projects({
               ),
               deviceType: <DataCell text={item.deviceType || "N/A"} />,
               createdOn: <DataCell text={item.createdOn || "N/A"} />,
+              _raw: item,
             };
           });
           setUnreachableRows(fetchedRows);
@@ -589,7 +532,7 @@ function Projects({
         row.accountName?.props?.text,
         row.vehicleNo?.props?.text,
         row._imei,
-        row.address?.props?.children?.props?.children,
+        row.address?.props?.item?.address,
       ].filter(Boolean);
       return fields.some((f) => String(f).toLowerCase().includes(term));
     };
@@ -605,16 +548,7 @@ function Projects({
 
     const vts = vtsFilteredByStatus.filter(matchesSearch).map((row) => ({
       ...row,
-      checkbox: (
-        <MDBox display="flex" justifyContent="center">
-          <Checkbox
-            checked={!!selectedRows[row._imei]}
-            onChange={() => handleToggleSelect(row._imei)}
-            color="primary"
-            sx={checkboxBaseSx}
-          />
-        </MDBox>
-      ),
+      checkbox: null,
     }));
 
     const elkFilteredByStatus = allElkRows.filter((row) => {
@@ -736,54 +670,58 @@ function Projects({
     fetchElkData(accountId);
   };
 
-  const handleExportData = (format) => {
+  // EXPORT BASED ON ACTIVE MAIN TAB
+  const handleExport = (format) => {
     closeMenu();
 
-    const allRows = [...filteredVts, ...filteredElk, ...filteredUnreachable];
+    let rawData;
+    let fileName;
+    let typeKey;
 
-    const dataToExport = allRows.map((row) => ({
-      accountName: row.accountName?.props?.text || "",
-      vehnum: row.vehicleNo?.props?.text || "",
-      imei: row._imei || row.imei?.props?.text || "",
-      simNo: row.simNo?.props?.text || "",
-      devTs: row.date?.props?.text || "",
-      address: row.address?.props?.item?.address || "N/A",
-      lat: row.latitude?.props?.text || "",
-      lng: row.longitude?.props?.text || "",
-    }));
+    if (tripFilterType === "vts") {
+      rawData = vtsData;
+      fileName = `VTS_Report.${format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"}`;
+      typeKey = "vts";
+    } else if (tripFilterType === "elk") {
+      rawData = elkData;
+      fileName = `Padlock_Report.${format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"}`;
+      typeKey = "elk";
+    } else {
+      rawData = unreachableData;
+      fileName = `Unreachable_Report.${
+        format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"
+      }`;
+      typeKey = "unreachable";
+    }
 
-    if (!dataToExport.length) {
+    const searchFilteredRaw = rawData.filter((item) => {
+      let searchStr;
+      if (tripFilterType === "unreachable") {
+        searchStr = `${item.accountName} ${item.vehnum} ${item.imei}`.toLowerCase();
+      } else {
+        searchStr = `${item.accountName} ${item.vehnum || item.name} ${item.imei}`.toLowerCase();
+      }
+      return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
+    });
+
+    if (!searchFilteredRaw.length) {
       alert("No data available to export.");
       return;
     }
 
-    const filename = `Dashboard_Report_${new Date().toISOString().split("T")[0]}`;
-
-    switch (format) {
-      case "csv":
-        exportCSV(dataToExport, `${filename}.csv`);
-        break;
-      case "excel":
-        exportExcel(dataToExport, `${filename}.xlsx`);
-        break;
-      case "pdf":
-        exportPDF(dataToExport, `${filename}.pdf`);
-        break;
-      default:
-        break;
+    if (format === "csv") {
+      exportCSV(searchFilteredRaw, fileName);
+    } else if (format === "excel") {
+      exportExcel(searchFilteredRaw, fileName);
+    } else if (format === "pdf") {
+      exportPDF(searchFilteredRaw, fileName, typeKey);
     }
   };
 
   if (loading) {
     return (
       <Card>
-        <MDBox
-          p={3}
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="200px"
-        >
+        <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
           <CircularProgress color="info" size={30} />
           <MDTypography variant="h6" ml={2}>
             Loading Dashboard...
@@ -795,8 +733,7 @@ function Projects({
 
   const selectedCount = Object.values(selectedRows).filter(Boolean).length;
 
-  const dialogTitle =
-    unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
+  const dialogTitle = unlockDialog.action === "lock" ? "Confirm Lock?" : "Confirm Unlock?";
 
   const dialogContent = unlockDialog.isBulk ? (
     <>
@@ -810,27 +747,182 @@ function Projects({
     </>
   );
 
-  const entriesPerPageConfig = {
-    defaultValue: pageSize,
-    entries: [10, 20, 50, 100],
-  };
+  // pick active table rows/columns for main tab switcher
+  const activeColumns =
+    tripFilterType === "vts"
+      ? VTS_COLUMNS
+      : tripFilterType === "elk"
+      ? ELK_COLUMNS
+      : UNREACHABLE_COLUMNS;
+
+  const activeRows =
+    tripFilterType === "vts"
+      ? filteredVts
+      : tripFilterType === "elk"
+      ? filteredElk
+      : filteredUnreachable;
 
   return (
-    <MDBox>
-      <Card sx={{ mb: 1 }}>
-        <MDBox p={2} display="flex" justifyContent="space-between" alignItems="center">
-          <MDBox>
-            <MDTypography variant="h5" fontWeight="medium">
-              Trips List
+    <Card sx={tableCardSx}>
+      <MDBox px={3} pt={3}>
+        {/* MAIN TAB SWITCHER: VTS / PADLOCK / UNREACHABLE */}
+        <MDBox display="inline-flex" sx={filterToggleBoxSx} mb={2}>
+          {["vts", "elk", "unreachable"].map((type) => (
+            <MDButton
+              key={type}
+              variant={tripFilterType === type ? "contained" : "text"}
+              color={type === "unreachable" ? "warning" : "info"}
+              size="small"
+              onClick={() => {
+                setTripFilterType(type);
+                setSelectedRows({});
+              }}
+              sx={filterToggleButtonSx}
+            >
+              {type === "elk" ? "PADLOCK" : type.toUpperCase()}
+            </MDButton>
+          ))}
+        </MDBox>
+
+        <MDBox display="flex" justifyContent="space-between" alignItems="center">
+          <MDTypography variant="h6">
+            {tripFilterType === "vts"
+              ? "Live Trip Report"
+              : tripFilterType === "elk"
+              ? "Padlock Devices"
+              : "Unreachable Devices"}
+            <MDTypography variant="button" color="text" ml={1}>
+              ({activeRows.length} units)
             </MDTypography>
-            <MDTypography variant="button" color="text">
-              {filteredVts.length + filteredElk.length + filteredUnreachable.length} total
-              rows
-            </MDTypography>
-          </MDBox>
+          </MDTypography>
 
           <MDBox display="flex" gap={2} alignItems="center">
-            {selectedCount > 0 && (
+            {/* STATUS FILTERS ON RIGHT SIDE */}
+            {tripFilterType === "vts" && (
+              <MDBox
+                display="flex"
+                alignItems="center"
+                gap={0.5}
+                sx={{
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px",
+                  padding: "2px",
+                  backgroundColor: "#f5f5f5",
+                  flexWrap: "nowrap",
+                  overflowX: "auto",
+                }}
+              >
+                <MDButton
+                  size="small"
+                  variant={vtsTab === "all" ? "gradient" : "text"}
+                  color={vtsTab === "all" ? "info" : "dark"}
+                  onClick={() => setVtsTab("all")}
+                >
+                  All ({vtsAllCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={vtsTab === "motion" ? "gradient" : "text"}
+                  color={vtsTab === "motion" ? "success" : "dark"}
+                  onClick={() => setVtsTab("motion")}
+                >
+                  <Icon fontSize="small">directions_run</Icon>
+                  Motion ({vtsMotionCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={vtsTab === "idle" ? "gradient" : "text"}
+                  color={vtsTab === "idle" ? "warning" : "dark"}
+                  onClick={() => setVtsTab("idle")}
+                >
+                  <Icon fontSize="small">hourglass_empty</Icon>
+                  Idle ({vtsIdleCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={vtsTab === "stopped" ? "gradient" : "text"}
+                  color={vtsTab === "stopped" ? "error" : "dark"}
+                  onClick={() => setVtsTab("stopped")}
+                >
+                  <Icon fontSize="small">stop</Icon>
+                  Stopped ({vtsStoppedCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={vtsTab === "offline" ? "gradient" : "text"}
+                  color={vtsTab === "offline" ? "error" : "dark"}
+                  onClick={() => setVtsTab("offline")}
+                >
+                  <Icon fontSize="small">offline_bolt</Icon>
+                  Offline ({vtsOfflineCount})
+                </MDButton>
+              </MDBox>
+            )}
+
+            {tripFilterType === "elk" && (
+              <MDBox
+                display="flex"
+                alignItems="center"
+                gap={0.5}
+                sx={{
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px",
+                  padding: "2px",
+                  backgroundColor: "#fff9e6",
+                  flexWrap: "nowrap",
+                  overflowX: "auto",
+                }}
+              >
+                <MDButton
+                  size="small"
+                  variant={elkTab === "all" ? "gradient" : "text"}
+                  color={elkTab === "all" ? "warning" : "dark"}
+                  onClick={() => setElkTab("all")}
+                >
+                  All ({elkAllCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={elkTab === "motion" ? "gradient" : "text"}
+                  color={elkTab === "motion" ? "success" : "dark"}
+                  onClick={() => setElkTab("motion")}
+                >
+                  <Icon fontSize="small">directions_run</Icon>
+                  Motion ({elkMotionCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={elkTab === "idle" ? "gradient" : "text"}
+                  color={elkTab === "idle" ? "warning" : "dark"}
+                  onClick={() => setElkTab("idle")}
+                >
+                  <Icon fontSize="small">hourglass_empty</Icon>
+                  Idle ({elkIdleCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={elkTab === "stopped" ? "gradient" : "text"}
+                  color={elkTab === "stopped" ? "error" : "dark"}
+                  onClick={() => setElkTab("stopped")}
+                >
+                  <Icon fontSize="small" sx={{ mt: 4.3 }}>
+                    stop
+                  </Icon>
+                  Stopped ({elkStoppedCount})
+                </MDButton>
+                <MDButton
+                  size="small"
+                  variant={elkTab === "offline" ? "gradient" : "text"}
+                  color={elkTab === "offline" ? "error" : "dark"}
+                  onClick={() => setElkTab("offline")}
+                >
+                  <Icon fontSize="small">offline_bolt</Icon>
+                  Offline ({elkOfflineCount})
+                </MDButton>
+              </MDBox>
+            )}
+
+            {tripFilterType === "elk" && selectedCount > 0 && (
               <MDButton
                 size="small"
                 variant="gradient"
@@ -874,417 +966,52 @@ function Projects({
               <Icon>more_vert</Icon>
             </IconButton>
             <Menu anchorEl={menu} open={Boolean(menu)} onClose={() => setMenu(null)}>
-              <MenuItem
-                onClick={() => {
-                  setMenu(null);
-
-                  let rawData;
-                  let fileName;
-                  if (tripFilterType === "vts") {
-                    rawData = vtsData;
-                    fileName = "VTS_Report.csv";
-                  } else if (tripFilterType === "elk") {
-                    rawData = elkData;
-                    fileName = "Padlock_Report.csv";
-                  } else {
-                    rawData = unreachableData;
-                    fileName = "Unreachable_Report.csv";
-                  }
-
-                  const searchFilteredRaw = rawData.filter((item) => {
-                    let searchStr;
-                    if (tripFilterType === "vts") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else if (tripFilterType === "elk") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else {
-                      searchStr = `${item.accountName} ${item.vehnum} ${
-                        item.imei
-                      }`.toLowerCase();
-                    }
-                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
-                  });
-
-                  exportCSV(searchFilteredRaw, fileName);
-                }}
-              >
-                Export CSV
-              </MenuItem>
-
-              <MenuItem
-                onClick={() => {
-                  setMenu(null);
-
-                  let rawData;
-                  let fileName;
-                  if (tripFilterType === "vts") {
-                    rawData = vtsData;
-                    fileName = "VTS_Report.xlsx";
-                  } else if (tripFilterType === "elk") {
-                    rawData = elkData;
-                    fileName = "Padlock_Report.xlsx";
-                  } else {
-                    rawData = unreachableData;
-                    fileName = "Unreachable_Report.xlsx";
-                  }
-
-                  const searchFilteredRaw = rawData.filter((item) => {
-                    let searchStr;
-                    if (tripFilterType === "vts") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else if (tripFilterType === "elk") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else {
-                      searchStr = `${item.accountName} ${item.vehnum} ${
-                        item.imei
-                      }`.toLowerCase();
-                    }
-                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
-                  });
-
-                  exportExcel(searchFilteredRaw, fileName);
-                }}
-              >
-                Export Excel
-              </MenuItem>
-
-              <MenuItem
-                onClick={() => {
-                  setMenu(null);
-
-                  let rawData;
-                  let fileName;
-                  let typeKey;
-                  if (tripFilterType === "vts") {
-                    rawData = vtsData;
-                    fileName = "VTS_Report.pdf";
-                    typeKey = "vts";
-                  } else if (tripFilterType === "elk") {
-                    rawData = elkData;
-                    fileName = "Padlock_Report.pdf";
-                    typeKey = "elk";
-                  } else {
-                    rawData = unreachableData;
-                    fileName = "Unreachable_Report.pdf";
-                    typeKey = "unreachable";
-                  }
-
-                  const searchFilteredRaw = rawData.filter((item) => {
-                    let searchStr;
-                    if (tripFilterType === "vts") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else if (tripFilterType === "elk") {
-                      searchStr = `${item.accountName} ${
-                        item.vehnum || item.name
-                      } ${item.imei}`.toLowerCase();
-                    } else {
-                      searchStr = `${item.accountName} ${item.vehnum} ${
-                        item.imei
-                      }`.toLowerCase();
-                    }
-                    return !searchTerm || searchStr.includes(searchTerm.toLowerCase());
-                  });
-
-                  exportPDF(searchFilteredRaw, fileName, typeKey);
-                }}
-              >
-                Export PDF
-              </MenuItem>
+              <MenuItem onClick={() => handleExport("csv")}>Export CSV</MenuItem>
+              <MenuItem onClick={() => handleExport("excel")}>Export Excel</MenuItem>
+              <MenuItem onClick={() => handleExport("pdf")}>Export PDF</MenuItem>
             </Menu>
           </MDBox>
         </MDBox>
-      </Card>
+      </MDBox>
 
-      <MDBox sx={scrollContainerSx}>
-        {/* VTS TABLE */}
-        <Card sx={stickyCardSx(10, 0, 6)}>
-          <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <MDBox display="flex" alignItems="center" gap={1}>
-                <Icon color="info" fontSize="large">
-                  local_shipping
-                </Icon>
-                <MDBox>
-                  <MDTypography variant="h6" color="info">
-                    VTS Vehicles
-                  </MDTypography>
-                  <MDTypography variant="caption" color="text">
-                    Live Trip Report
-                  </MDTypography>
-                </MDBox>
-              </MDBox>
-
-              <MDBox display="flex" alignItems="center" gap={2}>
-                <MDTypography variant="button" fontWeight="bold">
-                  {filteredVts.length} rows
-                </MDTypography>
-
-                <MDBox
-                  display="flex"
-                  alignItems="center"
-                  gap={0.5}
-                  sx={{
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "8px",
-                    padding: "2px",
-                    backgroundColor: "#f5f5f5",
-                    flexWrap: "nowrap",
-                    overflowX: "auto",
-                  }}
-                >
-                  <MDButton
-                    size="small"
-                    variant={vtsTab === "all" ? "gradient" : "text"}
-                    color={vtsTab === "all" ? "info" : "dark"}
-                    onClick={() => setVtsTab("all")}
-                    sx={btnStyle}
-                  >
-                    All ({vtsAllCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={vtsTab === "motion" ? "gradient" : "text"}
-                    color={vtsTab === "motion" ? "success" : "dark"}
-                    onClick={() => setVtsTab("motion")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">directions_run</Icon>
-                    Motion ({vtsMotionCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={vtsTab === "idle" ? "gradient" : "text"}
-                    color={vtsTab === "idle" ? "warning" : "dark"}
-                    onClick={() => setVtsTab("idle")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">hourglass_empty</Icon>
-                    Idle ({vtsIdleCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={vtsTab === "stopped" ? "gradient" : "text"}
-                    color={vtsTab === "stopped" ? "error" : "dark"}
-                    onClick={() => setVtsTab("stopped")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">stop</Icon>
-                    Stopped ({vtsStoppedCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={vtsTab === "offline" ? "gradient" : "text"}
-                    color={vtsTab === "offline" ? "error" : "dark"}
-                    onClick={() => setVtsTab("offline")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">offline_bolt</Icon>
-                    Offline ({vtsOfflineCount})
-                  </MDButton>
-                </MDBox>
-              </MDBox>
-            </MDBox>
-          </MDBox>
-
-          <MDBox p={2}>
-            <DataTable
-              table={{ columns: VTS_COLUMNS, rows: filteredVts }}
-              isSorted={false}
-              entriesPerPage={entriesPerPageConfig}
-              showTotalEntries
-              pagination={{ variant: "gradient", color: "info" }}
-              noEndBorder
-            />
-          </MDBox>
-        </Card>
-
-        {/* PADLOCK TABLE */}
-        <Card
-          sx={stickyCardSx(20, 60, 34)} // small top offset + extra bottom gap
-        >
-          <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <MDBox display="flex" alignItems="center" gap={1}>
-                <Icon color="warning" fontSize="large">
-                  lock
-                </Icon>
-                <MDBox>
-                  <MDTypography variant="h6" color="warning">
-                    Padlock Devices
-                  </MDTypography>
-                  <MDTypography variant="caption" color="text">
-                    Lock status overview
-                  </MDTypography>
-                </MDBox>
-              </MDBox>
-
-              <MDBox display="flex" alignItems="center" gap={2}>
-                <MDTypography variant="button" fontWeight="bold">
-                  {filteredElk.length} rows
-                </MDTypography>
-
-                <MDBox
-                  display="flex"
-                  alignItems="center"
-                  gap={0.5}
-                  sx={{
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "8px",
-                    padding: "2px",
-                    backgroundColor: "#f5f5f5",
-                    flexWrap: "nowrap",
-                    overflowX: "auto",
-                  }}
-                >
-                  <MDButton
-                    size="small"
-                    variant={elkTab === "all" ? "gradient" : "text"}
-                    color={elkTab === "all" ? "warning" : "dark"}
-                    onClick={() => setElkTab("all")}
-                    sx={btnStyle}
-                  >
-                    All ({elkAllCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={elkTab === "motion" ? "gradient" : "text"}
-                    color={elkTab === "motion" ? "success" : "dark"}
-                    onClick={() => setElkTab("motion")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">directions_run</Icon>
-                    Motion ({elkMotionCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={elkTab === "idle" ? "gradient" : "text"}
-                    color={elkTab === "idle" ? "warning" : "dark"}
-                    onClick={() => setElkTab("idle")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">hourglass_empty</Icon>
-                    Idle ({elkIdleCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={elkTab === "stopped" ? "gradient" : "text"}
-                    color={elkTab === "stopped" ? "error" : "dark"}
-                    onClick={() => setElkTab("stopped")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">stop</Icon>
-                    Stopped ({elkStoppedCount})
-                  </MDButton>
-
-                  <MDButton
-                    size="small"
-                    variant={elkTab === "offline" ? "gradient" : "text"}
-                    color={elkTab === "offline" ? "error" : "dark"}
-                    onClick={() => setElkTab("offline")}
-                    sx={btnStyle}
-                  >
-                    <Icon fontSize="small">offline_bolt</Icon>
-                    Offline ({elkOfflineCount})
-                  </MDButton>
-                </MDBox>
-              </MDBox>
-            </MDBox>
-          </MDBox>
-
-          <MDBox p={2}>
-            <DataTable
-              table={{ columns: ELK_COLUMNS, rows: filteredElk }}
-              isSorted={false}
-              entriesPerPage={entriesPerPageConfig}
-              showTotalEntries
-              pagination={{ variant: "gradient", color: "warning" }}
-              noEndBorder
-            />
-          </MDBox>
-        </Card>
-
-        {/* UNREACHABLE TABLE */}
-        <Card sx={stickyCardSx(30, 120, 0)}>
-          <MDBox p={3} pb={0}>
-            <MDBox display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-              <MDBox display="flex" alignItems="center" gap={1}>
-                <Icon color="error" fontSize="large">
-                  signal_wifi_connected_no_internet_4
-                </Icon>
-                <MDBox>
-                  <MDTypography variant="h6" color="error">
-                    Unreachable Devices
-                  </MDTypography>
-                  <MDTypography variant="caption" color="text">
-                    Devices not reachable
-                  </MDTypography>
-                </MDBox>
-              </MDBox>
-
-              <MDBox display="flex" alignItems="center" gap={2}>
-                <MDTypography variant="button" fontWeight="bold">
-                  {filteredUnreachable.length} rows
-                </MDTypography>
-              </MDBox>
-            </MDBox>
-          </MDBox>
-
-          <MDBox p={2}>
-            <DataTable
-              table={{ columns: UNREACHABLE_COLUMNS, rows: filteredUnreachable }}
-              isSorted={false}
-              entriesPerPage={entriesPerPageConfig}
-              showTotalEntries
-              pagination={{ variant: "gradient", color: "error" }}
-              noEndBorder
-            />
-          </MDBox>
-        </Card>
+      <MDBox p={2}>
+        <DataTable
+          table={{ columns: activeColumns, rows: activeRows }}
+          isSorted={false}
+          entriesPerPage={{ defaultValue: pageSize, entries: [pageSize] }}
+          showTotalEntries
+          pagination={{ variant: "gradient", color: "info" }}
+          noEndBorder
+          sx={tablePaginationHideSelectSx}
+        />
       </MDBox>
 
       <Dialog
         open={unlockDialog.open}
-        onClose={() => setUnlockDialog((p) => ({ ...p, open: false }))}
+        onClose={() => setUnlockDialog({ ...unlockDialog, open: false })}
       >
         <DialogTitle>{dialogTitle}</DialogTitle>
         <DialogContent>
           <DialogContentText>{dialogContent}</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <MDButton onClick={() => setUnlockDialog((p) => ({ ...p, open: false }))}>
+          <MDButton onClick={() => setUnlockDialog({ ...unlockDialog, open: false })}>
             Cancel
           </MDButton>
-          <MDButton color="error" onClick={handleConfirmUnlock}>
+          <MDButton onClick={handleConfirmUnlock} color="info">
             Confirm
           </MDButton>
         </DialogActions>
       </Dialog>
-    </MDBox>
+    </Card>
   );
 }
 
 Projects.propTypes = {
-  accountId: PropTypes.string,
-  vtsData: PropTypes.array,
-  elkData: PropTypes.array,
-  unreachableData: PropTypes.array,
+  accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  vtsData: PropTypes.arrayOf(PropTypes.object),
+  elkData: PropTypes.arrayOf(PropTypes.object),
+  unreachableData: PropTypes.arrayOf(PropTypes.object),
 };
 
 export default Projects;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -14,50 +14,31 @@ import Card from "@mui/material/Card";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
-// import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
+import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
 
 import ApiService from "../../services/ApiService";
 
 // -----------------------------
-// Custom Icons
+// Custom Truck Icons (map)
 // -----------------------------
-const greenIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+const TRUCK_ICON_URL =
+  "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
+
+const truckIcon = new L.Icon({
+  iconUrl: TRUCK_ICON_URL,
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -28],
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
 
-const redIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+const truckHighlightIcon = new L.Icon({
+  iconUrl: TRUCK_ICON_URL,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -32],
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const yellowIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const highlightIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  iconSize: [30, 50],
-  iconAnchor: [15, 50],
-  popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
 
@@ -72,9 +53,40 @@ const createTileLayers = () => ({
 });
 
 // -----------------------------
+// Helper functions
+// -----------------------------
+const getStatusLabel = (status, lock) => {
+  if (lock === "1") return "Locked";
+  if (status === "MOTION") return "In Motion";
+  if (status === "IDLE") return "Idle";
+  if (status === "STOP") return "Stopped";
+  return "Unknown";
+};
+
+const getStatusColor = (status, lock) => {
+  if (lock === "1") return "#2196F3"; // Blue
+  if (status === "MOTION") return "#4CAF50"; // Green
+  if (status === "IDLE") return "#FF9800"; // Orange
+  return "#F44336"; // Red for Stopped
+};
+
+// all statuses use truck icon; lock uses highlight variant
+const getIconForStatus = (status, lock) => {
+  if (lock === "1") return truckHighlightIcon;
+  return truckIcon;
+};
+
+// -----------------------------
 // Main Component
 // -----------------------------
 const MapView = () => {
+  // --- ACCOUNT & REFRESH STATE ---
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [accounts, setAccounts] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+
+  // --- MAP & UI STATE ---
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const zoomDivRef = useRef(null);
@@ -99,47 +111,24 @@ const MapView = () => {
   const baseMaps = createTileLayers();
 
   // -----------------------------
-  // Filtered Vehicles
+  // Initial Load: Accounts & default ID
   // -----------------------------
-  const filteredVehicles = useMemo(
-    () =>
-      vehicleList.filter((veh) => {
-        const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter =
-          filter === "All" ||
-          (filter === "Motion" && veh.status === "MOTION") ||
-          (filter === "Idle" && veh.status === "IDLE") ||
-          (filter === "Stop" && veh.status === "STOP") ||
-          (filter === "Lock" && veh.lock === "1");
-        return matchesSearch && matchesFilter;
-      }),
-    [vehicleList, filter, searchTerm]
-  );
+  useEffect(() => {
+    let defaultId = "1";
+    try {
+      const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+      if (user.accountId) defaultId = user.accountId.toString();
+    } catch (e) {
+      console.error("Error parsing userDetails", e);
+    }
 
-  // -----------------------------
-  // Status Label & Color
-  // -----------------------------
-  const getStatusLabel = (status, lock) => {
-    if (lock === "1") return "Locked";
-    if (status === "MOTION") return "In Motion";
-    if (status === "IDLE") return "Idle";
-    if (status === "STOP") return "Stopped";
-    return "Unknown";
-  };
-
-  const getStatusColor = (status, lock) => {
-    if (lock === "1") return "#2196F3"; // Blue
-    if (status === "MOTION") return "#4CAF50"; // Green
-    if (status === "IDLE") return "#FF9800"; // Orange
-    return "#F44336"; // Red for Stopped
-  };
-
-  const getIconForStatus = (status, lock) => {
-    if (lock === "1") return highlightIcon;
-    if (status === "MOTION") return greenIcon;
-    if (status === "IDLE") return yellowIcon;
-    return redIcon; // STOP or unknown
-  };
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        setAccounts(res.data.data);
+        setSelectedAccountId(defaultId);
+      }
+    });
+  }, []);
 
   // -----------------------------
   // Map Initialization
@@ -149,7 +138,10 @@ const MapView = () => {
 
     const ZoomView = L.Control.extend({
       onAdd: (map) => {
-        const div = L.DomUtil.create("div", "leaflet-bar leaflet-control leaflet-control-custom");
+        const div = L.DomUtil.create(
+          "div",
+          "leaflet-bar leaflet-control leaflet-control-custom"
+        );
         div.style.background = "white";
         div.style.padding = "5px 10px";
         div.style.fontWeight = "bold";
@@ -193,82 +185,103 @@ const MapView = () => {
   }, []);
 
   // -----------------------------
-  // Load Real Data from API
+  // Data Fetching (depends on selectedAccountId)
   // -----------------------------
-  useEffect(() => {
-    if (!mapRef.current || !markerClusterRef.current) return;
+  const fetchMapData = useCallback(() => {
+    if (!mapRef.current || !markerClusterRef.current || !selectedAccountId) return;
 
-    ApiService.getMapViewData(1, (res) => {
-      const data = res?.data?.data;
-      if (!data || !Array.isArray(data)) return;
+    setIsRefreshing(true);
 
-      const allLatLngs = [];
-      const vehicles = [];
-      let total = 0,
-        inMotion = 0,
-        idle = 0,
-        stopped = 0,
-        locked = 0;
+    // Adjust this call if your backend expects accid in params body.
+    ApiService.getMapViewData(
+      {},
+      (res) => {
+        const data = res?.data?.data;
+        if (!data || !Array.isArray(data)) {
+          setIsRefreshing(false);
+          return;
+        }
 
-      markerClusterRef.current.clearLayers();
-      markerMapRef.current = {};
+        const allLatLngs = [];
+        const vehicles = [];
+        let total = 0,
+          inMotion = 0,
+          idle = 0,
+          stopped = 0,
+          locked = 0;
 
-      data.forEach((v) => {
-        const { lat, lng, vehnum, speed, gps, cts, ign, lock, address } = v;
-        if (!lat || !lng) return;
+        markerClusterRef.current.clearLayers();
+        markerMapRef.current = {};
 
-        const speedNum = Number(speed) || 0;
-        const ignition = (ign || "N").toString().toUpperCase();
-        const isLocked = lock === "1" || lock === true;
+        data.forEach((v) => {
+          const { lat, lng, vehnum, speed, gps, cts, ign, lock, address } = v;
+          if (!lat || !lng) return;
 
-        let status;
-        if (speedNum === 0 && ignition === "N") status = "STOP";
-        else if (speedNum > 5 && ignition === "Y") status = "MOTION";
-        else if (speedNum < 5) status = "IDLE";
-        else status = "IDLE";
+          const speedNum = Number(speed) || 0;
+          const ignition = (ign || "N").toString().toUpperCase();
+          const isLocked = lock === "1" || lock === true;
 
-        const effectiveStatus = isLocked ? "LOCKED" : status;
-        const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
+          let status;
+          if (speedNum === 0 && ignition === "N") status = "STOP";
+          else if (speedNum > 5 && ignition === "Y") status = "MOTION";
+          else if (speedNum < 5) status = "IDLE";
+          else status = "IDLE";
 
-        const marker = L.marker([lat, lng], { icon });
-        marker.bindPopup(
-          `<b>${vehnum}</b><br>
-           Status: ${getStatusLabel(effectiveStatus, isLocked ? "1" : "0")}<br>
-           Speed: ${speedNum} km/h<br>
-           Ignition: ${ignition}<br>
-           GPS Time: ${cts || gps || "N/A"}<br>
-           Address: ${address || "Resolving..."}`
-        );
+          const effectiveStatus = isLocked ? "LOCKED" : status;
+          const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
 
-        markerClusterRef.current.addLayer(marker);
-        markerMapRef.current[vehnum] = marker;
+          const marker = L.marker([lat, lng], { icon });
+          marker.bindPopup(
+            `<b>${vehnum}</b><br>
+             Status: ${getStatusLabel(effectiveStatus, isLocked ? "1" : "0")}<br>
+             Speed: ${speedNum} km/h<br>
+             Ignition: ${ignition}<br>
+             GPS Time: ${cts || gps || "N/A"}<br>
+             Address: ${address || "Resolving..."}`
+          );
 
-        allLatLngs.push([lat, lng]);
+          markerClusterRef.current.addLayer(marker);
+          markerMapRef.current[vehnum] = marker;
 
-        total++;
-        if (effectiveStatus === "MOTION") inMotion++;
-        else if (effectiveStatus === "IDLE") idle++;
-        else if (effectiveStatus === "STOP") stopped++;
-        if (isLocked) locked++;
+          allLatLngs.push([lat, lng]);
 
-        vehicles.push({
-          vehnum,
-          status: effectiveStatus,
-          lock: isLocked ? "1" : "0",
-          time: cts || gps || new Date().toLocaleString(),
-          location: address || "Location resolving...",
-          alert: "Route ID - RD101",
+          total++;
+          if (effectiveStatus === "MOTION") inMotion++;
+          else if (effectiveStatus === "IDLE") idle++;
+          else if (effectiveStatus === "STOP") stopped++;
+          if (isLocked) locked++;
+
+          vehicles.push({
+            vehnum,
+            status: effectiveStatus,
+            lock: isLocked ? "1" : "0",
+            time: cts || gps || new Date().toLocaleString(),
+            location: address || "Location resolving...",
+          });
         });
-      });
 
-      setVehicleStats({ total, inMotion, idle, stopped, locked });
-      setVehicleList(vehicles);
+        setVehicleStats({ total, inMotion, idle, stopped, locked });
+        setVehicleList(vehicles);
+        setIsRefreshing(false);
+        setLastRefreshTime(Date.now());
 
-      if (allLatLngs.length > 0) {
-        mapRef.current.fitBounds(allLatLngs, { padding: [50, 50] });
-      }
-    });
-  }, []);
+        if (allLatLngs.length > 0) {
+          mapRef.current.fitBounds(allLatLngs, { padding: [50, 50] });
+        }
+      },
+      true,
+      selectedAccountId
+    );
+  }, [selectedAccountId]);
+
+  // Re-fetch when account changes
+  useEffect(() => {
+    fetchMapData();
+  }, [fetchMapData]);
+
+  const handleAccountChange = (event) => {
+    setSelectedAccountId(event.target.value.toString());
+  };
 
   // -----------------------------
   // Handle Vehicle Click
@@ -285,7 +298,7 @@ const MapView = () => {
       }
     }
 
-    marker.setIcon(highlightIcon);
+    marker.setIcon(truckHighlightIcon);
     setHighlightedVeh(veh.vehnum);
 
     mapRef.current.flyTo(marker.getLatLng(), 15, { animate: true });
@@ -294,199 +307,232 @@ const MapView = () => {
   };
 
   // -----------------------------
+  // Filtered Vehicles (sidebar)
+  // -----------------------------
+  const filteredVehicles = useMemo(
+    () =>
+      vehicleList.filter((veh) => {
+        const matchesSearch = veh.vehnum
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const matchesFilter =
+          filter === "All" ||
+          (filter === "Motion" && veh.status === "MOTION") ||
+          (filter === "Idle" && veh.status === "IDLE") ||
+          (filter === "Stop" && veh.status === "STOP") ||
+          (filter === "Lock" && veh.lock === "1");
+        return matchesSearch && matchesFilter;
+      }),
+    [vehicleList, filter, searchTerm]
+  );
+
+  // -----------------------------
   // Overlay Panel Style
   // -----------------------------
   const overlayPanelStyle = {
     position: "absolute",
-    top: "16px",
-    right: "16px",
+    top: "24px",
+    right: "24px",
     zIndex: 1000,
     width: "380px",
     maxWidth: "90vw",
   };
 
-  return (
-    <DashboardLayout>
-      <MDBox
-        sx={{
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          p: 0,
+ return (
+  <DashboardLayout>
+    <DashboardNavbar
+      selectedAccountId={selectedAccountId}
+      accounts={accounts}
+      handleAccountChange={handleAccountChange}
+      onManualRefresh={fetchMapData}
+      isRefreshing={isRefreshing}
+      lastRefreshTime={lastRefreshTime}
+    />
+
+    {/* Full-page map container */}
+    <MDBox
+      sx={{
+        position: "relative",
+        height: "calc(100vh - 64px)", // adjust if your navbar height is different
+        width: "100%",
+      }}
+    >
+      <div
+        ref={mapContainerRef}
+        style={{
+          height: "100%",
+          width: "100%",
         }}
-      >
-        <Grid container sx={{ flex: 1, m: 0 }}>
-          <Grid item xs={12} sx={{ height: "100%" }}>
-            <Card
-              sx={{
-                marginTop:"-55px",
-                height: "100%",
-                width:"100%",
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 0,
-                boxShadow: "none",
-              }}
-            >
-              <div
-                ref={mapContainerRef}
-                style={{ height: "100%", width: "100%" }}
+      />
+
+      {/* Sidebar overlay */}
+      <div style={overlayPanelStyle}>
+        <Card
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: 6,
+          }}
+        >
+          <MDBox
+            p={2}
+            borderBottom="1px solid #eee"
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <MDTypography variant="h6">Vehicle Status</MDTypography>
+            <IconButton onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+              <Icon>{isSidebarOpen ? "chevron_right" : "chevron_left"}</Icon>
+            </IconButton>
+          </MDBox>
+
+          <Collapse in={isSidebarOpen} timeout="auto" unmountOnExit>
+            <MDBox p={2} pt={1} flex={1} sx={{ overflow: "auto" }}>
+              <MDInput
+                placeholder="Search vehicle..."
+                fullWidth
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: <Icon sx={{ mr: 1 }}>search</Icon>,
+                }}
               />
 
-              <div style={overlayPanelStyle}>
-                <Card
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    boxShadow: 6,
-                  }}
-                >
+              <MDBox display="flex" flexWrap="wrap" gap={1} mb={3}>
+                {["All", "Motion", "Idle", "Stop", "Lock"].map((tab) => (
                   <MDBox
-                    p={2}
-                    borderBottom="1px solid #eee"
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
+                    key={tab}
+                    onClick={() => setFilter(tab)}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      borderRadius: 2,
+                      backgroundColor:
+                        filter === tab ? "#e3f2fd" : "#f5f5f5",
+                      color:
+                        filter === tab ? "primary.main" : "text.secondary",
+                      fontWeight: "medium",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      textAlign: "center",
+                      flex: "1 1 0",
+                      minWidth: "70px",
+                    }}
                   >
-                    <MDTypography variant="h6">Vehicle Status</MDTypography>
-                    <IconButton onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                      <Icon>{isSidebarOpen ? "chevron_right" : "chevron_left"}</Icon>
-                    </IconButton>
+                    {tab}{" "}
+                    <strong>
+                      (
+                      {
+                        {
+                          All: vehicleStats.total,
+                          Motion: vehicleStats.inMotion,
+                          Idle: vehicleStats.idle,
+                          Stop: vehicleStats.stopped,
+                          Lock: vehicleStats.locked,
+                        }[tab]
+                      }
+                      )
+                    </strong>
                   </MDBox>
+                ))}
+              </MDBox>
 
-                  <Collapse in={isSidebarOpen} timeout="auto" unmountOnExit>
-                    <MDBox p={2} pt={1} flex={1} sx={{ overflow: "auto" }}>
-                      <MDInput
-                        placeholder="Search vehicle..."
-                        fullWidth
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        sx={{ mb: 2 }}
-                        InputProps={{ startAdornment: <Icon sx={{ mr: 1 }}>search</Icon> }}
-                      />
-
-                      <MDBox display="flex" flexWrap="wrap" gap={1} mb={3}>
-                        {["All", "Motion", "Idle", "Stop", "Lock"].map((tab) => (
-                          <MDBox
-                            key={tab}
-                            onClick={() => setFilter(tab)}
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              borderRadius: 2,
-                              backgroundColor: filter === tab ? "#e3f2fd" : "#f5f5f5",
-                              color: filter === tab ? "primary.main" : "text.secondary",
-                              fontWeight: "medium",
-                              cursor: "pointer",
-                              fontSize: "0.875rem",
-                              textAlign: "center",
-                              flex: "1 1 0",
-                              minWidth: "70px",
-                            }}
-                          >
-                            {tab}{" "}
-                            <strong>
-                              (
-                              {
-                                {
-                                  All: vehicleStats.total,
-                                  Motion: vehicleStats.inMotion,
-                                  Idle: vehicleStats.idle,
-                                  Stop: vehicleStats.stopped,
-                                  Lock: vehicleStats.locked,
-                                }[tab]
-                              }
-                              )
-                            </strong>
-                          </MDBox>
-                        ))}
+              <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
+                {filteredVehicles.length === 0 ? (
+                  <MDTypography
+                    variant="body2"
+                    color="text.secondary"
+                    textAlign="center"
+                    py={4}
+                  >
+                    No vehicles found
+                  </MDTypography>
+                ) : (
+                  filteredVehicles.map((veh) => (
+                    <MDBox
+                      key={veh.vehnum}
+                      onClick={() => handleVehicleClick(veh)}
+                      sx={{
+                        position: "relative",
+                        p: 2,
+                        mb: 1,
+                        borderRadius: 2,
+                        backgroundColor:
+                          highlightedVeh === veh.vehnum
+                            ? "#e3f2fd"
+                            : "#fafafa",
+                        border: `2px solid ${
+                          highlightedVeh === veh.vehnum
+                            ? "#1976d2"
+                            : "transparent"
+                        }`,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        "&:hover": { backgroundColor: "#f0f7ff" },
+                      }}
+                    >
+                      <MDBox
+                        sx={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#ffffff",
+                          boxShadow: "0 0 0 2px rgba(0,0,0,0.06)",
+                        }}
+                      >
+                        <Icon
+                          sx={{
+                            fontSize: 16,
+                            color: getStatusColor(veh.status, veh.lock),
+                          }}
+                        >
+                          directions_car
+                        </Icon>
                       </MDBox>
 
-                      <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
-                        {filteredVehicles.length === 0 ? (
-                          <MDTypography
-                            variant="body2"
-                            color="text.secondary"
-                            textAlign="center"
-                            py={4}
-                          >
-                            No vehicles found
-                          </MDTypography>
-                        ) : (
-                          filteredVehicles.map((veh) => (
-                            <MDBox
-                              key={veh.vehnum}
-                              onClick={() => handleVehicleClick(veh)}
-                              sx={{
-                                p: 2,
-                                mb: 1,
-                                borderRadius: 2,
-                                backgroundColor:
-                                  highlightedVeh === veh.vehnum ? "#e3f2fd" : "#fafafa",
-                                border: `2px solid ${
-                                  highlightedVeh === veh.vehnum ? "#1976d2" : "transparent"
-                                }`,
-                                cursor: "pointer",
-                                transition: "all 0.2s",
-                                "&:hover": { backgroundColor: "#f0f7ff" },
-                              }}
-                            >
-                              <MDBox
-                                display="flex"
-                                flexDirection="column"
-                                alignItems="flex-start"
-                                gap={0.5}
-                              >
-                                {/* Colored container for vehicle number */}
-                                <MDBox
-                                  sx={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    px: 1.5,
-                                    py: 0.5,
-                                    borderRadius: 1,
-                                    backgroundColor: getStatusColor(veh.status, veh.lock),
-                                    color: "white",
-                                  }}
-                                >
-                                  <MDTypography
-                                    variant="subtitle2"
-                                    fontWeight="bold"
-                                    sx={{ color: "inherit" }}
-                                  >
-                                    {veh.vehnum}
-                                  </MDTypography>
-                                </MDBox>
-
-                                {/* Location below the colored pill */}
-                                <MDTypography variant="caption" color="text.secondary">
-                                  {veh.location}
-                                </MDTypography>
-                              </MDBox>
-
-                              <MDTypography
-                                variant="caption"
-                                color="text.secondary"
-                                mt={1}
-                                display="block"
-                              >
-                                Last updated: {veh.time}
-                              </MDTypography>
-                            </MDBox>
-                          ))
-                        )}
+                      <MDBox
+                        display="flex"
+                        flexDirection="column"
+                        alignItems="flex-start"
+                        gap={0.5}
+                      >
+                        <MDTypography
+                          variant="subtitle2"
+                          fontWeight="bold"
+                          color="text.primary"
+                        >
+                          {veh.vehnum}
+                        </MDTypography>
                       </MDBox>
+
+                      <MDTypography
+                        variant="caption"
+                        color="text.secondary"
+                        mt={1}
+                        display="block"
+                      >
+                        Last updated: {veh.time}
+                      </MDTypography>
                     </MDBox>
-                  </Collapse>
-                </Card>
-              </div>
-            </Card>
-          </Grid>
-        </Grid>
-      </MDBox>
-    </DashboardLayout>
-  );
+                  ))
+                )}
+              </MDBox>
+            </MDBox>
+          </Collapse>
+        </Card>
+      </div>
+    </MDBox>
+  </DashboardLayout>
+);
 };
 
 export default MapView;
