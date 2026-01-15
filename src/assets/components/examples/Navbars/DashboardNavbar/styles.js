@@ -43,11 +43,13 @@ function navbar(theme, ownerState) {
       return color;
     },
     top: absolute ? 0 : pxToRem(12),
+    marginTop: pxToRem(-30), // Add this line - adjust the value as needed
+
     minHeight: pxToRem(75),
     display: "grid",
     alignItems: "center",
     borderRadius: borderRadius.xl,
-    paddingTop: pxToRem(8),
+    paddingTop: pxToRem(-80),
     paddingBottom: pxToRem(8),
     paddingRight: absolute ? pxToRem(8) : 0,
     paddingLeft: absolute ? pxToRem(16) : 0,

@@ -35,6 +35,28 @@ import ApiService from "../../services/ApiService";
 // Styles
 import { styles, getVehicleMarkerHtml, getPlaybackMarkerHtml } from "./LiveTrack.styles";
 
+const formatDevTimestamp = (devTs) => {
+  if (!devTs) return "—"; // fallback
+
+  // devTs: "2026-01-13 21:08:25"
+  // Convert to Date safely (replace space with 'T' to make it ISO-like)
+  const isoLike = devTs.replace(" ", "T");
+  const date = new Date(isoLike);
+  if (Number.isNaN(date.getTime())) return devTs;
+
+  const pad = (n) => n.toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+
+  // 2026-01-13 21:08:25
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+
 /* ============================
   CONSTANTS & CONFIG
  ============================ */
@@ -179,9 +201,9 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   <Icon fontSize="small" sx={{ mr: "65px" }}>
                     directions_car
                   </Icon>
-                 <Icon fontSize="small" sx={{ mr: "60px" }}>
-  access_time
-</Icon>
+                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                    access_time
+                  </Icon>
 
                   <Icon fontSize="small" sx={{ mr: "60px" }}>
                     speed
@@ -247,16 +269,13 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
-  <Icon
-    // green when ON, red when OFF
-    color={d.ignition ? "success" : "error"}
-    sx={{ fontSize: "1.2rem !important" }}
-  >
-    {/* always use the same icon */}
-    vpn_key_off
-  </Icon>
-</Tooltip>
-
+                      <Icon
+                        color={d.ignition ? "success" : "error"}
+                        sx={{ fontSize: "1.2rem !important" }}
+                      >
+                        {d.ignition ? "power_settings_new" : "vpn_key_off"}
+                      </Icon>
+                    </Tooltip>
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -302,41 +321,40 @@ export default function LiveTrack() {
   const targetAccountId = location.state?.targetAccountId;
 
   useEffect(() => {
-  ApiService.getAllDevices()
-    .then((devices) => {
-      console.log("LiveTrack targetImei:", targetImei);
-      console.log("LiveTrack devices sample:", devices?.slice?.(0, 3));
+    ApiService.getAllDevices()
+      .then((devices) => {
+        console.log("LiveTrack targetImei:", targetImei);
+        console.log("LiveTrack devices sample:", devices?.slice?.(0, 3));
 
-      setAllDevices(devices || []);
+        setAllDevices(devices || []);
 
-      let initialSelectedDevice = null;
+        let initialSelectedDevice = null;
 
-      if (targetImei) {
-        // TEMP: show exactly what matches
-        initialSelectedDevice =
-          devices.find((d) => d.id === targetImei) ||
-          devices.find((d) => d.imei === targetImei) ||
-          devices.find((d) => d.deviceId === targetImei); // try other likely keys
+        if (targetImei) {
+          // TEMP: show exactly what matches
+          initialSelectedDevice =
+            devices.find((d) => d.id === targetImei) ||
+            devices.find((d) => d.imei === targetImei) ||
+            devices.find((d) => d.deviceId === targetImei); // try other likely keys
 
-        console.log("Matched initialSelectedDevice:", initialSelectedDevice);
-      }
+          console.log("Matched initialSelectedDevice:", initialSelectedDevice);
+        }
 
-      if (initialSelectedDevice && targetAccountId) {
-        initialSelectedDevice = {
-          ...initialSelectedDevice,
-          accountId: targetAccountId,
-        };
-      }
+        if (initialSelectedDevice && targetAccountId) {
+          initialSelectedDevice = {
+            ...initialSelectedDevice,
+            accountId: targetAccountId,
+          };
+        }
 
-      if (!initialSelectedDevice && devices.length > 0) {
-        initialSelectedDevice = devices[0];
-      }
+        if (!initialSelectedDevice && devices.length > 0) {
+          initialSelectedDevice = devices[0];
+        }
 
-      setSelectedDevice(initialSelectedDevice);
-    })
-    .catch(console.error);
-}, [targetImei, targetAccountId]);
-
+        setSelectedDevice(initialSelectedDevice);
+      })
+      .catch(console.error);
+  }, [targetImei, targetAccountId]);
 
   // Load all devices and select correct initial one
   useEffect(() => {
@@ -349,8 +367,7 @@ export default function LiveTrack() {
         if (targetImei) {
           // Try match by id first, then by imei (adjust field if needed)
           initialSelectedDevice =
-            devices.find((d) => d.id === targetImei) ||
-            devices.find((d) => d.imei === targetImei);
+            devices.find((d) => d.id === targetImei) || devices.find((d) => d.imei === targetImei);
         }
 
         if (initialSelectedDevice && targetAccountId) {
