@@ -1,18 +1,3 @@
-/**
-=========================================================
-* Material Dashboard 2 React - v2.2.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
-
 import { useState, useEffect, useCallback } from "react";
 
 // react-router components
@@ -254,7 +239,7 @@ function DashboardNavbar({
   });
 
   return (
-   <AppBar
+    <AppBar
       position={absolute ? "absolute" : navbarType}
       color="inherit"
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light, darkMode })}
@@ -268,7 +253,6 @@ function DashboardNavbar({
         {!isMini && (
           /* Right Side: Container for Dropdown + Icons in one row */
           <MDBox sx={(theme) => navbarRow(theme, { isMini })} display="flex" alignItems="center">
-            
             {/* 1. Account Dropdown Section */}
             <MDBox display="flex" alignItems="center" gap={2} mr={2}>
               <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
@@ -301,7 +285,6 @@ function DashboardNavbar({
 
             {/* 2. All Icons and Refresh in the SAME row */}
             <MDBox display="flex" alignItems="center" color={light ? "white" : "inherit"}>
-              
               {/* Refresh Button - Set to Green (success) */}
               <MDBox display="flex" alignItems="center" mr={1}>
                 <MDButton
@@ -311,22 +294,21 @@ function DashboardNavbar({
                   onClick={onManualRefresh}
                   disabled={isRefreshing}
                   startIcon={
-                    <RefreshIcon  
-                      sx={isRefreshing ? { animation: "spin 1s linear infinite" } : {}} 
-                      
+                    <RefreshIcon
+                      sx={isRefreshing ? { animation: "spin 1s linear infinite" } : {}}
                     />
                   }
-                  sx={{ 
-                    textTransform: "none", 
+                  sx={{
+                    textTransform: "none",
                     fontWeight: "bold",
                     minWidth: "unset",
-                    p: 1 
+                    p: 1,
                   }}
                 >
                   {/* Text hidden for cleaner icon-only look, or uncomment below */}
                   {/* {isRefreshing ? "" : ""} */}
                 </MDButton>
-                
+
                 <RefreshCountdown lastRefreshTime={lastRefreshTime} />
               </MDBox>
 
@@ -361,7 +343,6 @@ function DashboardNavbar({
                 <Icon sx={iconsStyle}>notifications</Icon>
               </IconButton>
               {renderMenu()}
-              
             </MDBox>
           </MDBox>
         )}

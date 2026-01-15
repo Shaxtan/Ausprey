@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -19,7 +19,7 @@ import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardN
 import ApiService from "../../services/ApiService";
 
 // -----------------------------
-// Custom Icons
+// Custom Icons (Keep as is)
 // -----------------------------
 const greenIcon = new L.Icon({
   iconUrl:
@@ -30,7 +30,6 @@ const greenIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
 const redIcon = new L.Icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
@@ -40,7 +39,6 @@ const redIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
 const yellowIcon = new L.Icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
@@ -50,7 +48,6 @@ const yellowIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
 const highlightIcon = new L.Icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
@@ -61,9 +58,6 @@ const highlightIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// -----------------------------
-// Tile Layer
-// -----------------------------
 const createTileLayers = () => ({
   OpenStreet: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -75,13 +69,19 @@ const createTileLayers = () => ({
 // Main Component
 // -----------------------------
 const MapView = () => {
+  // --- ACCOUNT & REFRESH STATE ---
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [accounts, setAccounts] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+
+  // --- MAP & UI STATE ---
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const zoomDivRef = useRef(null);
   const markerClusterRef = useRef(null);
-  const markerMapRef = useRef({}); // vehnum → marker
+  const markerMapRef = useRef({});
   const [highlightedVeh, setHighlightedVeh] = useState(null);
-
   const [vehicleStats, setVehicleStats] = useState({
     total: 0,
     inMotion: 0,
@@ -89,7 +89,6 @@ const MapView = () => {
     stopped: 0,
     locked: 0,
   });
-
   const [vehicleList, setVehicleList] = useState([]);
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,23 +98,124 @@ const MapView = () => {
   const baseMaps = createTileLayers();
 
   // -----------------------------
-  // Filtered Vehicles
+  // 1. Initial Load: Accounts & Default ID
   // -----------------------------
-  const filteredVehicles = useMemo(() => {
-    return vehicleList.filter((veh) => {
-      const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter =
-        filter === "All" ||
-        (filter === "Motion" && veh.status === "MOTION") ||
-        (filter === "Idle" && veh.status === "IDLE") ||
-        (filter === "Stop" && veh.status === "STOP") ||
-        (filter === "Lock" && veh.lock === "1");
-      return matchesSearch && matchesFilter;
+  useEffect(() => {
+    // Determine default ID from userDetails or fallback to 1
+    let defaultId = "1";
+    try {
+      const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+      if (user.accountId) defaultId = user.accountId.toString();
+    } catch (e) {
+      console.error("Error parsing userDetails", e);
+    }
+
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
+        setAccounts(res.data.data);
+        // Set selected ID to logged-in user's ID if not already set
+        setSelectedAccountId(defaultId);
+      }
     });
-  }, [vehicleList, filter, searchTerm]);
+  }, []);
 
   // -----------------------------
-  // Status Label & Color
+  // 2. Data Fetching Logic (Memoized)
+  // -----------------------------
+  const fetchMapData = useCallback(() => {
+    if (!mapRef.current || !markerClusterRef.current || !selectedAccountId) return;
+
+    setIsRefreshing(true);
+    // Passing current selectedAccountId to the API
+    ApiService.getMapViewData(
+      {},
+      (res) => {
+        const data = res?.data?.data;
+        if (!data || !Array.isArray(data)) {
+          setIsRefreshing(false);
+          return;
+        }
+
+        const allLatLngs = [];
+        const vehicles = [];
+        let total = 0,
+          inMotion = 0,
+          idle = 0,
+          stopped = 0,
+          locked = 0;
+
+        markerClusterRef.current.clearLayers();
+        markerMapRef.current = {};
+
+        data.forEach((v) => {
+          const { lat, lng, vehnum, speed, gps, cts, ign, lock, address } = v;
+          if (!lat || !lng) return;
+
+          const speedNum = Number(speed) || 0;
+          const ignition = (ign || "N").toString().toUpperCase();
+          const isLocked = lock === "1" || lock === true;
+
+          let status;
+          if (speedNum === 0 && ignition === "N") status = "STOP";
+          else if (speedNum > 5 && ignition === "Y") status = "MOTION";
+          else status = "IDLE";
+
+          const effectiveStatus = isLocked ? "LOCKED" : status;
+          const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
+
+          const marker = L.marker([lat, lng], { icon });
+          marker.bindPopup(
+            `<b>${vehnum}</b><br>Status: ${getStatusLabel(
+              effectiveStatus,
+              isLocked ? "1" : "0"
+            )}<br>Speed: ${speedNum} km/h<br>Address: ${address || "Resolving..."}`
+          );
+
+          markerClusterRef.current.addLayer(marker);
+          markerMapRef.current[vehnum] = marker;
+          allLatLngs.push([lat, lng]);
+
+          total++;
+          if (effectiveStatus === "MOTION") inMotion++;
+          else if (effectiveStatus === "IDLE") idle++;
+          else if (effectiveStatus === "STOP") stopped++;
+          if (isLocked) locked++;
+
+          vehicles.push({
+            vehnum,
+            status: effectiveStatus,
+            lock: isLocked ? "1" : "0",
+            time: cts || gps || new Date().toLocaleString(),
+            location: address || "Location resolving...",
+          });
+        });
+
+        setVehicleStats({ total, inMotion, idle, stopped, locked });
+        setVehicleList(vehicles);
+        setIsRefreshing(false);
+        setLastRefreshTime(Date.now());
+
+        if (allLatLngs.length > 0) {
+          mapRef.current.fitBounds(allLatLngs, { padding: [50, 50] });
+        }
+      },
+      true,
+      selectedAccountId
+    );
+  }, [selectedAccountId]);
+
+  // Re-fetch when account changes
+  useEffect(() => {
+    fetchMapData();
+  }, [fetchMapData]);
+
+  // Handle Dropdown Change
+  const handleAccountChange = (event) => {
+    setSelectedAccountId(event.target.value.toString());
+  };
+
+  // -----------------------------
+  // Helper Functions (Keep as is)
   // -----------------------------
   const getStatusLabel = (status, lock) => {
     if (lock === "1") return "Locked";
@@ -126,21 +226,21 @@ const MapView = () => {
   };
 
   const getStatusColor = (status, lock) => {
-    if (lock === "1") return "#2196F3"; // Blue
-    if (status === "MOTION") return "#4CAF50"; // Green
-    if (status === "IDLE") return "#FF9800"; // Orange
-    return "#F44336"; // Red for Stopped
+    if (lock === "1") return "#2196F3";
+    if (status === "MOTION") return "#4CAF50";
+    if (status === "IDLE") return "#FF9800";
+    return "#F44336";
   };
 
   const getIconForStatus = (status, lock) => {
     if (lock === "1") return highlightIcon;
     if (status === "MOTION") return greenIcon;
     if (status === "IDLE") return yellowIcon;
-    return redIcon; // STOP or unknown
+    return redIcon;
   };
 
   // -----------------------------
-  // Map Initialization
+  // Map Initialization (Keep as is)
   // -----------------------------
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
@@ -156,7 +256,6 @@ const MapView = () => {
         return div;
       },
     });
-
     L.control.zoomview = (opts) => new ZoomView(opts);
 
     const map = L.map(mapContainerRef.current, {
@@ -168,20 +267,12 @@ const MapView = () => {
 
     mapRef.current = map;
     L.control.zoomview({ position: "topleft" }).addTo(map);
-    L.control.scale().addTo(map);
-
-    const cluster = L.markerClusterGroup({
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-    });
+    const cluster = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false });
     markerClusterRef.current = cluster;
     map.addLayer(cluster);
 
     map.on("zoomend", () => {
-      if (zoomDivRef.current) {
-        zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
-      }
+      if (zoomDivRef.current) zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
     });
 
     return () => {
@@ -190,118 +281,34 @@ const MapView = () => {
     };
   }, []);
 
-  // -----------------------------
-  // Load Real Data from API
-  // -----------------------------
-  useEffect(() => {
-    if (!mapRef.current || !markerClusterRef.current) return;
-
-    ApiService.getMapViewData(1, (res) => {
-      const data = res?.data?.data;
-      if (!data || !Array.isArray(data)) return;
-
-      const allLatLngs = [];
-      const vehicles = [];
-      let total = 0,
-        inMotion = 0,
-        idle = 0,
-        stopped = 0,
-        locked = 0;
-
-      markerClusterRef.current.clearLayers();
-      markerMapRef.current = {};
-
-      data.forEach((v) => {
-        const { lat, lng, vehnum, speed, gps, cts, ign, lock, address } = v;
-        if (!lat || !lng) return;
-
-        const speedNum = Number(speed) || 0;
-        const ignition = (ign || "N").toString().toUpperCase();
-        const isLocked = lock === "1" || lock === true;
-
-        // Correct Status Logic
-        let status;
-        if (speedNum === 0 && ignition === "N") {
-          status = "STOP";
-        } else if (speedNum > 5 && ignition === "Y") {
-          status = "MOTION";
-        } else if (speedNum < 5) {
-          status = "IDLE";
-        } else {
-          status = "IDLE"; // fallback
-        }
-
-        const effectiveStatus = isLocked ? "LOCKED" : status;
-        const icon = getIconForStatus(effectiveStatus, isLocked ? "1" : "0");
-
-        const marker = L.marker([lat, lng], { icon });
-        marker.bindPopup(
-          `<b>${vehnum}</b><br>
-           Status: ${getStatusLabel(effectiveStatus, isLocked ? "1" : "0")}<br>
-           Speed: ${speedNum} km/h<br>
-           Ignition: ${ignition}<br>
-           GPS Time: ${cts || gps || "N/A"}<br>
-           Address: ${address || "Resolving..."}`
-        );
-
-        markerClusterRef.current.addLayer(marker);
-        markerMapRef.current[vehnum] = marker;
-
-        allLatLngs.push([lat, lng]);
-
-        total++;
-        if (effectiveStatus === "MOTION") inMotion++;
-        else if (effectiveStatus === "IDLE") idle++;
-        else if (effectiveStatus === "STOP") stopped++;
-        if (isLocked) locked++;
-
-        vehicles.push({
-          vehnum,
-          status: effectiveStatus,
-          lock: isLocked ? "1" : "0",
-          time: cts || gps || new Date().toLocaleString(),
-          location: address || "Location resolving...",
-          alert: "Route ID - RD101",
-        });
-      });
-
-      setVehicleStats({ total, inMotion, idle, stopped, locked });
-      setVehicleList(vehicles);
-
-      if (allLatLngs.length > 0) {
-        mapRef.current.fitBounds(allLatLngs, { padding: [50, 50] });
-      }
-    });
-  }, []);
-
-  // -----------------------------
-  // Handle Vehicle Click
-  // -----------------------------
   const handleVehicleClick = (veh) => {
     const marker = markerMapRef.current[veh.vehnum];
     if (!marker || !mapRef.current) return;
-
-    // Reset previous highlight
     if (highlightedVeh) {
       const oldVeh = vehicleList.find((v) => v.vehnum === highlightedVeh);
       const oldMarker = markerMapRef.current[highlightedVeh];
-      if (oldMarker && oldVeh) {
-        oldMarker.setIcon(getIconForStatus(oldVeh.status, oldVeh.lock));
-      }
+      if (oldMarker && oldVeh) oldMarker.setIcon(getIconForStatus(oldVeh.status, oldVeh.lock));
     }
-
-    // Highlight current
     marker.setIcon(highlightIcon);
     setHighlightedVeh(veh.vehnum);
-
     mapRef.current.flyTo(marker.getLatLng(), 15, { animate: true });
     marker.openPopup();
     setIsSidebarOpen(false);
   };
 
-  // -----------------------------
-  // Overlay Panel Style
-  // -----------------------------
+  const filteredVehicles = useMemo(() => {
+    return vehicleList.filter((veh) => {
+      const matchesSearch = veh.vehnum.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        filter === "All" ||
+        (filter === "Motion" && veh.status === "MOTION") ||
+        (filter === "Idle" && veh.status === "IDLE") ||
+        (filter === "Stop" && veh.status === "STOP") ||
+        (filter === "Lock" && veh.lock === "1");
+      return matchesSearch && matchesFilter;
+    });
+  }, [vehicleList, filter, searchTerm]);
+
   const overlayPanelStyle = {
     position: "absolute",
     top: "24px",
@@ -313,7 +320,14 @@ const MapView = () => {
 
   return (
     <DashboardLayout>
-      {/* <DashboardNavbar /> */}
+      <DashboardNavbar
+        selectedAccountId={selectedAccountId}
+        accounts={accounts}
+        handleAccountChange={handleAccountChange}
+        onManualRefresh={fetchMapData}
+        isRefreshing={isRefreshing}
+        lastRefreshTime={lastRefreshTime}
+      />
       <MDBox pt={2} pb={3}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
@@ -363,14 +377,13 @@ const MapView = () => {
                               px: 2,
                               py: 1,
                               borderRadius: 2,
-                              backgroundColor: filter === tab ? "#e3f2fd" : "#f5f5f5",
-                              color: filter === tab ? "primary.main" : "text.secondary",
-                              fontWeight: "medium",
                               cursor: "pointer",
                               fontSize: "0.875rem",
                               textAlign: "center",
                               flex: "1 1 0",
                               minWidth: "70px",
+                              backgroundColor: filter === tab ? "#e3f2fd" : "#f5f5f5",
+                              color: filter === tab ? "primary.main" : "text.secondary",
                             }}
                           >
                             {tab}{" "}
@@ -410,13 +423,13 @@ const MapView = () => {
                                 p: 2,
                                 mb: 1,
                                 borderRadius: 2,
+                                cursor: "pointer",
+                                transition: "all 0.2s",
                                 backgroundColor:
                                   highlightedVeh === veh.vehnum ? "#e3f2fd" : "#fafafa",
                                 border: `2px solid ${
                                   highlightedVeh === veh.vehnum ? "#1976d2" : "transparent"
                                 }`,
-                                cursor: "pointer",
-                                transition: "all 0.2s",
                                 "&:hover": { backgroundColor: "#f0f7ff" },
                               }}
                             >
@@ -438,23 +451,15 @@ const MapView = () => {
                                     px: 1.5,
                                     py: 0.5,
                                     borderRadius: 1,
-                                    backgroundColor: getStatusColor(veh.status, veh.lock),
                                     color: "white",
                                     fontSize: "0.75rem",
                                     fontWeight: "bold",
+                                    backgroundColor: getStatusColor(veh.status, veh.lock),
                                   }}
                                 >
                                   {getStatusLabel(veh.status, veh.lock)}
                                 </MDBox>
                               </MDBox>
-                              <MDTypography
-                                variant="caption"
-                                color="text.secondary"
-                                mt={1}
-                                display="block"
-                              >
-                                Last updated: {veh.time}
-                              </MDTypography>
                             </MDBox>
                           ))
                         )}
