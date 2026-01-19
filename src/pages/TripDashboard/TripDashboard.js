@@ -22,14 +22,12 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TablePagination from "@mui/material/TablePagination";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
 
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
+
+import CreateTripDialog from "./CreateTripDialog";
 
 const LEAFLET_CSS =
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
@@ -374,11 +372,7 @@ const TripProgress = ({ steps, currentIndex }) => {
                   />
                 )}
               </Box>
-              <MDTypography
-                variant="button"
-                color="text"
-                sx={{ fontSize: "0.75rem" }}
-              >
+              <MDTypography variant="button" color="text" sx={{ fontSize: "0.75rem" }}>
                 {step.label}
               </MDTypography>
             </Box>
@@ -1071,7 +1065,9 @@ function TripDashboard({ accountId }) {
                                             variant="contained"
                                             color="success"
                                             startIcon={<Icon>play_arrow</Icon>}
-                                            onClick={() => handlePlayProgress(trip.id)}
+                                            onClick={() =>
+                                              handlePlayProgress(trip.id)
+                                            }
                                             disabled={isPlaying}
                                           >
                                             Play
@@ -1081,7 +1077,9 @@ function TripDashboard({ accountId }) {
                                             variant="outlined"
                                             color="inherit"
                                             startIcon={<Icon>pause</Icon>}
-                                            onClick={() => handlePauseProgress(trip.id)}
+                                            onClick={() =>
+                                              handlePauseProgress(trip.id)
+                                            }
                                             disabled={!isPlaying}
                                           >
                                             Pause
@@ -1208,93 +1206,15 @@ function TripDashboard({ accountId }) {
         </Grid>
       </Grid>
 
-      {/* CREATE TRIP DIALOG */}
-      <Dialog
+      {/* CREATE TRIP DIALOG (separated) */}
+      <CreateTripDialog
         open={createDialogOpen}
+        form={createForm}
+        errors={createErrors}
         onClose={handleCreateDialogClose}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Create Trip</DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2} mt={0.5}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Vehicle Number"
-                value={createForm.vehicleNumber}
-                onChange={handleCreateFieldChange("vehicleNumber")}
-                size="small"
-                error={!!createErrors.vehicleNumber}
-                helperText={createErrors.vehicleNumber}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Account Name"
-                value={createForm.accountName}
-                onChange={handleCreateFieldChange("accountName")}
-                size="small"
-                error={!!createErrors.accountName}
-                helperText={createErrors.accountName}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Source"
-                value={createForm.source}
-                onChange={handleCreateFieldChange("source")}
-                size="small"
-                error={!!createErrors.source}
-                helperText={createErrors.source}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Destination"
-                value={createForm.destination}
-                onChange={handleCreateFieldChange("destination")}
-                size="small"
-                error={!!createErrors.destination}
-                helperText={createErrors.destination}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="IMEI"
-                value={createForm.imei}
-                onChange={handleCreateFieldChange("imei")}
-                size="small"
-                error={!!createErrors.imei}
-                helperText={createErrors.imei}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Driver Name"
-                value={createForm.driver}
-                onChange={handleCreateFieldChange("driver")}
-                size="small"
-                error={!!createErrors.driver}
-                helperText={createErrors.driver}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCreateDialogClose} color="inherit">
-            Cancel
-          </Button>
-          <Button onClick={handleCreateDialogSubmit} variant="contained" color="primary">
-            Create Trip
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onFieldChange={handleCreateFieldChange}
+        onSubmit={handleCreateDialogSubmit}
+      />
     </MDBox>
   );
 }
