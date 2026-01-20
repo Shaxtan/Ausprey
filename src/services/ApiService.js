@@ -416,8 +416,21 @@ class ApiService {
         throw error;
       });
   }
-  getTripTemplate(id = 1) {
-    return this.getRequest(`/trip-template/${id}`, null, true, SERVICES.template);
+  // Inside ApiService class
+  getTripTemplate(id = null) {
+    let accountId = id;
+
+    // If no ID is passed, try to get it from localStorage
+    if (!accountId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+        accountId = user?.accid || user?.accountId || 1; // Fallback to 1 if not found
+      } catch (e) {
+        accountId = 1;
+      }
+    }
+
+    return this.getRequest(`/trip-template/${accountId}`, null, true, SERVICES.template);
   }
 
   createTrip(payload) {

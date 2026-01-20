@@ -451,12 +451,14 @@ function TripDashboard({ accountId }) {
   const [dynamicFields, setDynamicFields] = useState([]); // Array of {key, label, type}
 
   // Fetch template on component mount or when opening Dialog
+  // Inside TripDashboard component
   useEffect(() => {
-    ApiService.getTripTemplate(1).then((res) => {
+    // Pass the accountId prop if it exists, otherwise the service
+    // will now automatically look into localStorage.
+    ApiService.getTripTemplate(accountId).then((res) => {
       if (res?.data?.resultCode === 1) {
         const fieldMap = res.data.data.fieldMap;
 
-        // 1. Convert Object to Array: [{ key: "cemobile", type: "MOBILE", label: "Consignee Mobile" }]
         const parsedFields = Object.keys(fieldMap).map((key) => {
           const [type, label] = fieldMap[key].split("~");
           return { key, type, label };
@@ -464,19 +466,18 @@ function TripDashboard({ accountId }) {
 
         setDynamicFields(parsedFields);
 
-        // 2. IMPORTANT: Pre-fill createForm with these dynamic keys
         setCreateForm((prev) => {
           const dynamicState = { ...prev };
           parsedFields.forEach((field) => {
             if (!(field.key in dynamicState)) {
-              dynamicState[field.key] = ""; // Initialize dynamic field
+              dynamicState[field.key] = "";
             }
           });
           return dynamicState;
         });
       }
     });
-  }, []);
+  }, [accountId]); // Re-run if accountId prop changes
 
   const handleCreateDialogSubmit = () => {
     // 1. Build the optMap: The API expects "Label": "User Value"
