@@ -26,13 +26,12 @@ import Button from "@mui/material/Button";
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
+import ApiService from "../../services/ApiService";
 
 import CreateTripDialog from "./CreateTripDialog";
 
-const LEAFLET_CSS =
-  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
-const LEAFLET_JS =
-  "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+const LEAFLET_CSS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
+const LEAFLET_JS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
 
 const clickableTextSx = {
   cursor: "pointer",
@@ -234,10 +233,7 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
     }
 
     const startPoint = route[0];
-    const map = L.map(mapRef.current).setView(
-      [startPoint.lat, startPoint.lng],
-      7
-    );
+    const map = L.map(mapRef.current).setView([startPoint.lat, startPoint.lng], 7);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap",
@@ -249,9 +245,7 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
     map.fitBounds(polylineRef.current.getBounds(), { padding: [20, 20] });
 
     markerRef.current = L.marker([startPoint.lat, startPoint.lng]).addTo(map);
-    markerRef.current
-      .bindPopup(`<b>${vehicleNumber}</b><br>Trip: ${tripId}`)
-      .openPopup();
+    markerRef.current.bindPopup(`<b>${vehicleNumber}</b><br>Trip: ${tripId}`).openPopup();
 
     mapInstanceRef.current = map;
 
@@ -277,10 +271,7 @@ const LeafletMap = ({ route, currentRouteIndex, vehicleNumber, tripId }) => {
   }, [currentPoint]);
 
   return (
-    <div
-      ref={mapRef}
-      style={{ width: "100%", height: "400px", borderRadius: "8px", zIndex: 1 }}
-    />
+    <div ref={mapRef} style={{ width: "100%", height: "400px", borderRadius: "8px", zIndex: 1 }} />
   );
 };
 
@@ -456,6 +447,71 @@ function TripDashboard({ accountId }) {
 
   const openMenu = ({ currentTarget }) => setMenu(currentTarget);
   const closeMenu = () => setMenu(null);
+  // Add these state variables inside TripDashboard
+  const [dynamicFields, setDynamicFields] = useState([]); // Array of {key, label, type}
+
+  // Fetch template on component mount or when opening Dialog
+  useEffect(() => {
+    ApiService.getTripTemplate(1).then((res) => {
+      if (res?.data?.resultCode === 1) {
+        const fieldMap = res.data.data.fieldMap;
+
+        // 1. Convert Object to Array: [{ key: "cemobile", type: "MOBILE", label: "Consignee Mobile" }]
+        const parsedFields = Object.keys(fieldMap).map((key) => {
+          const [type, label] = fieldMap[key].split("~");
+          return { key, type, label };
+        });
+
+        setDynamicFields(parsedFields);
+
+        // 2. IMPORTANT: Pre-fill createForm with these dynamic keys
+        setCreateForm((prev) => {
+          const dynamicState = { ...prev };
+          parsedFields.forEach((field) => {
+            if (!(field.key in dynamicState)) {
+              dynamicState[field.key] = ""; // Initialize dynamic field
+            }
+          });
+          return dynamicState;
+        });
+      }
+    });
+  }, []);
+
+  const handleCreateDialogSubmit = () => {
+    // 1. Build the optMap: The API expects "Label": "User Value"
+    const optMap = {};
+    dynamicFields.forEach((field) => {
+      // We use field.key to get the value from the form state,
+      // but field.label as the key for the API payload
+      optMap[field.label] = createForm[field.key] || "";
+    });
+
+    // 2. Build the final payload
+    const payload = {
+      tripsList: [
+        {
+          accid: 1,
+          imei: createForm.imei,
+          vehNum: createForm.vehicleNumber,
+          source: { id: "S1", name: createForm.source, lat: 0, lng: 0 },
+          destination: { id: "D1", name: createForm.destination, lat: 0, lng: 0 },
+          optMap: optMap, // This now contains the dynamic fields
+          status: "In Transit",
+          cts: new Date().toISOString(),
+          createdby: "Admin",
+          alerts: { maxSpeed: 80, sms: [], email: [], maxSleep: 0 },
+        },
+      ],
+    };
+
+    ApiService.createTrip(payload)
+      .then(() => {
+        alert("Trip Created successfully!");
+        handleCreateDialogClose();
+      })
+      .catch((err) => console.error("Creation failed", err));
+  };
 
   // Load Leaflet
   useEffect(() => {
@@ -484,13 +540,10 @@ function TripDashboard({ accountId }) {
           const maxStepIndex = BASE_STEPS.length - 1;
           const maxRouteIndex = t.route.length - 1;
 
-          const nextStepIndex =
-            t.progressIndex < maxStepIndex ? t.progressIndex + 1 : maxStepIndex;
-          const nextRouteIndex =
-            t.routeIndex < maxRouteIndex ? t.routeIndex + 1 : maxRouteIndex;
+          const nextStepIndex = t.progressIndex < maxStepIndex ? t.progressIndex + 1 : maxStepIndex;
+          const nextRouteIndex = t.routeIndex < maxRouteIndex ? t.routeIndex + 1 : maxRouteIndex;
 
-          const reachedEnd =
-            nextStepIndex === maxStepIndex && nextRouteIndex === maxRouteIndex;
+          const reachedEnd = nextStepIndex === maxStepIndex && nextRouteIndex === maxRouteIndex;
 
           return {
             ...t,
@@ -509,17 +562,13 @@ function TripDashboard({ accountId }) {
   const handleCloseTrip = (id) => {
     if (window.confirm("Close trip?"))
       setTrips((prev) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, status: "Closed", isPlaying: false } : t
-        )
+        prev.map((t) => (t.id === id ? { ...t, status: "Closed", isPlaying: false } : t))
       );
   };
 
-  const toggleTripDetails = (id) =>
-    setExpandedTripId((prev) => (prev === id ? null : id));
+  const toggleTripDetails = (id) => setExpandedTripId((prev) => (prev === id ? null : id));
 
-  const handleImeiClick = (imei) =>
-    alert(`Maps to Live Track: ${imei}`);
+  const handleImeiClick = (imei) => alert(`Maps to Live Track: ${imei}`);
 
   const handlePlayProgress = (id) => {
     setTrips((prev) =>
@@ -528,8 +577,7 @@ function TripDashboard({ accountId }) {
         const maxStepIndex = BASE_STEPS.length - 1;
         const maxRouteIndex = t.route.length - 1;
 
-        const atEnd =
-          t.progressIndex >= maxStepIndex && t.routeIndex >= maxRouteIndex;
+        const atEnd = t.progressIndex >= maxStepIndex && t.routeIndex >= maxRouteIndex;
         return {
           ...t,
           progressIndex: atEnd ? 0 : t.progressIndex,
@@ -541,9 +589,7 @@ function TripDashboard({ accountId }) {
   };
 
   const handlePauseProgress = (id) => {
-    setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isPlaying: false } : t))
-    );
+    setTrips((prev) => prev.map((t) => (t.id === id ? { ...t, isPlaying: false } : t)));
   };
 
   // OPEN DIALOG
@@ -568,63 +614,59 @@ function TripDashboard({ accountId }) {
     setCreateForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const handleCreateDialogSubmit = () => {
-    const requiredFields = [
-      "vehicleNumber",
-      "accountName",
-      "source",
-      "destination",
-      "imei",
-      "driver",
-    ];
-    const newErrors = {};
-    requiredFields.forEach((f) => {
-      if (!createForm[f]?.trim()) newErrors[f] = "Required";
-    });
-    if (Object.keys(newErrors).length > 0) {
-      setCreateErrors(newErrors);
-      return;
-    }
+  // const handleCreateDialogSubmit = () => {
+  //   const requiredFields = [
+  //     "vehicleNumber",
+  //     "accountName",
+  //     "source",
+  //     "destination",
+  //     "imei",
+  //     "driver",
+  //   ];
+  //   const newErrors = {};
+  //   requiredFields.forEach((f) => {
+  //     if (!createForm[f]?.trim()) newErrors[f] = "Required";
+  //   });
+  //   if (Object.keys(newErrors).length > 0) {
+  //     setCreateErrors(newErrors);
+  //     return;
+  //   }
 
-    const newTrip = {
-      id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
-      vehicleNumber: createForm.vehicleNumber,
-      accountName: createForm.accountName,
-      source: createForm.source,
-      destination: createForm.destination,
-      imei: createForm.imei,
-      createdTime: new Date().toISOString(),
-      status: "In Transit",
-      driver: createForm.driver,
-      distance: "0 km",
-      eta: "N/A",
-      route: [
-        { lat: 19.076, lng: 72.8777 },
-        { lat: 18.5204, lng: 73.8567 },
-      ],
-      progressIndex: 0,
-      routeIndex: 0,
-      isPlaying: false,
-    };
+  //   const newTrip = {
+  //     id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
+  //     vehicleNumber: createForm.vehicleNumber,
+  //     accountName: createForm.accountName,
+  //     source: createForm.source,
+  //     destination: createForm.destination,
+  //     imei: createForm.imei,
+  //     createdTime: new Date().toISOString(),
+  //     status: "In Transit",
+  //     driver: createForm.driver,
+  //     distance: "0 km",
+  //     eta: "N/A",
+  //     route: [
+  //       { lat: 19.076, lng: 72.8777 },
+  //       { lat: 18.5204, lng: 73.8567 },
+  //     ],
+  //     progressIndex: 0,
+  //     routeIndex: 0,
+  //     isPlaying: false,
+  //   };
 
-    setTrips((prev) => [newTrip, ...prev]);
-    handleCreateDialogClose();
-  };
+  //   setTrips((prev) => [newTrip, ...prev]);
+  //   handleCreateDialogClose();
+  // };
 
   const filteredTrips = useMemo(() => {
     if (!searchTerm) return trips;
     const term = searchTerm.toLowerCase();
     return trips.filter(
       (t) =>
-        t.vehicleNumber.toLowerCase().includes(term) ||
-        t.accountName.toLowerCase().includes(term)
+        t.vehicleNumber.toLowerCase().includes(term) || t.accountName.toLowerCase().includes(term)
     );
   }, [trips, searchTerm]);
 
-  const paginatedTrips = filteredTrips.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const paginatedTrips = filteredTrips.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   // Summary stats for 5 boxes
   const tripStats = useMemo(() => {
@@ -634,9 +676,7 @@ function TripDashboard({ accountId }) {
     const alerts = trips.filter((t) => t.status === "Alert").length;
     const unreachable = trips.filter((t) => t.status === "Unreachable").length;
     const atSource = trips.filter((t) => t.status === "At Source").length;
-    const atDestination = trips.filter(
-      (t) => t.status === "At Destination"
-    ).length;
+    const atDestination = trips.filter((t) => t.status === "At Destination").length;
 
     return { total, inTransit, atSource, atDestination, alerts, stopped, unreachable };
   }, [trips]);
@@ -659,8 +699,7 @@ function TripDashboard({ accountId }) {
             {/* Header */}
             <div
               style={{
-                background:
-                  "linear-gradient(135deg, #1A73E8 0%, #49a3f1 50%, #63b3ed 100%)",
+                background: "linear-gradient(135deg, #1A73E8 0%, #49a3f1 50%, #63b3ed 100%)",
                 margin: "16px",
                 marginTop: "14px",
                 padding: "14px 22px",
@@ -690,8 +729,7 @@ function TripDashboard({ accountId }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(190px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
                   gap: "18px",
                 }}
               >
@@ -759,14 +797,12 @@ function TripDashboard({ accountId }) {
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.boxShadow =
-                        "0 14px 28px rgba(15, 23, 42, 0.16)";
+                      e.currentTarget.style.boxShadow = "0 14px 28px rgba(15, 23, 42, 0.16)";
                       e.currentTarget.style.borderColor = "#bfdbfe";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(15, 23, 42, 0.06)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(15, 23, 42, 0.06)";
                       e.currentTarget.style.borderColor = "#e5e7eb";
                     }}
                   >
@@ -856,32 +892,17 @@ function TripDashboard({ accountId }) {
               </MDTypography>
 
               <MDBox display="flex" gap={1}>
-                <MDButton
-                  variant="contained"
-                  color="white"
-                  size="small"
-                  onClick={handleCreateTrip}
-                >
+                <MDButton variant="contained" color="white" size="small" onClick={handleCreateTrip}>
                   Create Trip
                 </MDButton>
-                <MDButton
-                  variant="contained"
-                  color="white"
-                  size="small"
-                  onClick={handleCreateTrip}
-                >
+                <MDButton variant="contained" color="white" size="small" onClick={handleCreateTrip}>
                   Create Bulk Trip
                 </MDButton>
               </MDBox>
             </MDBox>
 
             <MDBox p={3}>
-              <MDBox
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
-              >
+              <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <MDBox display="flex" alignItems="center">
                   <MDTypography variant="button" color="text" fontWeight="regular">
                     Showing <strong>{filteredTrips.length}</strong> active trips
@@ -961,11 +982,7 @@ function TripDashboard({ accountId }) {
                             }}
                           >
                             <TableCell align="center">
-                              <MDBox
-                                display="flex"
-                                justifyContent="center"
-                                gap={1}
-                              >
+                              <MDBox display="flex" justifyContent="center" gap={1}>
                                 <Tooltip title="Update">
                                   <IconButton
                                     size="small"
@@ -990,9 +1007,7 @@ function TripDashboard({ accountId }) {
                                     onClick={() => toggleTripDetails(trip.id)}
                                     color={isExpanded ? "success" : "default"}
                                   >
-                                    <Icon>
-                                      {isExpanded ? "expand_less" : "expand_more"}
-                                    </Icon>
+                                    <Icon>{isExpanded ? "expand_less" : "expand_more"}</Icon>
                                   </IconButton>
                                 </Tooltip>
                               </MDBox>
@@ -1026,18 +1041,12 @@ function TripDashboard({ accountId }) {
                               />
                             </TableCell>
                             <TableCell>
-                              <DataCell
-                                text={trip.createdTime.split(" ")[1]}
-                                align="center"
-                              />
+                              <DataCell text={trip.createdTime.split(" ")[1]} align="center" />
                             </TableCell>
                           </TableRow>
 
                           <TableRow>
-                            <TableCell
-                              style={{ paddingBottom: 0, paddingTop: 0 }}
-                              colSpan={8}
-                            >
+                            <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                               <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                                 <Box
                                   sx={{
@@ -1056,18 +1065,14 @@ function TripDashboard({ accountId }) {
                                         alignItems="center"
                                         mb={1}
                                       >
-                                        <MDTypography variant="h6">
-                                          Trip Progress
-                                        </MDTypography>
+                                        <MDTypography variant="h6">Trip Progress</MDTypography>
                                         <Box display="flex" gap={1}>
                                           <Button
                                             size="small"
                                             variant="contained"
                                             color="success"
                                             startIcon={<Icon>play_arrow</Icon>}
-                                            onClick={() =>
-                                              handlePlayProgress(trip.id)
-                                            }
+                                            onClick={() => handlePlayProgress(trip.id)}
                                             disabled={isPlaying}
                                           >
                                             Play
@@ -1077,9 +1082,7 @@ function TripDashboard({ accountId }) {
                                             variant="outlined"
                                             color="inherit"
                                             startIcon={<Icon>pause</Icon>}
-                                            onClick={() =>
-                                              handlePauseProgress(trip.id)
-                                            }
+                                            onClick={() => handlePauseProgress(trip.id)}
                                             disabled={!isPlaying}
                                           >
                                             Pause
@@ -1097,57 +1100,33 @@ function TripDashboard({ accountId }) {
                                       <MDTypography variant="h6" gutterBottom>
                                         Trip Details
                                       </MDTypography>
-                                      <Box
-                                        display="grid"
-                                        gridTemplateColumns="1fr 1fr"
-                                        gap={2}
-                                      >
+                                      <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
                                         <Box>
-                                          <MDTypography
-                                            variant="caption"
-                                            color="text"
-                                          >
+                                          <MDTypography variant="caption" color="text">
                                             Status
                                           </MDTypography>
                                           <MDTypography
                                             variant="body2"
                                             fontWeight="bold"
-                                            color={
-                                              trip.status === "Completed"
-                                                ? "success"
-                                                : "info"
-                                            }
+                                            color={trip.status === "Completed" ? "success" : "info"}
                                           >
                                             {trip.status}
                                           </MDTypography>
                                         </Box>
                                         <Box>
-                                          <MDTypography
-                                            variant="caption"
-                                            color="text"
-                                          >
+                                          <MDTypography variant="caption" color="text">
                                             Driver
                                           </MDTypography>
-                                          <MDTypography variant="body2">
-                                            {trip.driver}
-                                          </MDTypography>
+                                          <MDTypography variant="body2">{trip.driver}</MDTypography>
                                         </Box>
                                         <Box>
-                                          <MDTypography
-                                            variant="caption"
-                                            color="text"
-                                          >
+                                          <MDTypography variant="caption" color="text">
                                             ETA
                                           </MDTypography>
-                                          <MDTypography variant="body2">
-                                            {trip.eta}
-                                          </MDTypography>
+                                          <MDTypography variant="body2">{trip.eta}</MDTypography>
                                         </Box>
                                         <Box>
-                                          <MDTypography
-                                            variant="caption"
-                                            color="text"
-                                          >
+                                          <MDTypography variant="caption" color="text">
                                             Distance
                                           </MDTypography>
                                           <MDTypography variant="body2">
@@ -1211,6 +1190,7 @@ function TripDashboard({ accountId }) {
         open={createDialogOpen}
         form={createForm}
         errors={createErrors}
+        dynamicFields={dynamicFields} // Ensure this is passed!
         onClose={handleCreateDialogClose}
         onFieldChange={handleCreateFieldChange}
         onSubmit={handleCreateDialogSubmit}

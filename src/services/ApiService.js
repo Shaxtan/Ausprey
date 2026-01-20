@@ -6,7 +6,9 @@ const SERVICES = {
   main: process.env.REACT_APP_BASE_URL + ":8070",
   mainn: process.env.REACT_APP_BASE_URL + ":8071",
   report: process.env.REACT_APP_BASE_URL + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + ":8075", // Dashboard API base URL
+  dashboard: process.env.REACT_APP_BASE_URL + ":8075", //Dashboard
+  template: "http://103.178.113.129:8072",
+  tripOps: "http://103.178.113.129:8011",
 };
 
 axios.interceptors.response.use(
@@ -350,7 +352,7 @@ class ApiService {
         })
     );
   }
-   
+
   testData(accountId, imei, header = true) {
     // Update the hardcoded URL to use the passed parameters
     return this.postRequest(
@@ -413,6 +415,13 @@ class ApiService {
         callAlert("Error", error?.message || "Failed to fetch DB alerts");
         throw error;
       });
+  }
+  getTripTemplate(id = 1) {
+    return this.getRequest(`/trip-template/${id}`, null, true, SERVICES.template);
+  }
+
+  createTrip(payload) {
+    return this.postRequest("/trips/create", payload, true, SERVICES.tripOps);
   }
 }
 

@@ -16,6 +16,7 @@ const CreateTripDialog = ({
   onClose,
   onFieldChange,
   onSubmit,
+  dynamicFields = [], // Received from Dashboard
   title = "Create Trip",
 }) => {
   return (
@@ -23,6 +24,7 @@ const CreateTripDialog = ({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent dividers>
         <Grid container spacing={2} mt={0.5}>
+          {/* Static Fields */}
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
@@ -31,40 +33,6 @@ const CreateTripDialog = ({
               onChange={onFieldChange("vehicleNumber")}
               size="small"
               error={!!errors.vehicleNumber}
-              helperText={errors.vehicleNumber}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Account Name"
-              value={form.accountName}
-              onChange={onFieldChange("accountName")}
-              size="small"
-              error={!!errors.accountName}
-              helperText={errors.accountName}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Source"
-              value={form.source}
-              onChange={onFieldChange("source")}
-              size="small"
-              error={!!errors.source}
-              helperText={errors.source}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Destination"
-              value={form.destination}
-              onChange={onFieldChange("destination")}
-              size="small"
-              error={!!errors.destination}
-              helperText={errors.destination}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -75,20 +43,43 @@ const CreateTripDialog = ({
               onChange={onFieldChange("imei")}
               size="small"
               error={!!errors.imei}
-              helperText={errors.imei}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Driver Name"
-              value={form.driver}
-              onChange={onFieldChange("driver")}
+              label="Source"
+              value={form.source}
+              onChange={onFieldChange("source")}
               size="small"
-              error={!!errors.driver}
-              helperText={errors.driver}
             />
           </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Destination"
+              value={form.destination}
+              onChange={onFieldChange("destination")}
+              size="small"
+            />
+          </Grid>
+
+          {/* Dynamic Fields from FieldMap */}
+          {dynamicFields.length > 0 &&
+            dynamicFields.map((field) => (
+              <Grid item xs={12} sm={6} key={field.key}>
+                <TextField
+                  fullWidth
+                  label={field.label} // Shows "Consignee Mobile"
+                  value={form[field.key] || ""} // Matches the state key "cemobile"
+                  onChange={onFieldChange(field.key)}
+                  size="small"
+                  placeholder={field.type} // Shows "MOBILE"
+                  error={!!errors[field.key]}
+                  helperText={errors[field.key]}
+                />
+              </Grid>
+            ))}
         </Grid>
       </DialogContent>
       <DialogActions>
@@ -96,7 +87,7 @@ const CreateTripDialog = ({
           Cancel
         </Button>
         <Button onClick={onSubmit} variant="contained" color="primary">
-          Create 
+          Create
         </Button>
       </DialogActions>
     </Dialog>
@@ -105,97 +96,19 @@ const CreateTripDialog = ({
 
 CreateTripDialog.propTypes = {
   open: PropTypes.bool.isRequired,
-  form: PropTypes.shape({
-    vehicleNumber: PropTypes.string,
-    accountName: PropTypes.string,
-    source: PropTypes.string,
-    destination: PropTypes.string,
-    imei: PropTypes.string,
-    driver: PropTypes.string,
-  }).isRequired,
+  form: PropTypes.object.isRequired,
   errors: PropTypes.object.isRequired,
   onClose: PropTypes.func.isRequired,
   onFieldChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
+  dynamicFields: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired, // e.g., "cemobile"
+      label: PropTypes.string.isRequired, // e.g., "Consignee Mobile"
+      type: PropTypes.string.isRequired, // e.g., "MOBILE"
+    })
+  ),
   title: PropTypes.string,
 };
 
 export default CreateTripDialog;
-
-
-
-// import React from "react";
-// import PropTypes from "prop-types";
-
-// import Dialog from "@mui/material/Dialog";
-// import DialogTitle from "@mui/material/DialogTitle";
-// import DialogContent from "@mui/material/DialogContent";
-// import DialogActions from "@mui/material/DialogActions";
-// import Grid from "@mui/material/Grid";
-// import TextField from "@mui/material/TextField";
-// import Button from "@mui/material/Button";
-
-// const CreateTripDialog = ({
-//   open,
-//   form,
-//   errors,
-//   fields,
-//   onClose,
-//   onFieldChange,
-//   onSubmit,
-//   title = "Create Trip",
-// }) => {
-//   return (
-//     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-//       <DialogTitle>{title}</DialogTitle>
-//       <DialogContent dividers>
-//         <Grid container spacing={2} mt={0.5}>
-//           {fields.map((field) => (
-//             <Grid key={field.name} item xs={12} sm={6}>
-//               <TextField
-//                 fullWidth
-//                 label={field.label}
-//                 value={form[field.name] ?? ""}
-//                 onChange={onFieldChange(field.name)}
-//                 size="small"
-//                 error={!!errors[field.name]}
-//                 helperText={errors[field.name] || " "}
-//                 required={!!field.required}
-//               />
-//             </Grid>
-//           ))}
-//         </Grid>
-//       </DialogContent>
-//       <DialogActions>
-//         <Button onClick={onClose} color="inherit">
-//           Cancel
-//         </Button>
-//         <Button onClick={onSubmit} variant="contained" color="primary">
-//           Create
-//         </Button>
-//       </DialogActions>
-//     </Dialog>
-//   );
-// };
-
-// CreateTripDialog.propTypes = {
-//   open: PropTypes.bool.isRequired,
-//   // form object like { vehnum: '', imei: '', source: '', ... }
-//   form: PropTypes.object.isRequired,
-//   // errors object like { vehnum: 'Required', imei: '', ... }
-//   errors: PropTypes.object.isRequired,
-//   // fields from admin config, e.g. [{ name: 'vehnum', label: 'Vehicle Number', required: true }]
-//   fields: PropTypes.arrayOf(
-//     PropTypes.shape({
-//       name: PropTypes.string.isRequired,   // matches API key e.g. "vehnum"
-//       label: PropTypes.string.isRequired,  // label to show in UI
-//       required: PropTypes.bool,            // whether to validate as required
-//     })
-//   ).isRequired,
-//   onClose: PropTypes.func.isRequired,
-//   onFieldChange: PropTypes.func.isRequired, // (name) => (e) => {}
-//   onSubmit: PropTypes.func.isRequired,
-//   title: PropTypes.string,
-// };
-
-// export default CreateTripDialog;
