@@ -461,6 +461,10 @@ class ApiService {
         return [];
       });
   }
+  // Add this inside the ApiService class in ApiService.js
+  getLiveLoadGraph(imei) {
+    return this.postRequest(`/reports/live-load-graph?IMEI=861076080488743`);
+  }
 }
 
 export { SERVICES };

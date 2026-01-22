@@ -7,6 +7,7 @@ import MDBox from "assets/components/MDBox";
 import LiveTrack from "pages/LiveTrack/LiveTrack";
 import Alerts from "../src/pages/Alerts/Alerts";
 import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
+import LiveLoadGraph from "../src/pages/LoadCellReport/LiveLoadGraph";
 import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 import TripDashboard2 from "pages/TripDashboard/TripDashboard2";
 // Material Dashboard 2 React layouts
@@ -143,6 +144,15 @@ const routes = [
     icon: <Icon fontSize="small">scale</Icon>,
     route: "/load-cell-report",
     component: <LoadCellReport />,
+    parent: "reports",
+  },
+  {
+    type: "collapse",
+    name: "Live load Sensor",
+    key: "live-load-cell-report",
+    icon: <Icon fontSize="small">scale</Icon>,
+    route: "/live-load-cell-report",
+    component: <LiveLoadGraph />,
     parent: "reports",
   },
 
