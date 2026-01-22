@@ -229,12 +229,13 @@ class ApiService {
       SERVICES.dashboard
     )
       .then((res) => {
-        // Normalise to the same shape the hook expects
+        // FIX: Access the data directly from the API structure you shared
         const list = res?.data?.data?.imeiVehnumList || [];
 
         return {
           ...res,
           data: {
+            // Keep this structure if your Dashboard expect 'response.vehicles'
             response: {
               vehicles: list.map((item) => ({
                 imei: item.imei,
@@ -435,6 +436,30 @@ class ApiService {
 
   createTrip(payload) {
     return this.postRequest("/trips/create", payload, true, SERVICES.tripOps);
+  }
+  // Add this inside the ApiService class
+  getGeofences(pageNo = 0) {
+    // Use a direct axios call if you need a specific base URL not in SERVICES
+    // or add GEOFENCE: "http://103.178.113.129:8012" to your SERVICES object
+    const GEOFENCE_BASE = "http://103.178.113.129:8012";
+
+    return this.postRequest(
+      "/geo-fence/view-all",
+      { pageNo },
+      true, // Set to true if it needs Auth header, false if not
+      GEOFENCE_BASE
+    )
+      .then((res) => {
+        // Return only the data array for easier use in the component
+        if (res?.data?.resultCode === 1) {
+          return res.data.data; // This is the list of geofences
+        }
+        return [];
+      })
+      .catch((err) => {
+        console.error("Geofence API Error:", err);
+        return [];
+      });
   }
 }
 

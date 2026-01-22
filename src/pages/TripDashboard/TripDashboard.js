@@ -449,6 +449,26 @@ function TripDashboard({ accountId }) {
   const closeMenu = () => setMenu(null);
   // Add these state variables inside TripDashboard
   const [dynamicFields, setDynamicFields] = useState([]); // Array of {key, label, type}
+  // Inside TripDashboard component
+  const [imeiList, setImeiList] = useState([]);
+  const [geofenceList, setGeofenceList] = useState([]);
+
+  useEffect(() => {
+    ApiService.getImeiDropdown(accountId)
+      .then((res) => {
+        // This matches the normalized object from the service above
+        const list = res?.data?.response?.vehicles || [];
+        console.log("Fetched IMEIs:", list); // Debugging line
+        setImeiList(list);
+      })
+      .catch((err) => console.error("IMEI fetch error:", err));
+  }, [accountId]);
+  useEffect(() => {
+    // Fetch Geofences on mount
+    ApiService.getGeofences(0).then((data) => {
+      setGeofenceList(data);
+    });
+  }, []);
 
   // Fetch template on component mount or when opening Dialog
   // Inside TripDashboard component
@@ -480,38 +500,112 @@ function TripDashboard({ accountId }) {
   }, [accountId]); // Re-run if accountId prop changes
 
   const handleCreateDialogSubmit = () => {
-    // 1. Build the optMap: The API expects "Label": "User Value"
-    const optMap = {};
+    const newErrors = {};
+
+    // 1. Static Validations
+    if (!createForm.vehicleNumber?.trim()) newErrors.vehicleNumber = "Vehicle Number is required";
+    if (!createForm.imei) newErrors.imei = "Please select an IMEI";
+
+    // These now store the Geofence ID from the dropdown
+    if (!createForm.source) newErrors.source = "Source is required";
+    if (!createForm.destination) newErrors.destination = "Destination is required";
+
+    // 2. Dynamic Validations based on Datatype
     dynamicFields.forEach((field) => {
-      // We use field.key to get the value from the form state,
-      // but field.label as the key for the API payload
-      optMap[field.label] = createForm[field.key] || "";
+      const value = createForm[field.key]?.toString().trim();
+      const type = field.type.toUpperCase();
+
+      if (!value) {
+        newErrors[field.key] = `${field.label} is required`;
+      } else {
+        if (type === "MOBILE") {
+          const mobileRegex = /^[6-9]\d{9}$/;
+          if (!mobileRegex.test(value))
+            newErrors[field.key] = "Enter a valid 10-digit mobile number";
+        } else if (type === "OTP") {
+          const otpRegex = /^\d{4,6}$/;
+          if (!otpRegex.test(value)) newErrors[field.key] = "OTP must be 4 to 6 digits";
+        } else if (type === "DATETIME") {
+          if (isNaN(Date.parse(value)))
+            newErrors[field.key] = "Please select a valid date and time";
+        } else if (type === "GEOFENCE") {
+          if (value === "") newErrors[field.key] = `Please select a valid ${field.label}`;
+        }
+      }
     });
 
-    // 2. Build the final payload
+    if (Object.keys(newErrors).length > 0) {
+      setCreateErrors(newErrors);
+      return;
+    }
+
+    // 3. Lookup Geofence Objects for Source and Destination
+    // We find the full object to get both the ID and the Name for the payload
+    const selectedSource = geofenceList.find((g) => g.id === createForm.source);
+    const selectedDest = geofenceList.find((g) => g.id === createForm.destination);
+
+    // 4. Build the optMap (For Dynamic Fields)
+    const optMap = {};
+    dynamicFields.forEach((field) => {
+      const val = createForm[field.key] || "";
+      const type = field.type.toUpperCase();
+
+      if (type === "GEOFENCE") {
+        // For dynamic geofence fields, if you want to send the Name instead of ID:
+        const geoObj = geofenceList.find((g) => g.id === val);
+        optMap[field.label] = geoObj ? geoObj.name : val;
+      } else {
+        optMap[field.label] = val;
+      }
+    });
+
+    // 5. Construct Final Payload
     const payload = {
       tripsList: [
         {
-          accid: 1,
+          accid: accountId || 1,
           imei: createForm.imei,
           vehNum: createForm.vehicleNumber,
-          source: { id: "S1", name: createForm.source, lat: 0, lng: 0 },
-          destination: { id: "D1", name: createForm.destination, lat: 0, lng: 0 },
-          optMap: optMap, // This now contains the dynamic fields
+          source: {
+            id: selectedSource?.id || "S1", // Actual Geofence ID
+            name: selectedSource?.name || "", // Actual Geofence Name
+            lat: 0,
+            lng: 0,
+          },
+          destination: {
+            id: selectedDest?.id || "D1", // Actual Geofence ID
+            name: selectedDest?.name || "", // Actual Geofence Name
+            lat: 0,
+            lng: 0,
+          },
+          optMap: optMap,
           status: "In Transit",
           cts: new Date().toISOString(),
           createdby: "Admin",
-          alerts: { maxSpeed: 80, sms: [], email: [], maxSleep: 0 },
+          alerts: {
+            maxSpeed: 80,
+            sms: [],
+            email: [],
+            maxSleep: 0,
+          },
         },
       ],
     };
 
+    // 6. API Call
     ApiService.createTrip(payload)
-      .then(() => {
-        alert("Trip Created successfully!");
-        handleCreateDialogClose();
+      .then((res) => {
+        if (res?.data?.resultCode === 1 || res?.status === 200) {
+          alert("Trip Created successfully!");
+          handleCreateDialogClose();
+        } else {
+          alert(res?.data?.message || "Failed to create trip");
+        }
       })
-      .catch((err) => console.error("Creation failed", err));
+      .catch((err) => {
+        console.error("Creation failed", err);
+        alert("Error creating trip. Please check console.");
+      });
   };
 
   // Load Leaflet
@@ -1192,6 +1286,8 @@ function TripDashboard({ accountId }) {
         form={createForm}
         errors={createErrors}
         dynamicFields={dynamicFields} // Ensure this is passed!
+        geofenceList={geofenceList}
+        imeiList={imeiList}
         onClose={handleCreateDialogClose}
         onFieldChange={handleCreateFieldChange}
         onSubmit={handleCreateDialogSubmit}
