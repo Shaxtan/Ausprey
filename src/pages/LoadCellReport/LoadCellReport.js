@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom"; // <-- ADDED: Navigate hook for routing
 import useLoadCellReportLogic from "./useLoadCellReportLogic";
-
+// Add this near your other imports
+import ReactSelect from "react-select";
 // Material Dashboard 2 React components
 import MDBox from "../../../src/assets/components/MDBox";
 import MDTypography from "../../../src/assets/components/MDTypography";
@@ -119,12 +120,13 @@ function LoadCellReport() {
 
     setTimeout(() => {
       let botResponseText = "";
-      
+
       if (option === "Alert Logs") {
         botResponseText = "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
         navigate("/alerts"); // <-- REDIRECT TO ALERTS
       } else if (option === "Track/Play") {
-        botResponseText = "You selected **Track/Play**. Redirecting you to the device tracking view now...";
+        botResponseText =
+          "You selected **Track/Play**. Redirecting you to the device tracking view now...";
         navigate("/notifications"); // <-- REDIRECT TO NOTIFICATIONS/TRACKING
       } else {
         botResponseText = `You selected **${option}**. I will now open the corresponding dashboard view for this device.`;
@@ -226,6 +228,25 @@ function LoadCellReport() {
     borderBottomLeftRadius: type === "user" ? "18px" : "2px",
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
+  // 1. Transform imeis for React Select
+  const imeiOptions = imeis.map((option) => ({
+    value: option.value,
+    label: option.label,
+  }));
+
+  // 2. Custom Styles for React Select
+  const customSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      minHeight: "40px",
+      borderRadius: "4px",
+      borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
+      boxShadow: "none",
+      "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
+    }),
+    placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
+    singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
+  };
 
   // --- DYNAMIC AVERAGE COLOR LOGIC (UNCHANGED) ---
   const getAverageColorConfig = () => {
@@ -276,29 +297,24 @@ function LoadCellReport() {
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
                     {/* IMEI Input */}
+                    {/* Searchable IMEI Input */}
                     <Grid item xs={12} md={3}>
-                      <FormControl fullWidth size="small" variant="outlined">
-                        <InputLabel id="imei-select-label">Select IMEI</InputLabel>
-                        <Select
-                          labelId="imei-select-label"
-                          id="imeiSelect"
-                          value={imei}
-                          label="Select IMEI"
-                          onChange={(e) => setImei(e.target.value)}
-                          required
-                          size="small"
-                          sx={{ height: 40 }}
-                        >
-                          <MenuItem value="" disabled>
-                            -- Select IMEI --
-                          </MenuItem>
-                          {imeis.map((option) => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <MDBox mb={0.5}>
+                        <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
+                          Select IMEI
+                        </MDTypography>
+                      </MDBox>
+                      <ReactSelect
+                        options={imeiOptions}
+                        value={imeiOptions.find((opt) => opt.value === imei) || null}
+                        onChange={(selected) => {
+                          setImei(selected ? selected.value : "");
+                        }}
+                        placeholder="Search IMEI..."
+                        isClearable
+                        isSearchable
+                        styles={customSelectStyles}
+                      />
                     </Grid>
 
                     {/* From Date-Time */}
