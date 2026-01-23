@@ -154,16 +154,16 @@ const CreateTripDialog = ({
               display="flex"
               flexDirection="column"
               gap={0.3}
-              mt={-2.1} // slightly move up, but less extreme
+              mt={0} // slightly move up, but less extreme
             >
-              <MDTypography
+              {/* <MDTypography
                 variant="caption"
                 fontWeight="bold"
                 color="text"
                 ml={0.5}
               >
                 Select IMEI *
-              </MDTypography>
+              </MDTypography> */}
 
              <Select
   options={imeiOptions}
@@ -191,7 +191,7 @@ const CreateTripDialog = ({
       ...base,
       fontSize: "0.875rem",
       color: "#adb5bd",
-      marginTop: "-2px",
+      marginTop: "2px",
     }),
     singleValue: (base) => ({
       ...base,
