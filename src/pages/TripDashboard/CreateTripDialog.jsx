@@ -22,16 +22,18 @@ const CreateTripDialog = ({
   onSubmit,
   dynamicFields = [],
   imeiList = [],
-  geofenceList = [], // New prop for Geofence dropdown
+  geofenceList = [],
   title = "Create Trip",
 }) => {
   /**
    * Helper function to render fields based on their "type"
+   * and keep styling uniform with other inputs.
    */
   const renderField = (field) => {
     const type = field.type.toUpperCase();
+    const isDateTime = type === "DATETIME";
 
-    // 1. Handle GEOFENCE Type as a Dropdown
+    // GEOFENCE as dropdown
     if (type === "GEOFENCE") {
       return (
         <TextField
@@ -43,55 +45,82 @@ const CreateTripDialog = ({
           onChange={onFieldChange(field.key)}
           error={!!errors[field.key]}
           helperText={errors[field.key] || `Select ${field.label}`}
+          InputLabelProps={{ shrink: true }}
+          FormHelperTextProps={{ sx: { marginLeft: 0 } }}
+          sx={{
+            "& .MuiInputBase-root": {
+              height: 40,
+            },
+          }}
         >
           {geofenceList.map((geo) => (
             <MenuItem key={geo.id} value={geo.name}>
               {geo.name}
             </MenuItem>
           ))}
-          {geofenceList.length === 0 && <MenuItem disabled>No Geofences Available</MenuItem>}
+          {geofenceList.length === 0 && (
+            <MenuItem disabled>No Geofences Available</MenuItem>
+          )}
         </TextField>
       );
     }
 
-    // 2. Handle DATETIME and Standard TEXT types
-    const isDateTime = type === "DATETIME";
-
+    // DATETIME / TEXT
     return (
       <TextField
         fullWidth
         size="small"
         label={field.label}
-        // If it's a date-time type, we use the native HTML5 picker
         type={isDateTime ? "datetime-local" : "text"}
         value={form[field.key] || ""}
         onChange={onFieldChange(field.key)}
         error={!!errors[field.key]}
         helperText={errors[field.key]}
         placeholder={field.type}
-        // Required for datetime-local to display the label correctly
-        InputLabelProps={isDateTime ? { shrink: true } : {}}
+        InputLabelProps={isDateTime ? { shrink: true } : { shrink: true }}
+        FormHelperTextProps={{ sx: { marginLeft: 0 } }}
+        sx={{
+          "& .MuiInputBase-root": {
+            height: 40,
+          },
+        }}
       />
     );
   };
+
   const imeiOptions = imeiList.map((option) => ({
     value: option.imei,
     label: option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei,
   }));
 
-  // 2. Custom styles to match Material UI "Small" size
+  // Custom styles for react-select to mimic MUI small TextField
   const customSelectStyles = {
     control: (base, state) => ({
       ...base,
-      minHeight: "40px",
-      borderRadius: "4px",
+      minHeight: 32,
+      height: 32,
+      borderRadius: 4,
+      fontSize: 12,
       borderColor: state.isFocused ? "#1A73E8" : "#c4c4c4",
       boxShadow: state.isFocused ? "0 0 0 1px #1A73E8" : "none",
       "&:hover": {
         borderColor: "#000",
       },
     }),
-    menuPortal: (base) => ({ ...base, zIndex: 9999 }), // Ensures dropdown isn't cut off
+    valueContainer: (base) => ({
+      ...base,
+      padding: "0 6px",
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+    }),
+    indicatorsContainer: (base) => ({
+      ...base,
+      padding: 4,
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
   };
 
   return (
@@ -99,7 +128,7 @@ const CreateTripDialog = ({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent dividers>
         <Grid container spacing={2} mt={0.5}>
-          {/* Static Fields */}
+          {/* Vehicle Number */}
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
@@ -109,32 +138,61 @@ const CreateTripDialog = ({
               size="small"
               error={!!errors.vehicleNumber}
               helperText={errors.vehicleNumber}
+              InputLabelProps={{ shrink: true }}
+              FormHelperTextProps={{ sx: { marginLeft: 0 } }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  height: 40,
+                },
+              }}
             />
           </Grid>
 
-          {/* Updated IMEI field to be a Dropdown */}
+          {/* IMEI (react-select) */}
           <Grid item xs={12} sm={6}>
-            <MDTypography variant="caption" fontWeight="bold" color="text" ml={0.5}>
-              Select IMEI *
-            </MDTypography>
-            <Select
-              options={imeiOptions}
-              value={imeiOptions.find((opt) => opt.value === form.imei) || null}
-              onChange={(selected) => {
-                // Simulate the event structure your onFieldChange expects
-                onFieldChange("imei")({ target: { value: selected ? selected.value : "" } });
-              }}
-              placeholder="Search vehicle or IMEI..."
-              isClearable
-              isSearchable
-              menuPortalTarget={document.body}
-              styles={customSelectStyles}
-            />
-            {errors.imei && (
-              <MDTypography variant="caption" color="error" ml={0.5}>
-                {errors.imei}
+            <MDBox
+              display="flex"
+              flexDirection="column"
+              gap={0.3}
+              mt={-1.8} // slightly move up, but less extreme
+            >
+              <MDTypography
+                variant="caption"
+                fontWeight="bold"
+                color="text"
+                ml={0.5}
+              >
+                Select IMEI *
               </MDTypography>
-            )}
+
+              <Select
+                options={imeiOptions}
+                value={
+                  imeiOptions.find((opt) => opt.value === form.imei) || null
+                }
+                onChange={(selected) => {
+                  onFieldChange("imei")({
+                    target: { value: selected ? selected.value : "" },
+                  });
+                }}
+                placeholder="Search vehicle or IMEI..."
+                isClearable
+                isSearchable
+                menuPortalTarget={document.body}
+                styles={customSelectStyles}
+              />
+
+              {errors.imei && (
+                <MDTypography
+                  variant="caption"
+                  color="error"
+                  ml={0.5}
+                  mt={0.2}
+                >
+                  {errors.imei}
+                </MDTypography>
+              )}
+            </MDBox>
           </Grid>
 
           {/* Source Dropdown */}
@@ -143,11 +201,22 @@ const CreateTripDialog = ({
               select
               fullWidth
               label="Source"
-              value={form.source || ""} // Storing ID here
+              value={form.source || ""}
               onChange={onFieldChange("source")}
               size="small"
               error={!!errors.source}
               helperText={errors.source}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              FormHelperTextProps={{
+                sx: { marginLeft: 0 },
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  height: 40,
+                },
+              }}
             >
               {geofenceList.map((geo) => (
                 <MenuItem key={geo.id} value={geo.id}>
@@ -163,11 +232,22 @@ const CreateTripDialog = ({
               select
               fullWidth
               label="Destination"
-              value={form.destination || ""} // Storing ID here
+              value={form.destination || ""}
               onChange={onFieldChange("destination")}
               size="small"
               error={!!errors.destination}
               helperText={errors.destination}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              FormHelperTextProps={{
+                sx: { marginLeft: 0 },
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  height: 40,
+                },
+              }}
             >
               {geofenceList.map((geo) => (
                 <MenuItem key={geo.id} value={geo.id}>
@@ -177,7 +257,7 @@ const CreateTripDialog = ({
             </TextField>
           </Grid>
 
-          {/* Dynamic Fields with Datatype Validations/Pickers/Dropdowns */}
+          {/* Dynamic Fields from API */}
           {dynamicFields.length > 0 &&
             dynamicFields.map((field) => (
               <Grid item xs={12} sm={6} key={field.key}>
@@ -206,7 +286,7 @@ CreateTripDialog.propTypes = {
   onFieldChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   imeiList: PropTypes.array,
-  geofenceList: PropTypes.array, // Added PropTypes for geofenceList
+  geofenceList: PropTypes.array,
   dynamicFields: PropTypes.arrayOf(
     PropTypes.shape({
       key: PropTypes.string.isRequired,

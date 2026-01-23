@@ -298,24 +298,61 @@ function LoadCellReport() {
                   <Grid container spacing={3} alignItems="flex-end">
                     {/* IMEI Input */}
                     {/* Searchable IMEI Input */}
-                    <Grid item xs={12} md={3}>
-                      <MDBox mb={0.5}>
-                        <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
-                          Select IMEI
-                        </MDTypography>
-                      </MDBox>
-                      <ReactSelect
-                        options={imeiOptions}
-                        value={imeiOptions.find((opt) => opt.value === imei) || null}
-                        onChange={(selected) => {
-                          setImei(selected ? selected.value : "");
-                        }}
-                        placeholder="Search IMEI..."
-                        isClearable
-                        isSearchable
-                        styles={customSelectStyles}
-                      />
-                    </Grid>
+                   <Grid item xs={12} md={3}>
+  <MDBox mb={0.5}>
+    <MDTypography
+      variant="caption"
+      display="block"
+      mb={0.5}
+      fontWeight="bold"
+    >
+      Select IMEI
+    </MDTypography>
+  </MDBox>
+
+  <ReactSelect
+    options={imeiOptions}
+    value={imeiOptions.find((opt) => opt.value === imei) || null}
+    onChange={(selected) => {
+      setImei(selected ? selected.value : "");
+    }}
+    placeholder="Search IMEI..."
+    isClearable
+    isSearchable
+    styles={{
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,          // smaller box
+        height: 30,
+        borderRadius: 4,
+        fontSize: 12,
+        borderColor: state.isFocused ? "#1A73E8" : "#c4c4c4",
+        boxShadow: state.isFocused ? "0 0 0 1px #1A73E8" : "none",
+        "&:hover": {
+          borderColor: "#000",
+        },
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        padding: "0 6px",
+      }),
+      input: (base) => ({
+        ...base,
+        margin: 0,
+        padding: 0,
+      }),
+      indicatorsContainer: (base) => ({
+        ...base,
+        padding: 4,
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999,
+      }),
+    }}
+  />
+</Grid>
+
 
                     {/* From Date-Time */}
                     <Grid item xs={12} md={3}>

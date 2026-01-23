@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // <-- ADDED: Navigate hook for routing
+import { useNavigate } from "react-router-dom";
 import useLoadCellReportLogic from "./useLiveLoadGraphLogic";
-// Add this near your other imports
 import ReactSelect from "react-select";
+
 // Material Dashboard 2 React components
 import MDBox from "../../../src/assets/components/MDBox";
 import MDTypography from "../../../src/assets/components/MDTypography";
@@ -43,7 +43,8 @@ import {
 import { exportCSV, exportExcel, exportPDF } from "../../../src/pages/utils/exportUtils";
 
 // Chatbot Icon
-const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
+const CHATBOT_ICON_PLACEHOLDER =
+  "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
 function LiveLoadGraph() {
   const {
@@ -62,9 +63,7 @@ function LiveLoadGraph() {
     handleSubmit,
   } = useLoadCellReportLogic();
 
-  // Initialize navigation hook
-  const navigate = useNavigate(); // <-- Initialized here
-
+  const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
 
   // CHATBOT LOGIC
@@ -109,7 +108,6 @@ function LiveLoadGraph() {
     }, 1000);
   };
 
-  // 🚀 MODIFIED FUNCTION: Added redirection logic for both Alert Logs and Track/Play
   const handleOptionSelect = (option) => {
     const newUserMessage = { type: "user", text: option };
     setMessages((prev) => [...prev, newUserMessage]);
@@ -118,12 +116,13 @@ function LiveLoadGraph() {
       let botResponseText = "";
 
       if (option === "Alert Logs") {
-        botResponseText = "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
-        navigate("/alerts"); // <-- REDIRECT TO ALERTS
+        botResponseText =
+          "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
+        navigate("/alerts");
       } else if (option === "Track/Play") {
         botResponseText =
           "You selected **Track/Play**. Redirecting you to the device tracking view now...";
-        navigate("/notifications"); // <-- REDIRECT TO NOTIFICATIONS/TRACKING
+        navigate("/notifications");
       } else {
         botResponseText = `You selected **${option}**. I will now open the corresponding dashboard view for this device.`;
       }
@@ -140,7 +139,7 @@ function LiveLoadGraph() {
     }, 1000);
   };
 
-  // CHATBOT STYLES (UNCHANGED)
+  // CHATBOT STYLES
   const iconStyle = {
     position: "fixed",
     bottom: "30px",
@@ -224,27 +223,28 @@ function LiveLoadGraph() {
     borderBottomLeftRadius: type === "user" ? "18px" : "2px",
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
-  // 1. Transform imeis for React Select
+
+  // ReactSelect options and styles
   const imeiOptions = imeis.map((option) => ({
     value: option.value,
     label: option.label,
   }));
 
-  // 2. Custom Styles for React Select
   const customSelectStyles = {
     control: (base, state) => ({
       ...base,
-      minHeight: "40px",
-      borderRadius: "4px",
+      minHeight: 40,
+      borderRadius: 4,
       borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
       boxShadow: "none",
       "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
+      fontSize: "0.875rem",
     }),
     placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
     singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
   };
 
-  // --- DYNAMIC AVERAGE COLOR LOGIC (UNCHANGED) ---
+  // Average color config
   const getAverageColorConfig = () => {
     if (chartData.length === 0) return null;
 
@@ -274,13 +274,14 @@ function LiveLoadGraph() {
     }
   };
 
-  const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
+  const averageConfig =
+    showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
 
   return (
     <DashboardLayout>
       <DashboardNavbar />
       <MDBox py={3}>
-        {/* --- Search Form Card --- */}
+        {/* --- Search + Format + Download in ONE row --- */}
         <Grid container spacing={3} mb={4}>
           <Grid item xs={12}>
             <Card>
@@ -292,11 +293,15 @@ function LiveLoadGraph() {
               <MDBox p={3}>
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
-                    {/* IMEI Input */}
-                    {/* Searchable IMEI Input */}
+                    {/* Select IMEI */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
-                        <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
+                        <MDTypography
+                          variant="caption"
+                          display="block"
+                          mb={0.5}
+                          fontWeight="bold"
+                        >
                           Select IMEI
                         </MDTypography>
                       </MDBox>
@@ -313,40 +318,18 @@ function LiveLoadGraph() {
                       />
                     </Grid>
 
-                    {/* <Grid item xs={12} md={3}>
-                      <MDTypography variant="caption" display="block" mb={0.5}>
-                        From Date-Time
-                      </MDTypography>
-                      <TextField
-                        type="datetime-local"
-                        fullWidth
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        required
-                        InputLabelProps={{ shrink: true }}
-                        variant="outlined"
-                        size="small"
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} md={3}>
-                      <MDTypography variant="caption" display="block" mb={0.5}>
-                        To Date-Time
-                      </MDTypography>
-                      <TextField
-                        type="datetime-local"
-                        fullWidth
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        required
-                        InputLabelProps={{ shrink: true }}
-                        variant="outlined"
-                        size="small"
-                      />
-                    </Grid> */}
-
-                    {/* Checkboxes + Search */}
-                    <Grid item xs={12} md={3} sx={{ display: "flex", alignItems: "center" }}>
+                    {/* Average, Data, Search */}
+                    <Grid
+                      item
+                      xs={12}
+                      md={4}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -359,7 +342,6 @@ function LiveLoadGraph() {
                             Average
                           </MDTypography>
                         }
-                        sx={{ mr: 1 }}
                       />
                       <FormControlLabel
                         control={
@@ -373,80 +355,100 @@ function LiveLoadGraph() {
                             Data
                           </MDTypography>
                         }
-                        sx={{ mr: 2 }}
                       />
                       <MDButton type="submit" variant="gradient" color="info">
                         Search
                       </MDButton>
                     </Grid>
+
+                    {/* Format + Download aligned to right end */}
+                    <Grid
+                      item
+                      xs={12}
+                      md={5}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {showDownloadOptions && chartData.length > 0 && (
+                        <>
+                          <MDTypography variant="button" fontWeight="bold">
+                            Format:
+                          </MDTypography>
+
+                          <FormControl
+                            variant="outlined"
+                            size="small"
+                            sx={{ minWidth: 150 }}
+                          >
+                            <InputLabel id="format-select-label">
+                              Select Format
+                            </InputLabel>
+                            <Select
+                              labelId="format-select-label"
+                              id="formatSelect"
+                              value={exportFormat}
+                              label="Select Format"
+                              onChange={(e) => setExportFormat(e.target.value)}
+                              size="small"
+                              sx={{ height: 40 }}
+                            >
+                              <MenuItem value="">-- Select Format --</MenuItem>
+                              <MenuItem value="csv">CSV</MenuItem>
+                              <MenuItem value="excel">Excel</MenuItem>
+                              <MenuItem value="pdf">PDF</MenuItem>
+                            </Select>
+                          </FormControl>
+
+                          <MDButton
+                            type="button"
+                            variant="gradient"
+                            color="success"
+                            disabled={!exportFormat || downloading}
+                            onClick={async () => {
+                              if (!chartData || chartData.length === 0) {
+                                alert("No data to export.");
+                                return;
+                              }
+
+                              setDownloading(true);
+                              const baseName = `LoadCellReport_${
+                                imei || "data"
+                              }_${Date.now()}`;
+
+                              try {
+                                if (exportFormat === "csv") {
+                                  exportCSV(chartData, `${baseName}.csv`);
+                                } else if (exportFormat === "excel") {
+                                  exportExcel(chartData, `${baseName}.xlsx`);
+                                } else if (exportFormat === "pdf") {
+                                  await exportPDF(chartData, `${baseName}.pdf`);
+                                }
+                              } catch (err) {
+                                console.error("Export failed:", err);
+                                alert("Export failed. Please try again.");
+                              } finally {
+                                setDownloading(false);
+                              }
+                            }}
+                          >
+                            {downloading ? (
+                              <>
+                                <CircularProgress size={18} sx={{ mr: 1 }} />
+                                Generating...
+                              </>
+                            ) : (
+                              "Download"
+                            )}
+                          </MDButton>
+                        </>
+                      )}
+                    </Grid>
                   </Grid>
-
-                  {/* --- Download Options --- */}
-                  {showDownloadOptions && chartData.length > 0 && (
-                    <MDBox mt={4} display="flex" justifyContent="flex-end" alignItems="center">
-                      <MDTypography variant="button" fontWeight="bold" mr={1.5}>
-                        Format:
-                      </MDTypography>
-
-                      <FormControl variant="outlined" size="small" sx={{ minWidth: 150, mr: 1.5 }}>
-                        <InputLabel id="format-select-label">Select Format</InputLabel>
-                        <Select
-                          labelId="format-select-label"
-                          id="formatSelect"
-                          value={exportFormat}
-                          label="Select Format"
-                          onChange={(e) => setExportFormat(e.target.value)}
-                          size="small"
-                          sx={{ height: 40 }}
-                        >
-                          <MenuItem value="">-- Select Format --</MenuItem>
-                          <MenuItem value="csv">CSV</MenuItem>
-                          <MenuItem value="excel">Excel</MenuItem>
-                          <MenuItem value="pdf">PDF</MenuItem>
-                        </Select>
-                      </FormControl>
-
-                      <MDButton
-                        type="button"
-                        variant="gradient"
-                        color="success"
-                        disabled={!exportFormat || downloading}
-                        onClick={async () => {
-                          if (!chartData || chartData.length === 0) {
-                            alert("No data to export.");
-                            return;
-                          }
-
-                          setDownloading(true);
-                          const baseName = `LoadCellReport_${imei || "data"}_${Date.now()}`;
-
-                          try {
-                            if (exportFormat === "csv") {
-                              exportCSV(chartData, `${baseName}.csv`);
-                            } else if (exportFormat === "excel") {
-                              exportExcel(chartData, `${baseName}.xlsx`);
-                            } else if (exportFormat === "pdf") {
-                              await exportPDF(chartData, `${baseName}.pdf`);
-                            }
-                          } catch (err) {
-                            console.error("Export failed:", err);
-                            alert("Export failed. Please try again.");
-                          } finally {
-                            setDownloading(false);
-                          }
-                        }}
-                      >
-                        {downloading ? (
-                          <>
-                            <CircularProgress size={18} sx={{ mr: 1 }} />
-                            Generating...
-                          </>
-                        ) : (
-                          "Download"
-                        )}
-                      </MDButton>
-                    </MDBox>
-                  )}
                 </form>
               </MDBox>
             </Card>
@@ -465,17 +467,28 @@ function LiveLoadGraph() {
 
               <MDBox p={3}>
                 {dateRange && (
-                  <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
+                  <MDTypography
+                    variant="body2"
+                    fontWeight="bold"
+                    align="center"
+                    mb={2}
+                  >
                     {dateRange}
                   </MDTypography>
                 )}
 
-                {/* Current Average Display */}
                 {averageConfig && (
                   <MDBox textAlign="center" mb={3}>
-                    <MDTypography variant="h5" fontWeight="bold" color={averageConfig.labelColor}>
+                    <MDTypography
+                      variant="h5"
+                      fontWeight="bold"
+                      color={averageConfig.labelColor}
+                    >
                       Current Average Load:{" "}
-                      {parseFloat(chartData[chartData.length - 1].Average).toFixed(2)} tons
+                      {parseFloat(
+                        chartData[chartData.length - 1].Average
+                      ).toFixed(2)}{" "}
+                      tons
                     </MDTypography>
                     <MDTypography variant="caption" color="text.secondary">
                       Status: {averageConfig.labelText}
@@ -483,7 +496,6 @@ function LiveLoadGraph() {
                   </MDBox>
                 )}
 
-                {/* SPACIOUS CHART CONTAINER */}
                 <MDBox
                   sx={{
                     width: "100%",
@@ -491,8 +503,13 @@ function LiveLoadGraph() {
                   }}
                 >
                   {chartData.length === 0 ? (
-                    <MDTypography textAlign="center" color="text.secondary" mt={8}>
-                      Please select the date range for which you want to see the Load Cell Data.
+                    <MDTypography
+                      textAlign="center"
+                      color="text.secondary"
+                      mt={8}
+                    >
+                      Please select the date range for which you want to see the
+                      Load Cell Data.
                     </MDTypography>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -506,10 +523,9 @@ function LiveLoadGraph() {
                           tick={{ fontSize: 12 }}
                           tickFormatter={(value) => {
                             const date = new Date(value);
-                            return `${date.getHours()}:${String(date.getMinutes()).padStart(
-                              2,
-                              "0"
-                            )}`;
+                            return `${date.getHours()}:${String(
+                              date.getMinutes()
+                            ).padStart(2, "0")}`;
                           }}
                         />
                         <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
@@ -523,7 +539,6 @@ function LiveLoadGraph() {
                         />
                         <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
 
-                        {/* Individual Load Cells - Light & Subtle */}
                         {showData && (
                           <>
                             <Area
@@ -569,7 +584,6 @@ function LiveLoadGraph() {
                           </>
                         )}
 
-                        {/* Average Load - Clean, Color-Coded, Not Overpowering */}
                         {averageConfig && (
                           <Area
                             type="monotone"
@@ -621,7 +635,10 @@ function LiveLoadGraph() {
                 fontWeight="regular"
                 color={msg.type === "user" ? "white" : "dark"}
                 dangerouslySetInnerHTML={{
-                  __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
+                  __html: msg.text.replace(
+                    /\*\*(.*?)\*\*/g,
+                    "<strong>$1</strong>"
+                  ),
                 }}
               />
             </div>
@@ -704,6 +721,7 @@ function LiveLoadGraph() {
 }
 
 export default LiveLoadGraph;
+
 
 
 // import React from "react";
