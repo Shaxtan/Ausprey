@@ -154,7 +154,7 @@ const CreateTripDialog = ({
               display="flex"
               flexDirection="column"
               gap={0.3}
-              mt={-1.8} // slightly move up, but less extreme
+              mt={-2.1} // slightly move up, but less extreme
             >
               <MDTypography
                 variant="caption"
@@ -165,22 +165,41 @@ const CreateTripDialog = ({
                 Select IMEI *
               </MDTypography>
 
-              <Select
-                options={imeiOptions}
-                value={
-                  imeiOptions.find((opt) => opt.value === form.imei) || null
-                }
-                onChange={(selected) => {
-                  onFieldChange("imei")({
-                    target: { value: selected ? selected.value : "" },
-                  });
-                }}
-                placeholder="Search vehicle or IMEI..."
-                isClearable
-                isSearchable
-                menuPortalTarget={document.body}
-                styles={customSelectStyles}
-              />
+             <Select
+  options={imeiOptions}
+  value={imeiOptions.find((opt) => opt.value === form.imei) || null}
+  onChange={(selected) => {
+    onFieldChange("imei")({
+      target: { value: selected ? selected.value : "" },
+    });
+  }}
+  placeholder="Search vehicle or IMEI..."
+  isClearable
+  isSearchable
+  menuPortalTarget={document.body}
+  styles={{
+    control: (base, state) => ({
+      ...base,
+      minHeight: 40,
+      borderRadius: 4,
+      borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
+      boxShadow: "none",
+      "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
+      fontSize: "0.875rem",
+    }),
+    placeholder: (base) => ({
+      ...base,
+      fontSize: "0.875rem",
+      color: "#adb5bd",
+      marginTop: "-2px",
+    }),
+    singleValue: (base) => ({
+      ...base,
+      fontSize: "0.875rem",
+    }),
+  }}
+/>
+
 
               {errors.imei && (
                 <MDTypography
