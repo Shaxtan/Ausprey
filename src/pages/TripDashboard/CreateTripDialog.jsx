@@ -289,15 +289,27 @@ const CreateTripDialog = ({
         <Button onClick={onClose} color="inherit">
           Cancel
         </Button>
-        <Button onClick={onSubmit} variant="contained" color="primary">
-          Create
-        </Button>
+       <Button
+  onClick={onSubmit}
+  variant="contained"
+  color="inherit"
+  sx={{
+    backgroundColor: "#1976d2", // or any color you want
+    color: "#ffffff",
+    "&:hover": {
+      backgroundColor: "#115293",
+    },
+  }}
+>
+  Create
+</Button>
+
       </DialogActions>
     </Dialog>
   );
 };
 
-CreateTripDialog.propTypes = {
+CreateTripDialog.propTypes = { 
   open: PropTypes.bool.isRequired,
   form: PropTypes.object.isRequired,
   errors: PropTypes.object.isRequired,
