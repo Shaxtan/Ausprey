@@ -4,7 +4,7 @@
 =========================================================
 */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 // react-router components
 import { useLocation, Link } from "react-router-dom";
@@ -19,16 +19,15 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import Icon from "@mui/material/Icon";
 import MenuItem from "@mui/material/MenuItem";
-import Grid from "@mui/material/Grid";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import MDButton from "../../../MDButton";
 
-// Material Dashboard components
+// MD components
 import MDBox from "../../../MDBox";
 import MDTypography from "../../../MDTypography";
+import MDButton from "../../../MDButton";
 
 // Example components
 import Breadcrumbs from "../../Breadcrumbs";
@@ -43,7 +42,7 @@ import {
   navbarMobileMenu,
 } from "../DashboardNavbar/styles";
 
-// Context
+// Layout context
 import {
   useMaterialUIController,
   setTransparentNavbar,
@@ -51,39 +50,41 @@ import {
   setOpenConfigurator,
 } from "context";
 
-// API Service Import
-import ApiService from "services/ApiService";
+// NEW: Account context (the one you created in src/context/AccountContext.js)
+import { useAccount } from "context/AccountContext";
 
 // ==============================================================================
-// Placeholder functions (Ensure these are defined/imported in your actual project)
+// Placeholder functions (kept same as original if you still need them somewhere)
 const getInitialAccountId = () => {
   return "";
 };
 // ==============================================================================
 
-function DashboardNavbar({
+function DashboardNavbarWithAccountContext({
   absolute,
   light,
   isMini,
-  handleAccountChange,
-  selectedAccountId,
-  fetchAccounts,
-  accounts,
-  onManualRefresh, //refresh handler
-  isRefreshing, //refresh state
-  lastRefreshTime, //timestamp of last refresh
+  onManualRefresh,    // refresh handler
+  isRefreshing,       // refresh state
+  lastRefreshTime,    // timestamp of last refresh
 }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
 
   const [openMenu, setOpenMenu] = useState(false);
-  // const [openAuthMenu, setOpenAuthMenu] = useState(false);  // removed usage
   const [openAccountMenu, setOpenAccountMenu] = useState(false);
 
   const route = useLocation().pathname.split("/").slice(1);
 
-  // --- STANDARD NAVBAR EFFECTS ---
+  // ✅ Get account data from Context instead of props
+  const { accounts, selectedAccountId, setSelectedAccountId } = useAccount();
+
+  const handleAccountChange = (event) => {
+    setSelectedAccountId(event.target.value);
+  };
+
+  // --- STANDARD NAVBAR EFFECTS (unchanged) ---
   useEffect(() => {
     if (fixedNavbar) {
       setNavbarType("sticky");
@@ -110,9 +111,6 @@ function DashboardNavbar({
   const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
   const handleCloseMenu = () => setOpenMenu(false);
 
-  // const handleOpenAuthMenu = (event) => setOpenAuthMenu(event.currentTarget);
-  // const handleCloseAuthMenu = () => setOpenAuthMenu(false);
-
   const handleOpenAccountMenu = (event) => setOpenAccountMenu(event.currentTarget);
   const handleCloseAccountMenu = () => setOpenAccountMenu(false);
 
@@ -131,8 +129,6 @@ function DashboardNavbar({
       <NotificationItem icon={<Icon>shopping_cart</Icon>} title="Payment successfully completed" />
     </Menu>
   );
-
-  // NOTE: renderAuthMenu removed so auth options are no longer in navbar
 
   const renderAccountMenu = () => (
     <Menu
@@ -156,7 +152,7 @@ function DashboardNavbar({
     </Menu>
   );
 
-  // Countdown Timer Component
+  // Countdown Timer Component (same as your original)
   const RefreshCountdown = ({ lastRefreshTime }) => {
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes = 300 seconds
 
@@ -186,7 +182,7 @@ function DashboardNavbar({
     lastRefreshTime: PropTypes.number.isRequired,
   };
 
-  // Icon styling
+  // Icon styling (unchanged)
   const iconsStyle = ({ palette: { dark, white, text }, functions: { rgba } }) => ({
     color: () => {
       let colorValue = light || darkMode ? white.main : dark.main;
@@ -301,30 +297,22 @@ function DashboardNavbar({
   );
 }
 
-DashboardNavbar.defaultProps = {
+DashboardNavbarWithAccountContext.defaultProps = {
   absolute: false,
   light: false,
   isMini: false,
-  handleAccountChange: () => {},
-  fetchAccounts: () => {},
-  selectedAccountId: "",
-  accounts: [],
   onManualRefresh: () => {},
   isRefreshing: false,
   lastRefreshTime: Date.now(),
 };
 
-DashboardNavbar.propTypes = {
+DashboardNavbarWithAccountContext.propTypes = {
   absolute: PropTypes.bool,
   light: PropTypes.bool,
   isMini: PropTypes.bool,
-  handleAccountChange: PropTypes.func.isRequired,
-  fetchAccounts: PropTypes.func.isRequired,
-  selectedAccountId: PropTypes.string.isRequired,
-  accounts: PropTypes.array.isRequired,
   onManualRefresh: PropTypes.func.isRequired,
   isRefreshing: PropTypes.bool.isRequired,
   lastRefreshTime: PropTypes.number.isRequired,
 };
 
-export default DashboardNavbar;
+export default DashboardNavbarWithAccountContext;

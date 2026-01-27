@@ -6,7 +6,6 @@ import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
 import Icon from "@mui/material/Icon";
 
-// 🔥 FIXED IMPORTS
 import MDBox from "../../MDBox";
 import MDTypography from "../../MDTypography";
 import SidenavCollapse from "./SidenavCollapse";
@@ -30,31 +29,27 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
   if (transparentSidenav || (whiteSidenav && !darkMode)) textColor = "dark";
   else if (whiteSidenav && darkMode) textColor = "inherit";
 
-  // 1. Force initial state to collapsed
+  // Force initial state to collapsed
   useEffect(() => {
     setMiniSidenav(dispatch, true);
     setTransparentSidenav(dispatch, false);
     setWhiteSidenav(dispatch, false);
   }, [dispatch]);
 
-  // 2. Intercept and neutralize mouse events from Parent Layout
-  // This prevents the Layout from forcing the sidebar open on hover
   const { onMouseEnter, onMouseLeave, ...restProps } = rest;
 
-  // Filter out Children (Alerts, TrackPlay, LoadSensor)
+  // Filter out children (Alerts, TrackPlay, LoadSensor)
   const reportsChildren = routes.filter(
     (r) => r.type === "collapse" && r.parent === "reports"
   );
 
   const renderRoutes = routes.map(
     ({ type, name, icon, title, key, href, route, parent, noRoute }) => {
-      
-      // Hide Children from main list
+      // Hide children from main list
       if (parent === "reports") return null;
 
       if (type === "collapse") {
-        
-        // Handle Parent "Reports"
+        // Parent "Reports"
         if (key === "reports") {
           const subRoutes = reportsChildren.map((r) => ({
             key: r.key,
@@ -128,14 +123,13 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
 
   return (
     <SidenavRoot
-      {...restProps} // Pass safe props
+      {...restProps}
       variant="permanent"
-      // 3. HARD LOCK: Force miniSidenav to true in ownerState 
-      // This ensures the CSS always renders the collapsed width
-      ownerState={{ ...controller, miniSidenav: true }} 
-      onMouseEnter={() => {}} // Explicitly block hover expansion
-      onMouseLeave={() => {}} // Explicitly block hover expansion
+      ownerState={{ ...controller, miniSidenav: true }}
+      onMouseEnter={() => {}}
+      onMouseLeave={() => {}}
     >
+      {/* TOP: brand */}
       <MDBox pt={3} pb={1} px={4} textAlign="center">
         <MDBox
           display={{ xs: "block", xl: "none" }}
@@ -160,13 +154,56 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
           </MDBox>
         </MDBox>
       </MDBox>
+
       <Divider />
-      <List>{renderRoutes}</List>
+
+      {/* MIDDLE: routes list */}
+      <MDBox
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+        }}
+      >
+        <MDBox sx={{ flexGrow: 1, overflowY: "auto" }}>
+          <List>{renderRoutes}</List>
+        </MDBox>
+
+        {/* BOTTOM: version label */}
+        <MDBox
+  px={3}
+  py={1}
+  mt="auto"
+  sx={{
+    borderTop: ({ borders: { borderWidth } }) => ({
+      borderTop: `${borderWidth[1]} solid rgba(255,255,255,0.15)`,
+    }),
+  }}
+>
+  <MDTypography
+    variant="overline"
+    color={textColor}
+    fontWeight="regular"
+    sx={{
+      opacity: 0.6,
+      textAlign: "center",
+      display: "block",
+      fontSize: "0.6rem",
+      letterSpacing: "0.08em",
+      ml: -1,                // ← margin-left
+    }}
+  >
+    Version 1.0.0
+  </MDTypography>
+</MDBox>
+
+      </MDBox>
     </SidenavRoot>
   );
 }
 
 Sidenav.defaultProps = { color: "info", brand: "" };
+
 Sidenav.propTypes = {
   color: PropTypes.oneOf(["primary", "secondary", "info", "success", "warning", "error", "dark"]),
   brand: PropTypes.string,

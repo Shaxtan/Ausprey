@@ -1,6 +1,5 @@
 // src/LiveTrack/LiveTrack.styles.js
 
-// Common Colors
 const COLORS = {
   selectedBorder: "rgb(25, 118, 210)",
   hoverBg: "#f5f5f5",
@@ -14,19 +13,19 @@ const COLORS = {
 };
 
 export const styles = {
-
-    stopButton: {
-    color: "#000000 !important",       // Text Color
-    borderColor: "#000000 !important", // Outline Color
-    "& .material-icons-round": { color: "#000000 !important" }, // Icon Color
+  stopButton: {
+    color: "#000000 !important",
+    borderColor: "#000000 !important",
+    "& .material-icons-round": { color: "#000000 !important" },
     "& .material-icons": { color: "#000000 !important" },
   },
 
-    playButton: {
+  playButton: {
     color: "#FFFFFF !important",
     "& .material-icons-round": { color: "#FFFFFF !important" },
     "& .material-icons": { color: "#FFFFFF !important" },
   },
+
   // --- Main Layout ---
   dashboardContainer: (isLeftPanelOpen) => ({
     display: "flex",
@@ -34,22 +33,28 @@ export const styles = {
     px: { xs: 1, sm: 2, md: 3 },
     pb: 2,
     pt: 0,
-    height: "calc(100vh - 130px)",
+    // Fill available viewport height under navbar.
+    // Adjust 64 if your top navbar height is different.
+    height: "calc(100vh - 64px)",
+    minHeight: 0,
     alignItems: "stretch",
+    position: "relative",
   }),
 
   // --- Left Panel ---
   leftPanelContainer: (width) => ({
     width: { xs: "100%", sm: `${width}px` },
     flexShrink: 0,
-    display: { xs: "block", sm: "block" },
-    zIndex: 1500,
-    display: "flex",
+    display: { xs: "block", sm: "flex" },
     flexDirection: "column",
     gap: 0,
+    zIndex: 1500,
     position: "relative",
     transition: "width 200ms ease",
     height: "100%",
+    minHeight: 0,
+    marginLeft:-4,
+    // removed negative margin to align with main layout
   }),
 
   leftPanelHeader: {
@@ -107,14 +112,19 @@ export const styles = {
   }),
 
   // --- Device Table Component ---
+  // Left panel is a flex column, so let the table card grow and scroll inside
   tableCard: {
     p: 0,
     overflow: "hidden",
-    height: "calc(100vh - 250px) !important",
+    flexGrow: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
   },
 
   tableContainer: {
-    maxHeight: "calc(100vh - 330px) !important",
+    flexGrow: 1,
+    minHeight: 0,
     overflow: "auto !important",
     borderRadius: 0,
   },
@@ -135,7 +145,6 @@ export const styles = {
     "&.Mui-selected": { backgroundColor: `${COLORS.rowHover} !important` },
   }),
 
-  // Helper for table cells to avoid repetition
   cell: (width, align = "center", extra = {}) => ({
     width: `${width} !important`,
     textAlign: `${align} !important`,
@@ -150,6 +159,7 @@ export const styles = {
     position: "relative",
     flexGrow: 1,
     height: "100%",
+    minHeight: 0,
     borderRadius: 1,
     overflow: "hidden",
     boxShadow: "0 6px 18px rgba(15,15,15,0.08) !important",
@@ -170,8 +180,7 @@ export const styles = {
     overflowY: "auto",
     backdropFilter: "saturate(140%) blur(6px)",
     paddingRight: "4px",
-    
-    // Custom Scrollbar
+
     "&::-webkit-scrollbar": {
       width: "8px",
     },
@@ -187,7 +196,6 @@ export const styles = {
     },
   },
 
-  // --- Vehicle Header Box ---
   vehicleHeaderAvatar: {
     width: 170,
     height: 70,
@@ -200,21 +208,18 @@ export const styles = {
     },
   },
 
-  // --- Info Row ---
   infoRow: {
     display: "flex",
     justifyContent: "space-between",
     py: 0.6,
   },
-  
+
   infoLabelBox: {
     display: "flex",
     gap: 1,
     alignItems: "center",
   },
 };
-
-// --- Helper Functions for Dynamic Styles ---
 
 export const getCustomChipStyle = (status) => {
   const normalizedStatus = String(status || "").trim();
@@ -226,8 +231,6 @@ export const getCustomChipStyle = (status) => {
   }
   return {};
 };
-
-// --- Leaflet Marker HTML Generators ---
 
 export const getVehicleMarkerHtml = (status) => {
   const color =

@@ -297,7 +297,7 @@ DeviceTable.propTypes = {
  ============================ */
 
 export default function LiveTrack() {
-  const LEFT_PANEL_WIDTH = 350;
+  const LEFT_PANEL_WIDTH = 550;
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
   const toggleLeftPanel = () => setIsLeftPanelOpen((v) => !v);
@@ -559,6 +559,7 @@ export default function LiveTrack() {
 
   return (
     <DashboardLayout>
+      
       <Box
         sx={{
           ...styles.dashboardContainer(isLeftPanelOpen),

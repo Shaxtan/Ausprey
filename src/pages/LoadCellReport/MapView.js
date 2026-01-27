@@ -14,15 +14,18 @@ import Card from "@mui/material/Card";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar";
+// IMPORTANT: use the new navbar with context
+import DashboardNavbarWithAccountContext from "../../assets/components/examples/Navbars/DashboardNavbar/DashboardNavbarWithAccountContext";
+
+// Get account data from context
+import { useAccount } from "context/AccountContext";
 
 import ApiService from "../../services/ApiService";
 
 // -----------------------------
 // Custom Truck Icons (map)
 // -----------------------------
-const TRUCK_ICON_URL =
-  "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
+const TRUCK_ICON_URL = "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
 
 const truckIcon = new L.Icon({
   iconUrl: TRUCK_ICON_URL,
@@ -80,9 +83,8 @@ const getIconForStatus = (status, lock) => {
 // Main Component
 // -----------------------------
 const MapView = () => {
-  // --- ACCOUNT & REFRESH STATE ---
-  const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [accounts, setAccounts] = useState([]);
+  // --- ACCOUNT (from context) & REFRESH STATE ---
+  const { selectedAccountId } = useAccount(); // accounts & setter are used in navbar
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
@@ -109,26 +111,6 @@ const MapView = () => {
 
   const indiaCenter = { lat: 22.5589409, lng: 75.6089374 };
   const baseMaps = createTileLayers();
-
-  // -----------------------------
-  // Initial Load: Accounts & default ID
-  // -----------------------------
-  useEffect(() => {
-    let defaultId = "1";
-    try {
-      const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
-      if (user.accountId) defaultId = user.accountId.toString();
-    } catch (e) {
-      console.error("Error parsing userDetails", e);
-    }
-
-    ApiService.getAccountDropdown((res) => {
-      if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
-        setAccounts(res.data.data);
-        setSelectedAccountId(defaultId);
-      }
-    });
-  }, []);
 
   // -----------------------------
   // Map Initialization
@@ -185,14 +167,13 @@ const MapView = () => {
   }, []);
 
   // -----------------------------
-  // Data Fetching (depends on selectedAccountId)
+  // Data Fetching (depends on selectedAccountId from context)
   // -----------------------------
   const fetchMapData = useCallback(() => {
     if (!mapRef.current || !markerClusterRef.current || !selectedAccountId) return;
 
     setIsRefreshing(true);
 
-    // Adjust this call if your backend expects accid in params body.
     ApiService.getMapViewData(
       {},
       (res) => {
@@ -279,10 +260,6 @@ const MapView = () => {
     fetchMapData();
   }, [fetchMapData]);
 
-  const handleAccountChange = (event) => {
-    setSelectedAccountId(event.target.value.toString());
-  };
-
   // -----------------------------
   // Handle Vehicle Click
   // -----------------------------
@@ -338,201 +315,198 @@ const MapView = () => {
     maxWidth: "90vw",
   };
 
- return (
-  <DashboardLayout>
-    <DashboardNavbar
-      selectedAccountId={selectedAccountId}
-      accounts={accounts}
-      handleAccountChange={handleAccountChange}
-      onManualRefresh={fetchMapData}
-      isRefreshing={isRefreshing}
-      lastRefreshTime={lastRefreshTime}
-    />
-
-    {/* Full-page map container */}
-    <MDBox
-      sx={{
-        position: "relative",
-        height: "calc(100vh - 64px)", // adjust if your navbar height is different
-        width: "100%",
-      }}
-    >
-      <div
-        ref={mapContainerRef}
-        style={{
-          height: "100%",
-          width: "100%",
-        }}
+  return (
+    <DashboardLayout>
+      <DashboardNavbarWithAccountContext
+        onManualRefresh={fetchMapData}
+        isRefreshing={isRefreshing}
+        lastRefreshTime={lastRefreshTime}
       />
 
-      {/* Sidebar overlay */}
-      <div style={overlayPanelStyle}>
-        <Card
-          sx={{
+      {/* Full-page map container */}
+      <MDBox
+        sx={{
+          position: "relative",
+          height: "calc(100vh - 64px)", // adjust if your navbar height is different
+          width: "100%",
+        }}
+      >
+        <div
+          ref={mapContainerRef}
+          style={{
             height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            boxShadow: 6,
+            width: "100%",
           }}
-        >
-          <MDBox
-            p={2}
-            borderBottom="1px solid #eee"
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
+        />
+
+        {/* Sidebar overlay */}
+        <div style={overlayPanelStyle}>
+          <Card
+            sx={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: 6,
+            }}
           >
-            <MDTypography variant="h6">Vehicle Status</MDTypography>
-            <IconButton onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-              <Icon>{isSidebarOpen ? "chevron_right" : "chevron_left"}</Icon>
-            </IconButton>
-          </MDBox>
+            <MDBox
+              p={2}
+              borderBottom="1px solid #eee"
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <MDTypography variant="h6">Vehicle Status</MDTypography>
+              <IconButton onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <Icon>{isSidebarOpen ? "chevron_right" : "chevron_left"}</Icon>
+              </IconButton>
+            </MDBox>
 
-          <Collapse in={isSidebarOpen} timeout="auto" unmountOnExit>
-            <MDBox p={2} pt={1} flex={1} sx={{ overflow: "auto" }}>
-              <MDInput
-                placeholder="Search vehicle..."
-                fullWidth
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ mb: 2 }}
-                InputProps={{
-                  startAdornment: <Icon sx={{ mr: 1 }}>search</Icon>,
-                }}
-              />
+            <Collapse in={isSidebarOpen} timeout="auto" unmountOnExit>
+              <MDBox p={2} pt={1} flex={1} sx={{ overflow: "auto" }}>
+                <MDInput
+                  placeholder="Search vehicle..."
+                  fullWidth
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    startAdornment: <Icon sx={{ mr: 1 }}>search</Icon>,
+                  }}
+                />
 
-              <MDBox display="flex" flexWrap="wrap" gap={1} mb={3}>
-                {["All", "Motion", "Idle", "Stop", "Lock"].map((tab) => (
-                  <MDBox
-                    key={tab}
-                    onClick={() => setFilter(tab)}
-                    sx={{
-                      px: 2,
-                      py: 1,
-                      borderRadius: 2,
-                      backgroundColor:
-                        filter === tab ? "#e3f2fd" : "#f5f5f5",
-                      color:
-                        filter === tab ? "primary.main" : "text.secondary",
-                      fontWeight: "medium",
-                      cursor: "pointer",
-                      fontSize: "0.875rem",
-                      textAlign: "center",
-                      flex: "1 1 0",
-                      minWidth: "70px",
-                    }}
-                  >
-                    {tab}{" "}
-                    <strong>
-                      (
-                      {
-                        {
-                          All: vehicleStats.total,
-                          Motion: vehicleStats.inMotion,
-                          Idle: vehicleStats.idle,
-                          Stop: vehicleStats.stopped,
-                          Lock: vehicleStats.locked,
-                        }[tab]
-                      }
-                      )
-                    </strong>
-                  </MDBox>
-                ))}
-              </MDBox>
-
-              <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
-                {filteredVehicles.length === 0 ? (
-                  <MDTypography
-                    variant="body2"
-                    color="text.secondary"
-                    textAlign="center"
-                    py={4}
-                  >
-                    No vehicles found
-                  </MDTypography>
-                ) : (
-                  filteredVehicles.map((veh) => (
+                <MDBox display="flex" flexWrap="wrap" gap={1} mb={3}>
+                  {["All", "Motion", "Idle", "Stop", "Lock"].map((tab) => (
                     <MDBox
-                      key={veh.vehnum}
-                      onClick={() => handleVehicleClick(veh)}
+                      key={tab}
+                      onClick={() => setFilter(tab)}
                       sx={{
-                        position: "relative",
-                        p: 2,
-                        mb: 1,
+                        px: 2,
+                        py: 1,
                         borderRadius: 2,
                         backgroundColor:
-                          highlightedVeh === veh.vehnum
-                            ? "#e3f2fd"
-                            : "#fafafa",
-                        border: `2px solid ${
-                          highlightedVeh === veh.vehnum
-                            ? "#1976d2"
-                            : "transparent"
-                        }`,
+                          filter === tab ? "#e3f2fd" : "#f5f5f5",
+                        color:
+                          filter === tab ? "primary.main" : "text.secondary",
+                        fontWeight: "medium",
                         cursor: "pointer",
-                        transition: "all 0.2s",
-                        "&:hover": { backgroundColor: "#f0f7ff" },
+                        fontSize: "0.875rem",
+                        textAlign: "center",
+                        flex: "1 1 0",
+                        minWidth: "70px",
                       }}
                     >
+                      {tab}{" "}
+                      <strong>
+                        (
+                        {
+                          {
+                            All: vehicleStats.total,
+                            Motion: vehicleStats.inMotion,
+                            Idle: vehicleStats.idle,
+                            Stop: vehicleStats.stopped,
+                            Lock: vehicleStats.locked,
+                          }[tab]
+                        }
+                        )
+                      </strong>
+                    </MDBox>
+                  ))}
+                </MDBox>
+
+                <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
+                  {filteredVehicles.length === 0 ? (
+                    <MDTypography
+                      variant="body2"
+                      color="text.secondary"
+                      textAlign="center"
+                      py={4}
+                    >
+                      No vehicles found
+                    </MDTypography>
+                  ) : (
+                    filteredVehicles.map((veh) => (
                       <MDBox
+                        key={veh.vehnum}
+                        onClick={() => handleVehicleClick(veh)}
                         sx={{
-                          position: "absolute",
-                          top: 8,
-                          right: 8,
-                          width: 24,
-                          height: 24,
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "#ffffff",
-                          boxShadow: "0 0 0 2px rgba(0,0,0,0.06)",
+                          position: "relative",
+                          p: 2,
+                          mb: 1,
+                          borderRadius: 2,
+                          backgroundColor:
+                            highlightedVeh === veh.vehnum
+                              ? "#e3f2fd"
+                              : "#fafafa",
+                          border: `2px solid ${
+                            highlightedVeh === veh.vehnum
+                              ? "#1976d2"
+                              : "transparent"
+                          }`,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          "&:hover": { backgroundColor: "#f0f7ff" },
                         }}
                       >
-                        <Icon
+                        <MDBox
                           sx={{
-                            fontSize: 16,
-                            color: getStatusColor(veh.status, veh.lock),
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "#ffffff",
+                            boxShadow: "0 0 0 2px rgba(0,0,0,0.06)",
                           }}
                         >
-                          directions_car
-                        </Icon>
-                      </MDBox>
+                          <Icon
+                            sx={{
+                              fontSize: 16,
+                              color: getStatusColor(veh.status, veh.lock),
+                            }}
+                          >
+                            directions_car
+                          </Icon>
+                        </MDBox>
 
-                      <MDBox
-                        display="flex"
-                        flexDirection="column"
-                        alignItems="flex-start"
-                        gap={0.5}
-                      >
-                        <MDTypography
-                          variant="subtitle2"
-                          fontWeight="bold"
-                          color="text.primary"
+                        <MDBox
+                          display="flex"
+                          flexDirection="column"
+                          alignItems="flex-start"
+                          gap={0.5}
                         >
-                          {veh.vehnum}
+                          <MDTypography
+                            variant="subtitle2"
+                            fontWeight="bold"
+                            color="text.primary"
+                          >
+                            {veh.vehnum}
+                          </MDTypography>
+                        </MDBox>
+
+                        <MDTypography
+                          variant="caption"
+                          color="text.secondary"
+                          mt={1}
+                          display="block"
+                        >
+                          Last updated: {veh.time}
                         </MDTypography>
                       </MDBox>
-
-                      <MDTypography
-                        variant="caption"
-                        color="text.secondary"
-                        mt={1}
-                        display="block"
-                      >
-                        Last updated: {veh.time}
-                      </MDTypography>
-                    </MDBox>
-                  ))
-                )}
+                    ))
+                  )}
+                </MDBox>
               </MDBox>
-            </MDBox>
-          </Collapse>
-        </Card>
-      </div>
-    </MDBox>
-  </DashboardLayout>
-);
+            </Collapse>
+          </Card>
+        </div>
+      </MDBox>
+    </DashboardLayout>
+  );
 };
 
 export default MapView;

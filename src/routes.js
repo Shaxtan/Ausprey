@@ -33,7 +33,6 @@ const routes = [
     component: <Dashboard />,
   },
 
-  // Example extra dashboard (still commented)
   // {
   //   type: "collapse",
   //   name: "Dashboard 2",
@@ -43,14 +42,14 @@ const routes = [
   //   component: <Dashboard2 />,
   // },
 
-  // {
-  //   type: "collapse",
-  //   name: "Device Config",
-  //   key: "device-configuration",
-  //   icon: <Icon fontSize="small">settings_cell</Icon>,
-  //   route: "/device-configuration",
-  //   component: <DeviceConfiguration />,
-  // },
+  {
+    type: "collapse",
+    name: "Device Config",
+    key: "device-configuration",
+    icon: <Icon fontSize="small">settings_cell</Icon>,
+    route: "/device-configuration",
+    component: <DeviceConfiguration />,
+  },
 
   {
     type: "collapse",
@@ -61,17 +60,15 @@ const routes = [
     component: <LiveTrack />,
   },
 
-  // Exam menu item (goes to TripDashboard2)
-  {
-    type: "collapse",
-    name: "Exam",
-    key: "trip-dashboard2", // must match route segment for active logic
-    icon: <Icon fontSize="small">gps_fixed</Icon>,
-    route: "/trip-dashboard2",
-    component: <TripDashboard2 />,
-  },
+  // {
+  //   type: "collapse",
+  //   name: "Exam",
+  //   key: "trip-dashboard2",
+  //   icon: <Icon fontSize="small">gps_fixed</Icon>,
+  //   route: "/trip-dashboard2",
+  //   component: <TripDashboard2 />,
+  // },
 
-  // Trip Dashboard menu item (separate from Exam)
   {
     type: "collapse",
     name: (
@@ -88,7 +85,7 @@ const routes = [
         Dashboard
       </span>
     ),
-    key: "trip-dashboard", // matches '/trip-dashboard'
+    key: "trip-dashboard",
     icon: <Icon fontSize="small">timeline</Icon>,
     route: "/trip-dashboard",
     component: <TripDashboard />,
@@ -113,7 +110,7 @@ const routes = [
     icon: <Icon fontSize="small">assessment</Icon>,
     route: "/reports",
     component: <Dashboard />,
-    noRoute: true, // not an actual page, just a menu group
+    noRoute: true,
   },
 
   // ----------------------------------------------------------------------
@@ -138,32 +135,40 @@ const routes = [
     parent: "reports",
   },
   {
-  type: "collapse",
-  name: "Load Sensor",
-  key: "load-cell-report",
-  icon: <Icon fontSize="small">scale</Icon>,
-  route: "/load-cell-report",
-  component: <LoadCellReport />,
-  parent: "reports",
-},
-{
-  type: "collapse",
-  name: "Live load Sensor",
-  key: "live-load-cell-report",
-  icon: <Icon fontSize="small">bolt</Icon>,
-  route: "/live-load-cell-report",
-  component: <LiveLoadGraph />,
-  parent: "reports",
-},
-
-
+    type: "collapse",
+    name: "Load Sensor",
+    key: "load-cell-report",
+    icon: <Icon fontSize="small">scale</Icon>,
+    route: "/load-cell-report",
+    component: <LoadCellReport />,
+    parent: "reports",
+  },
   {
+    type: "collapse",
+    name: "Live load Sensor",
+    key: "live-load-cell-report",
+    icon: <Icon fontSize="small">bolt</Icon>,
+    route: "/live-load-cell-report",
+    component: <LiveLoadGraph />,
+    parent: "reports",
+  },
+
+  // ----------------------------------------------------------------------
+  // AUTH PAGES IN SIDEBAR
+  // ----------------------------------------------------------------------
+  {
+    type: "collapse",
+    name: "Sign In",
     key: "sign-in",
+    icon: <Icon fontSize="small">login</Icon>,
     route: "/authentication/sign-in",
     component: <SignIn />,
   },
   {
+    type: "collapse",
+    name: "Sign Up",
     key: "sign-up",
+    icon: <Icon fontSize="small">person_add</Icon>,
     route: "/authentication/sign-up",
     component: <SignUp />,
   },
