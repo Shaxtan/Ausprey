@@ -3,6 +3,7 @@
 * Material Dashboard 2 React - v2.2.0
 =========================================================
 */
+
 import MDBox from "assets/components/MDBox";
 import LiveTrack from "pages/LiveTrack/LiveTrack";
 import Alerts from "../src/pages/Alerts/Alerts";
@@ -10,9 +11,9 @@ import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
 import LiveLoadGraph from "../src/pages/LoadCellReport/LiveLoadGraph";
 import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 import TripDashboard2 from "pages/TripDashboard/TripDashboard2";
+
 // Material Dashboard 2 React layouts
 import Dashboard from "../src/pages/dashboard";
-// 🔥 Optional extra dashboard
 import Dashboard2 from "../src/pages/dashboard2";
 import TripDashboard from "pages/TripDashboard/TripDashboard";
 import Notifications from "../src/pages/notifications";
@@ -42,14 +43,14 @@ const routes = [
   //   component: <Dashboard2 />,
   // },
 
-  {
-    type: "collapse",
-    name: "Device Config",
-    key: "device-configuration",
-    icon: <Icon fontSize="small">settings_cell</Icon>,
-    route: "/device-configuration",
-    component: <DeviceConfiguration />,
-  },
+  // {
+  //   type: "collapse",
+  //   name: "Device Config",
+  //   key: "device-configuration",
+  //   icon: <Icon fontSize="small">settings_cell</Icon>,
+  //   route: "/device-configuration",
+  //   component: <DeviceConfiguration />,
+  // },
 
   {
     type: "collapse",
@@ -154,7 +155,7 @@ const routes = [
   },
 
   // ----------------------------------------------------------------------
-  // AUTH PAGES IN SIDEBAR
+  // AUTH PAGES IN SIDEBAR (same behavior as old navbar)
   // ----------------------------------------------------------------------
   {
     type: "collapse",
@@ -166,9 +167,10 @@ const routes = [
   },
   {
     type: "collapse",
-    name: "Sign Up",
-    key: "sign-up",
-    icon: <Icon fontSize="small">person_add</Icon>,
+    name: "Sign Out",
+    key: "sign-out",
+    icon: <Icon fontSize="small">logout</Icon>,
+    // IMPORTANT: same as your old navbar: Sign Out goes to sign-up route
     route: "/authentication/sign-up",
     component: <SignUp />,
   },

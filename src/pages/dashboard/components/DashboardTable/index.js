@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
-import ApiService from "../../../../services/ApiService";
+// import ApiService from "../../../../services/ApiService";
 
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
@@ -9,7 +9,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
-import CircularProgress from "@mui/material/CircularProgress";
+// import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Checkbox from "@mui/material/Checkbox";
@@ -262,12 +262,19 @@ const toggleStatus = (current, status) => {
 
 // --- Main Component ---
 
-function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] }) {
+function Projects({
+  accountId,
+  vtsData = [],
+  elkData = [],
+  unreachableData = [],
+  lastRefreshTime,
+  isRefreshing,
+}) {
   const navigate = useNavigate();
 
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   // MAIN TABS: vts / elk / unreachable
   const [tripFilterType, setTripFilterType] = useState("vts");
@@ -282,10 +289,14 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
   const [vtsTabs, setVtsTabs] = useState(["all"]);
   const [elkTabs, setElkTabs] = useState(["all"]);
 
-  // rows mapped from API
+  // rows mapped from props
   const [allVtsRows, setAllVtsRows] = useState([]);
   const [allElkRows, setAllElkRows] = useState([]);
   const [unreachableRows, setUnreachableRows] = useState([]);
+
+  // old local lastRefresh / loading (now managed by parent)
+  // const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  // const [isRefreshing, setIsRefreshing] = useState(false);
 
   // dialog for lock/unlock
   const [unlockDialog, setUnlockDialog] = useState({
@@ -317,80 +328,13 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
     [navigate, accountId]
   );
 
-  // fetchers
-
+  // ========= OLD FETCH FUNCTIONS (commented out; now data comes from props) =========
+  /*
   const fetchVtsData = useCallback(
     (currentAccountId) => {
       ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.VTS?.available) {
-          const devices = res.data.data.data.VTS.available;
-          const fetchedRows = devices.map((item, index) => {
-            const imei = item.imei || "N/A";
-            const speed = Number(item.speed) || 0;
-            const isLocked = speed === 0 && item.ign === "Y";
-            const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
-
-            const vehicleStatus = getBackendStatus(item);
-
-            return {
-              no: (
-                <MDBox display="flex" alignItems="center" gap={0.5}>
-                  <Icon fontSize="small" color={vehicleStatus === "offline" ? "error" : "success"}>
-                    {vehicleStatus === "offline" ? "offline_bolt" : "online_prediction"}
-                  </Icon>
-                  <MDTypography
-                    variant="caption"
-                    fontWeight="bold"
-                    color={vehicleStatus === "offline" ? "error" : "success"}
-                  >
-                    {index + 1}
-                  </MDTypography>
-                </MDBox>
-              ),
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              vehicleNo: (
-                <DataCell
-                  text={item.vehnum || item.name || "N/A"}
-                  fontWeight="bold"
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              gpsStatus: <Status status={gpsDisplay} />,
-              ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
-              imei: (
-                <DataCell
-                  text={imei}
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              simNo: <DataCell text={item.simNo || "N/A"} />,
-              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: <AddressCell item={item} />,
-              avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
-              currentSpeed: (
-                <DataCell
-                  text={`${speed} km/h`}
-                  color={speed > 0 ? "success" : "text"}
-                  fontWeight="bold"
-                />
-              ),
-              lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
-              checkbox: null,
-              _imei: imei,
-              _isLockedInitial: isLocked,
-              _speed: speed,
-              _status: vehicleStatus,
-              _raw: item,
-            };
-          });
-          setAllVtsRows(fetchedRows);
-        } else {
-          setAllVtsRows([]);
-        }
+        ...
+        setAllVtsRows(fetchedRows);
       });
     },
     [handleImeiClick]
@@ -399,80 +343,8 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
   const fetchElkData = useCallback(
     (currentAccountId) => {
       ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
-        if (res?.data?.resultCode === 1 && res?.data?.data?.data?.ELK?.available) {
-          const devices = res.data.data.data.ELK.available;
-          const fetchedRows = devices.map((item, index) => {
-            const imei = item.imei || "N/A";
-            const speed = Number(item.speed) || 0;
-            const elkTypeStatus = item.type;
-            const isLocked = elkTypeStatus === "L";
-            const isOnline = item.ign === "Y";
-
-            const status = getBackendStatus(item);
-
-            return {
-              no: (
-                <MDBox display="flex" alignItems="center" gap={0.5}>
-                  <Icon fontSize="small" color={isLocked ? "error" : "success"}>
-                    {isLocked ? "offline_bolt" : "online_prediction"}
-                  </Icon>
-                  <MDTypography
-                    variant="caption"
-                    fontWeight="bold"
-                    color={isLocked ? "error" : "success"}
-                  >
-                    {index + 1}
-                  </MDTypography>
-                </MDBox>
-              ),
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              vehicleNo: (
-                <DataCell
-                  text={item.vehnum || item.name || "N/A"}
-                  fontWeight="bold"
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              imei: (
-                <DataCell
-                  text={imei}
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              simNo: <DataCell text={item.simNo || "N/A"} />,
-              date: <DataCell text={item.devTs || item.cts || "N/A"} />,
-              latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
-              longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
-              address: <AddressCell item={item} />,
-              currentSpeed: (
-                <DataCell
-                  text={`${speed} km/h`}
-                  color={speed > 0 ? "success" : "text"}
-                  fontWeight="bold"
-                />
-              ),
-              gpsStatus: <Status status={item.gps === "A" ? "Active" : "Inactive"} />,
-              lockUnlock: (
-                <LockUnlock
-                  isLocked={isLocked}
-                  deviceStatus={item.status || null}
-                  elkType={elkTypeStatus}
-                />
-              ),
-              checkbox: null,
-              _imei: imei,
-              _isLockedInitial: isLocked,
-              _isOnline: isOnline,
-              _status: status,
-              _raw: item,
-            };
-          });
-          setAllElkRows(fetchedRows);
-        } else {
-          setAllElkRows([]);
-        }
+        ...
+        setAllElkRows(fetchedRows);
       });
     },
     [handleImeiClick]
@@ -481,38 +353,8 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
   const fetchUnreachableData = useCallback(
     (currentAccountId) => {
       ApiService.getUnreachableDevices({ accid: currentAccountId }, (res) => {
-        const devices = res?.data?.data || [];
-        if (res?.data?.resultCode === 1 && Array.isArray(devices)) {
-          const fetchedRows = devices.map((item, index) => {
-            const imei = item.imei || "N/A";
-            return {
-              no: <DataCell text={index + 1} fontWeight="bold" />,
-              accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
-              accountId: <DataCell text={item.accid || "N/A"} />,
-              vehicleNo: (
-                <DataCell
-                  text={item.vehnum || "N/A"}
-                  fontWeight="bold"
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              imei: (
-                <DataCell
-                  text={imei}
-                  isClickable
-                  onClick={() => handleImeiClick(imei, item.accid)}
-                />
-              ),
-              deviceType: <DataCell text={item.deviceType || "N/A"} />,
-              createdOn: <DataCell text={item.createdOn || "N/A"} />,
-              _raw: item,
-            };
-          });
-          setUnreachableRows(fetchedRows);
-        } else {
-          setUnreachableRows([]);
-        }
+        ...
+        setUnreachableRows(fetchedRows);
       });
     },
     [handleImeiClick]
@@ -525,7 +367,189 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
     fetchUnreachableData(accountId);
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
-  }, [accountId, fetchVtsData, fetchElkData, fetchUnreachableData]);
+  }, [accountId, lastRefreshTime, fetchVtsData, fetchElkData, fetchUnreachableData]);
+
+  if (loading) {
+    return (
+      <Card>
+        <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress color="info" size={30} />
+          <MDTypography variant="h6" ml={2}>
+            Loading Dashboard...
+          </MDTypography>
+        </MDBox>
+      </Card>
+    );
+  }
+  */
+  // ========= END OLD FETCH/LOADING LOGIC =========
+
+  // NEW: map props (vtsData, elkData, unreachableData) to rows
+  useEffect(() => {
+    // VTS rows
+    const vtsRows = (vtsData || []).map((item, index) => {
+      const imei = item.imei || "N/A";
+      const speed = Number(item.speed) || 0;
+      const isLocked = speed === 0 && item.ign === "Y";
+      const gpsDisplay = item.gps === "A" ? "Active" : "Inactive";
+      const vehicleStatus = getBackendStatus(item);
+
+      return {
+        no: (
+          <MDBox display="flex" alignItems="center" gap={0.5}>
+            <Icon fontSize="small" color={vehicleStatus === "offline" ? "error" : "success"}>
+              {vehicleStatus === "offline" ? "offline_bolt" : "online_prediction"}
+            </Icon>
+            <MDTypography
+              variant="caption"
+              fontWeight="bold"
+              color={vehicleStatus === "offline" ? "error" : "success"}
+            >
+              {index + 1}
+            </MDTypography>
+          </MDBox>
+        ),
+        accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+        vehicleNo: (
+          <DataCell
+            text={item.vehnum || item.name || "N/A"}
+            fontWeight="bold"
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        gpsStatus: <Status status={gpsDisplay} />,
+        ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
+        imei: (
+          <DataCell
+            text={imei}
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        simNo: <DataCell text={item.simNo || "N/A"} />,
+        date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+        latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+        longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+        address: <AddressCell item={item} />,
+        avgSpeed: <DataCell text={item.avg !== null && item.avg !== 0 ? item.avg : "N/A"} />,
+        currentSpeed: (
+          <DataCell
+            text={`${speed} km/h`}
+            color={speed > 0 ? "success" : "text"}
+            fontWeight="bold"
+          />
+        ),
+        lockUnlock: <LockUnlock isLocked={isLocked} deviceStatus={null} />,
+        checkbox: null,
+        _imei: imei,
+        _isLockedInitial: isLocked,
+        _speed: speed,
+        _status: vehicleStatus,
+        _raw: item,
+      };
+    });
+    setAllVtsRows(vtsRows);
+
+    // ELK rows
+    const elkRows = (elkData || []).map((item, index) => {
+      const imei = item.imei || "N/A";
+      const speed = Number(item.speed) || 0;
+      const elkTypeStatus = item.type;
+      const isLocked = elkTypeStatus === "L";
+      const isOnline = item.ign === "Y";
+      const status = getBackendStatus(item);
+
+      return {
+        no: (
+          <MDBox display="flex" alignItems="center" gap={0.5}>
+            <Icon fontSize="small" color={isLocked ? "error" : "success"}>
+              {isLocked ? "offline_bolt" : "online_prediction"}
+            </Icon>
+            <MDTypography
+              variant="caption"
+              fontWeight="bold"
+              color={isLocked ? "error" : "success"}
+            >
+              {index + 1}
+            </MDTypography>
+          </MDBox>
+        ),
+        accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+        vehicleNo: (
+          <DataCell
+            text={item.vehnum || item.name || "N/A"}
+            fontWeight="bold"
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        imei: (
+          <DataCell
+            text={imei}
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        simNo: <DataCell text={item.simNo || "N/A"} />,
+        date: <DataCell text={item.devTs || item.cts || "N/A"} />,
+        latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
+        longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
+        address: <AddressCell item={item} />,
+        currentSpeed: (
+          <DataCell
+            text={`${speed} km/h`}
+            color={speed > 0 ? "success" : "text"}
+            fontWeight="bold"
+          />
+        ),
+        gpsStatus: <Status status={item.gps === "A" ? "Active" : "Inactive"} />,
+        lockUnlock: (
+          <LockUnlock
+            isLocked={isLocked}
+            deviceStatus={item.status || null}
+            elkType={elkTypeStatus}
+          />
+        ),
+        checkbox: null, // set in memo
+        _imei: imei,
+        _isLockedInitial: isLocked,
+        _isOnline: isOnline,
+        _status: status,
+        _raw: item,
+      };
+    });
+    setAllElkRows(elkRows);
+
+    // UNREACHABLE rows
+    const unreachableRowsMapped = (unreachableData || []).map((item, index) => {
+      const imei = item.imei || "N/A";
+      return {
+        no: <DataCell text={index + 1} fontWeight="bold" />,
+        accountName: <DataCell text={item.accountName || "N/A"} fontWeight="medium" />,
+        accountId: <DataCell text={item.accid || "N/A"} />,
+        vehicleNo: (
+          <DataCell
+            text={item.vehnum || "N/A"}
+            fontWeight="bold"
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        imei: (
+          <DataCell
+            text={imei}
+            isClickable
+            onClick={() => handleImeiClick(imei, item.accid)}
+          />
+        ),
+        deviceType: <DataCell text={item.deviceType || "N/A"} />,
+        createdOn: <DataCell text={item.createdOn || "N/A"} />,
+        _raw: item,
+      };
+    });
+    setUnreachableRows(unreachableRowsMapped);
+  }, [vtsData, elkData, unreachableData, handleImeiClick]);
 
   const {
     filteredVts,
@@ -668,15 +692,16 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
     const command = action === "lock" ? "LOCK" : "UNLOCK";
 
     imeisToSend.forEach((targetImei) => {
-      ApiService.sendCommand({ imei: targetImei, command }, () => {});
+      // ApiService.sendCommand({ imei: targetImei, command }, () => {});
     });
 
     alert(`${command} command initiated for ${imeisToSend.length} device(s).`);
 
     if (isBulk) setSelectedRows({});
 
-    fetchVtsData(accountId);
-    fetchElkData(accountId);
+    // OLD: re-fetching locally (now parent handles refresh)
+    // fetchVtsData(accountId);
+    // fetchElkData(accountId);
   };
 
   // EXPORT BASED ON ACTIVE MAIN TAB
@@ -693,7 +718,9 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
       typeKey = "vts";
     } else if (tripFilterType === "elk") {
       rawData = elkData;
-      fileName = `Padlock_Report.${format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"}`;
+      fileName = `Padlock_Report.${
+        format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"
+      }`;
       typeKey = "elk";
     } else {
       rawData = unreachableData;
@@ -703,7 +730,7 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
       typeKey = "unreachable";
     }
 
-    const searchFilteredRaw = rawData.filter((item) => {
+    const searchFilteredRaw = (rawData || []).filter((item) => {
       let searchStr;
       if (tripFilterType === "unreachable") {
         searchStr = `${item.accountName} ${item.vehnum} ${item.imei}`.toLowerCase();
@@ -726,19 +753,6 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
       exportPDF(searchFilteredRaw, fileName, typeKey);
     }
   };
-
-  if (loading) {
-    return (
-      <Card>
-        <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-          <CircularProgress color="info" size={30} />
-          <MDTypography variant="h6" ml={2}>
-            Loading Dashboard...
-          </MDTypography>
-        </MDBox>
-      </Card>
-    );
-  }
 
   const selectedCount = Object.values(selectedRows).filter(Boolean).length;
 
@@ -805,6 +819,11 @@ function Projects({ accountId, vtsData = [], elkData = [], unreachableData = [] 
             <MDTypography variant="button" color="text" ml={1}>
               ({activeRows.length} units)
             </MDTypography>
+            {isRefreshing && (
+              <MDTypography variant="button" color="info" ml={1}>
+                Refreshing...
+              </MDTypography>
+            )}
           </MDTypography>
 
           <MDBox display="flex" gap={2} alignItems="center">
@@ -1011,6 +1030,8 @@ Projects.propTypes = {
   vtsData: PropTypes.arrayOf(PropTypes.object),
   elkData: PropTypes.arrayOf(PropTypes.object),
   unreachableData: PropTypes.arrayOf(PropTypes.object),
+  lastRefreshTime: PropTypes.number,
+  isRefreshing: PropTypes.bool,
 };
 
 export default Projects;

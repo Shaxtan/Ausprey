@@ -198,14 +198,14 @@ function DeviceTable({ devices, selectedId, onSelect }) {
             <TableRow>
               <TableCell align="left" sx={styles.cell("45%", "left", { px: 2 })}>
                 <MDBox display="flex" alignItems="center" justifyContent="flex-start">
-                  <Icon fontSize="small" sx={{ mr: "65px" }}>
+                  <Icon fontSize="small" sx={{ mr: "135px" }}>
                     directions_car
                   </Icon>
-                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                  <Icon fontSize="small" sx={{ mr: "120px" }}>
                     access_time
                   </Icon>
 
-                  <Icon fontSize="small" sx={{ mr: "60px" }}>
+                  <Icon fontSize="small" sx={{ mr: "110px" }}>
                     speed
                   </Icon>
                   <Icon fontSize="small">info_outline</Icon>
@@ -267,17 +267,18 @@ function DeviceTable({ devices, selectedId, onSelect }) {
 
                 {/* Info Column */}
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
-                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-                    <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
-                      <Icon
-                        color={d.ignition ? "success" : "error"}
-                        sx={{ fontSize: "1.2rem !important" }}
-                      >
-                        {d.ignition ? "power_settings_new" : "vpn_key_off"}
-                      </Icon>
-                    </Tooltip>
-                  </Stack>
-                </TableCell>
+  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+    <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
+      <Icon
+        color={d.ignition ? "success" : "error"} // green when ON, red when OFF
+        sx={{ fontSize: "1.2rem !important" }}
+      >
+        vpn_key_off
+      </Icon>
+    </Tooltip>
+  </Stack>
+</TableCell>
+
               </TableRow>
             ))}
           </TableBody>
