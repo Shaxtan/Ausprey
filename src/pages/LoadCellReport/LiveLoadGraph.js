@@ -43,8 +43,7 @@ import {
 import { exportCSV, exportExcel, exportPDF } from "../../../src/pages/utils/exportUtils";
 
 // Chatbot Icon
-const CHATBOT_ICON_PLACEHOLDER =
-  "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
+const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
 function LiveLoadGraph() {
   const {
@@ -116,8 +115,7 @@ function LiveLoadGraph() {
       let botResponseText = "";
 
       if (option === "Alert Logs") {
-        botResponseText =
-          "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
+        botResponseText = "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
         navigate("/alerts");
       } else if (option === "Track/Play") {
         botResponseText =
@@ -274,12 +272,11 @@ function LiveLoadGraph() {
     }
   };
 
-  const averageConfig =
-    showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
+  const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      {/*<DashboardNavbar />*/}
       <MDBox py={3}>
         {/* --- Search + Format + Download in ONE row --- */}
         <Grid container spacing={3} mb={4}>
@@ -296,12 +293,7 @@ function LiveLoadGraph() {
                     {/* Select IMEI */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
-                        <MDTypography
-                          variant="caption"
-                          display="block"
-                          mb={0.5}
-                          fontWeight="bold"
-                        >
+                        <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
                           Select IMEI
                         </MDTypography>
                       </MDBox>
@@ -380,14 +372,8 @@ function LiveLoadGraph() {
                             Format:
                           </MDTypography>
 
-                          <FormControl
-                            variant="outlined"
-                            size="small"
-                            sx={{ minWidth: 150 }}
-                          >
-                            <InputLabel id="format-select-label">
-                              Select Format
-                            </InputLabel>
+                          <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+                            <InputLabel id="format-select-label">Select Format</InputLabel>
                             <Select
                               labelId="format-select-label"
                               id="formatSelect"
@@ -416,9 +402,7 @@ function LiveLoadGraph() {
                               }
 
                               setDownloading(true);
-                              const baseName = `LoadCellReport_${
-                                imei || "data"
-                              }_${Date.now()}`;
+                              const baseName = `LoadCellReport_${imei || "data"}_${Date.now()}`;
 
                               try {
                                 if (exportFormat === "csv") {
@@ -459,36 +443,48 @@ function LiveLoadGraph() {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
-              <MDBox pt={3} px={3}>
+              <MDBox display="flex" justifyContent="space-between" alignItems="center">
                 <MDTypography variant="h6" fontWeight="medium">
                   Load Cell Graph with Averages
                 </MDTypography>
+
+                {/* Show this only if a search is active */}
+                {chartData.length > 0 && (
+                  <MDBox display="flex" alignItems="center">
+                    <MDBox
+                      width="10px"
+                      height="10px"
+                      bgColor="success"
+                      borderRadius="50%"
+                      mr={1}
+                      sx={{
+                        animation: "pulse 1.5s infinite",
+                        "@keyframes pulse": {
+                          "0%": { opacity: 1, transform: "scale(1)" },
+                          "50%": { opacity: 0.4, transform: "scale(1.2)" },
+                          "100%": { opacity: 1, transform: "scale(1)" },
+                        },
+                      }}
+                    />
+                    <MDTypography variant="button" fontWeight="regular" color="text">
+                      Live: Updating every 30s
+                    </MDTypography>
+                  </MDBox>
+                )}
               </MDBox>
 
               <MDBox p={3}>
                 {dateRange && (
-                  <MDTypography
-                    variant="body2"
-                    fontWeight="bold"
-                    align="center"
-                    mb={2}
-                  >
+                  <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
                     {dateRange}
                   </MDTypography>
                 )}
 
                 {averageConfig && (
                   <MDBox textAlign="center" mb={3}>
-                    <MDTypography
-                      variant="h5"
-                      fontWeight="bold"
-                      color={averageConfig.labelColor}
-                    >
+                    <MDTypography variant="h5" fontWeight="bold" color={averageConfig.labelColor}>
                       Current Average Load:{" "}
-                      {parseFloat(
-                        chartData[chartData.length - 1].Average
-                      ).toFixed(2)}{" "}
-                      tons
+                      {parseFloat(chartData[chartData.length - 1].Average).toFixed(2)} tons
                     </MDTypography>
                     <MDTypography variant="caption" color="text.secondary">
                       Status: {averageConfig.labelText}
@@ -503,13 +499,8 @@ function LiveLoadGraph() {
                   }}
                 >
                   {chartData.length === 0 ? (
-                    <MDTypography
-                      textAlign="center"
-                      color="text.secondary"
-                      mt={8}
-                    >
-                      Please select the date range for which you want to see the
-                      Load Cell Data.
+                    <MDTypography textAlign="center" color="text.secondary" mt={8}>
+                      Please select the date range for which you want to see the Load Cell Data.
                     </MDTypography>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -523,9 +514,10 @@ function LiveLoadGraph() {
                           tick={{ fontSize: 12 }}
                           tickFormatter={(value) => {
                             const date = new Date(value);
-                            return `${date.getHours()}:${String(
-                              date.getMinutes()
-                            ).padStart(2, "0")}`;
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(
+                              2,
+                              "0"
+                            )}`;
                           }}
                         />
                         <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
@@ -635,10 +627,7 @@ function LiveLoadGraph() {
                 fontWeight="regular"
                 color={msg.type === "user" ? "white" : "dark"}
                 dangerouslySetInnerHTML={{
-                  __html: msg.text.replace(
-                    /\*\*(.*?)\*\*/g,
-                    "<strong>$1</strong>"
-                  ),
+                  __html: msg.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
                 }}
               />
             </div>
@@ -721,8 +710,6 @@ function LiveLoadGraph() {
 }
 
 export default LiveLoadGraph;
-
-
 
 // import React from "react";
 // import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
