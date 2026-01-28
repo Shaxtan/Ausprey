@@ -58,9 +58,7 @@ const CreateTripDialog = ({
               {geo.name}
             </MenuItem>
           ))}
-          {geofenceList.length === 0 && (
-            <MenuItem disabled>No Geofences Available</MenuItem>
-          )}
+          {geofenceList.length === 0 && <MenuItem disabled>No Geofences Available</MenuItem>}
         </TextField>
       );
     }
@@ -165,7 +163,7 @@ const CreateTripDialog = ({
                 Select IMEI *
               </MDTypography> */}
 
-             <Select
+              <Select
   options={imeiOptions}
   value={imeiOptions.find((opt) => opt.value === form.imei) || null}
   onChange={(selected) => {
@@ -197,17 +195,20 @@ const CreateTripDialog = ({
       ...base,
       fontSize: "0.875rem",
     }),
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 1300, 
+    }),
+    menu: (base) => ({
+      ...base,
+      zIndex: 1301,
+    }),
   }}
 />
 
 
               {errors.imei && (
-                <MDTypography
-                  variant="caption"
-                  color="error"
-                  ml={0.5}
-                  mt={0.2}
-                >
+                <MDTypography variant="caption" color="error" ml={0.5} mt={0.2}>
                   {errors.imei}
                 </MDTypography>
               )}
@@ -289,27 +290,26 @@ const CreateTripDialog = ({
         <Button onClick={onClose} color="inherit">
           Cancel
         </Button>
-       <Button
-  onClick={onSubmit}
-  variant="contained"
-  color="inherit"
-  sx={{
-    backgroundColor: "#1976d2", // or any color you want
-    color: "#ffffff",
-    "&:hover": {
-      backgroundColor: "#115293",
-    },
-  }}
->
-  Create
-</Button>
-
+        <Button
+          onClick={onSubmit}
+          variant="contained"
+          color="inherit"
+          sx={{
+            backgroundColor: "#1976d2", // or any color you want
+            color: "#ffffff",
+            "&:hover": {
+              backgroundColor: "#115293",
+            },
+          }}
+        >
+          Create
+        </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-CreateTripDialog.propTypes = { 
+CreateTripDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   form: PropTypes.object.isRequired,
   errors: PropTypes.object.isRequired,

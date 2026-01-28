@@ -2,15 +2,15 @@ import { useState, useEffect, useMemo } from "react";
 
 // react-router components
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AccountProvider } from "../src/context/AccountContext";
 
 // @mui material components
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Icon from "@mui/material/Icon";
 
-// 💡 CORRECTED IMPORT PATH: Assuming App.js is in the 'src' directory.
+// logos
 import mainLogo from "./assets/images/mainlogoo.png";
-// ⭐ NEW IMPORT: Import the small icon
 import smallIcon from "./assets/images/small-icon.jpeg";
 
 // Material Dashboard 2 React components
@@ -20,11 +20,9 @@ import MDBox from "../src/assets/components/MDBox";
 import Sidenav from "../src/assets/components/examples/Sidenav";
 import Configurator from "../src/assets/components/examples/Configurator";
 
-// Material Dashboard 2 React themes
+// themes
 import theme from "assets/theme";
 import themeRTL from "assets/theme/theme-rtl";
-
-// Material Dashboard 2 React Dark Mode themes
 import themeDark from "assets/theme-dark";
 import themeDarkRTL from "assets/theme-dark/theme-rtl";
 
@@ -33,12 +31,13 @@ import rtlPlugin from "stylis-plugin-rtl";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
 
-// Material Dashboard 2 React routes
+// routes
 import routes from "routes";
 
-// Material Dashboard 2 React contexts
-// ⭐ FIX: Added 'setLayout' to control when the sidebar appears
+// context
 import { useMaterialUIController, setMiniSidenav, setOpenConfigurator, setLayout } from "context";
+
+const isAuthPath = (pathname) => pathname.startsWith("/authentication") || pathname === "/login";
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();
@@ -48,9 +47,7 @@ export default function App() {
     layout,
     openConfigurator,
     sidenavColor,
-    // eslint-disable-next-line no-unused-vars
     transparentSidenav,
-    // eslint-disable-next-line no-unused-vars
     whiteSidenav,
     darkMode,
   } = controller;
@@ -58,7 +55,6 @@ export default function App() {
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
 
-  // Cache for the rtl
   useMemo(() => {
     const cacheRtl = createCache({
       key: "rtl",
@@ -68,7 +64,6 @@ export default function App() {
     setRtlCache(cacheRtl);
   }, []);
 
-  // Open sidenav when mouse enter on mini sidenav
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
@@ -76,7 +71,6 @@ export default function App() {
     }
   };
 
-  // Close sidenav when mouse leave mini sidenav
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
@@ -84,26 +78,22 @@ export default function App() {
     }
   };
 
-  // Change the openConfigurator state
   const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
 
-  // Setting the dir attribute for the body element
   useEffect(() => {
     document.body.setAttribute("dir", direction);
   }, [direction]);
 
-  // Setting page scroll to 0 when changing the route
   useEffect(() => {
     document.documentElement.scrollTop = 0;
     document.scrollingElement.scrollTop = 0;
   }, [pathname]);
 
-  // ⭐ CRUCIAL FIX: Set the layout type based on the current route
   useEffect(() => {
-    if (pathname.startsWith("/authentication")) {
-      setLayout(dispatch, "authentication"); // Set layout to hide Sidenav
+    if (isAuthPath(pathname)) {
+      setLayout(dispatch, "authentication"); // hide Sidenav on auth
     } else {
-      setLayout(dispatch, "dashboard"); // Default to dashboard layout
+      setLayout(dispatch, "dashboard"); // default to dashboard layout
     }
   }, [pathname, dispatch]);
 
@@ -123,9 +113,7 @@ export default function App() {
       return routesArray;
     }, []);
 
-  // ⭐ NEW LOGIC: Determine which logo to use based on miniSidenav state
   const logo = miniSidenav ? smallIcon : mainLogo;
-  // ⭐ NEW LOGIC: Adjust logo styling based on miniSidenav state
   const logoStyles = miniSidenav
     ? {
         "& .MuiBox-root img": {
@@ -143,37 +131,23 @@ export default function App() {
         },
       };
 
-  return direction === "rtl" ? (
-    <CacheProvider value={rtlCache}>
-      <ThemeProvider theme={darkMode ? themeDarkRTL : themeRTL}>
-        <CssBaseline />
-        {/* The sidebar and configurator are only rendered when layout is "dashboard" */}
-        {layout === "dashboard" && (
-          <>
-            <Sidenav
-              color={sidenavColor}
-              brand={logo}
-              brandName=""
-              routes={routes}
-              onMouseEnter={handleOnMouseEnter}
-              onMouseLeave={handleOnMouseLeave}
-              sx={logoStyles}
-            />
-            <Configurator />
-            {/* configsButton removed */}
-          </>
-        )}
-        {layout === "vr" && <Configurator />}
-        <Routes>
-          {getRoutes(routes)}
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Routes>
-      </ThemeProvider>
-    </CacheProvider>
-  ) : (
-    <ThemeProvider theme={darkMode ? themeDark : theme}>
-      <CssBaseline />
-      {/* The sidebar and configurator are only rendered when layout is "dashboard" */}
+  const authRoutes = routes.filter(
+    (r) => r.route && (r.route.startsWith("/authentication") || r.route === "/login")
+  );
+  const protectedRoutes = routes.filter(
+    (r) => r.route && !(r.route.startsWith("/authentication") || r.route === "/login")
+  );
+
+  const authRouteElements = authRoutes.map((route) => (
+    <Route exact path={route.route} element={route.component} key={route.key} />
+  ));
+
+  const protectedRouteElements = protectedRoutes.map((route) => (
+    <Route exact path={route.route} element={route.component} key={route.key} />
+  ));
+
+  const AppContent = (
+    <>
       {layout === "dashboard" && (
         <>
           <Sidenav
@@ -186,14 +160,41 @@ export default function App() {
             sx={logoStyles}
           />
           <Configurator />
-          {/* configsButton removed */}
         </>
       )}
       {layout === "vr" && <Configurator />}
+
       <Routes>
-        {getRoutes(routes)}
+        {authRouteElements}
+
+        <Route
+          path="/*"
+          element={
+            <AccountProvider>
+              <Routes>
+                {protectedRouteElements}
+                <Route path="*" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </AccountProvider>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>
+    </>
+  );
+
+  return direction === "rtl" ? (
+    <CacheProvider value={rtlCache}>
+      <ThemeProvider theme={darkMode ? themeDarkRTL : themeRTL}>
+        <CssBaseline />
+        {AppContent}
+      </ThemeProvider>
+    </CacheProvider>
+  ) : (
+    <ThemeProvider theme={darkMode ? themeDark : theme}>
+      <CssBaseline />
+      {AppContent}
     </ThemeProvider>
   );
 }

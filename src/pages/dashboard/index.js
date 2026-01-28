@@ -1,14 +1,15 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"; // Added useRef
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import ApiService from "services/ApiService";
 import { useNavigate } from "react-router-dom";
+
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
 import DevicesIcon from "@mui/icons-material/Devices";
 import WifiIcon from "@mui/icons-material/Wifi";
 import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
 import DonutLargeIcon from "@mui/icons-material/DonutLarge";
-import Icon from "@mui/material/Icon";
 import StopIcon from "@mui/icons-material/Stop";
+import Icon from "@mui/material/Icon";
 
 import Grid from "@mui/material/Grid";
 import MDBox from "../../../src/assets/components/MDBox";
@@ -34,8 +35,7 @@ const getInitialAccountId = () => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  
-  // Create a ref for the Projects table section
+
   const projectsRef = useRef(null);
 
   const [alertModalOpen, setAlertModalOpen] = useState(false);
@@ -45,6 +45,11 @@ function Dashboard() {
   const [devices, setDevices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(getInitialAccountId());
+
+  // raw data to pass to Projects
+  const [vtsRawData, setVtsRawData] = useState([]);
+  const [elkRawData, setElkRawData] = useState([]);
+  const [unreachableRawData, setUnreachableRawData] = useState([]);
 
   const [summaryData, setSummaryData] = useState({
     totalDevices: 0,
@@ -60,7 +65,6 @@ function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedAlertType, setSelectedAlertType] = useState(null);
 
-  // Function to handle smooth scroll
   const scrollToProjects = () => {
     if (projectsRef.current) {
       projectsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -72,14 +76,14 @@ function Dashboard() {
     setAlertModalOpen(true);
   };
 
+  const handleCloseAlertModal = () => {
+    setAlertModalOpen(false);
+  };
+
   const filteredAlertData = useMemo(() => {
     if (!selectedAlertType) return alertApiData.data;
     return alertApiData.data.filter((alert) => alert.type === selectedAlertType);
   }, [alertApiData.data, selectedAlertType]);
-
-  const handleCloseAlertModal = () => {
-    setAlertModalOpen(false);
-  };
 
   const fetchAlertsData = useCallback((accountId) => {
     ApiService.getDbAlerts(accountId, (res) => {
@@ -92,13 +96,18 @@ function Dashboard() {
   const fetchDashboardData = useCallback((accountId, isManual = false) => {
     if (isManual) setIsRefreshing(true);
 
+    // 1) Dashboard account API
     ApiService.getDashboardData(
       { accid: accountId },
       (res) => {
         if (res?.data?.resultCode === 1 && res?.data?.data?.data) {
           const apiData = res.data.data.data;
-          const summary = apiData.summary || {};
 
+          // Raw lists for Projects
+          setVtsRawData(apiData.VTS?.available || []);
+          setElkRawData(apiData.ELK?.available || []);
+
+          const summary = apiData.summary || {};
           const newSummary = {
             totalDevices: summary.totalDevices || 0,
             offline: summary.offline || 0,
@@ -128,14 +137,21 @@ function Dashboard() {
           );
 
           setLastRefreshTime(Date.now());
-          if (isManual) setIsRefreshing(false);
-        } else {
-          if (isManual) setIsRefreshing(false);
         }
+        if (isManual) setIsRefreshing(false);
       },
       true,
       1
     );
+
+    // 2) Unreachable API
+    ApiService.getUnreachableDevices({ accid: accountId }, (res) => {
+      if (res?.data?.resultCode === 1 && Array.isArray(res?.data?.data)) {
+        setUnreachableRawData(res.data.data);
+      } else {
+        setUnreachableRawData([]);
+      }
+    });
   }, []);
 
   const fetchAccounts = () => {
@@ -203,49 +219,27 @@ function Dashboard() {
     };
   }, [alertApiData]);
 
-  // Static chart data (Mock)
-  // const fuelPieData = useMemo(() => ({
-  //   labels: ["Efficient", "Average", "High Usage"],
-  //   datasets: {
-  //     label: "Fuel",
-  //     backgroundColors: ["#4CAF50", "#2196F3", "#FF9800"],
-  //     data: [30, 40, 30],
-  //   },
-  // }), []);
+  const renderChart1 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "success", component: <WifiIcon /> }}
+        title="Online vs Offline"
+        chart={onlineOfflinePieData}
+      />
+    ),
+    [onlineOfflinePieData]
+  );
 
-  // const geofencePieData = useMemo(() => ({
-  //   labels: ["Inside", "Outside", "Violations"],
-  //   datasets: {
-  //     label: "Geofence",
-  //     backgroundColors: ["#F44336", "#FFC107", "#00BCD4"],
-  //     data: [60, 20, 20],
-  //   },
-  // }), []);
-
-  // const healthPieData = useMemo(() => ({
-  //   labels: ["Good", "Service Due", "Critical"],
-  //   datasets: {
-  //     label: "Health",
-  //     backgroundColors: ["#8BC34A", "#FFEB3B", "#607D8B"],
-  //     data: [70, 20, 10],
-  //   },
-  // }), []);
-
-  const renderChart1 = useMemo(() => (
-    <PieChart
-      icon={{ color: "success", component: <WifiIcon /> }}
-      title="Online vs Offline"
-      chart={onlineOfflinePieData}
-    />
-  ), [onlineOfflinePieData]);
-
-  const renderChart2 = useMemo(() => (
-    <PieChart
-      icon={{ color: "dark", component: <DonutLargeIcon /> }}
-      title="Vehicle Running Status"
-      chart={allDeviceStatusPieData}
-    />
-  ), [allDeviceStatusPieData]);
+  const renderChart2 = useMemo(
+    () => (
+      <PieChart
+        icon={{ color: "dark", component: <DonutLargeIcon /> }}
+        title="Vehicle Running Status"
+        chart={allDeviceStatusPieData}
+      />
+    ),
+    [allDeviceStatusPieData]
+  );
 
   const renderChart3 = useMemo(() => {
     const chartConfigs = {
@@ -269,30 +263,6 @@ function Dashboard() {
     );
   }, [dynamicAlertPieData]);
 
-  // const renderChart4 = useMemo(() => (
-  //   <PieChart
-  //     icon={{ color: "primary", component: <Icon>local_gas_station</Icon> }}
-  //     title="Fuel Usage"
-  //     chart={fuelPieData}
-  //   />
-  // ), [fuelPieData]);
-
-  // const renderChart5 = useMemo(() => (
-  //   <PieChart
-  //     icon={{ color: "error", component: <Icon>security</Icon> }}
-  //     title="Geofence Violations"
-  //     chart={geofencePieData}
-  //   />
-  // ), [geofencePieData]);
-
-  // const renderChart6 = useMemo(() => (
-  //   <PieChart
-  //     icon={{ color: "info", component: <Icon>healing</Icon> }}
-  //     title="Vehicle Health"
-  //     chart={healthPieData}
-  //   />
-  // ), [healthPieData]);
-
   return (
     <DashboardLayout>
       <DashboardNavbar
@@ -300,6 +270,9 @@ function Dashboard() {
         selectedAccountId={String(selectedAccountId)}
         handleAccountChange={handleAccountChange}
         onManualRefresh={() => {
+          // 3 data APIs per manual refresh:
+          // - fetchDashboardData -> getDashboardData + getUnreachableDevices
+          // - fetchAlertsData -> getDbAlerts
           fetchDashboardData(selectedAccountId, true);
           fetchAlertsData(selectedAccountId);
         }}
@@ -311,7 +284,6 @@ function Dashboard() {
 
       <MDBox py={0}>
         <Grid container spacing={3}>
-          {/* Card 1: Total Devices */}
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="dark"
@@ -321,7 +293,7 @@ function Dashboard() {
               percentage={{ color: "success", label: "Total Active Fleet" }}
             />
           </Grid>
-          {/* Card 2: Motion */}
+
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="success"
@@ -331,7 +303,7 @@ function Dashboard() {
               percentage={{ color: "success", label: "Total Online Fleet" }}
             />
           </Grid>
-          {/* Card 3: Idle */}
+
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="warning"
@@ -341,7 +313,7 @@ function Dashboard() {
               percentage={{ color: "success", label: "Total Idle Fleet" }}
             />
           </Grid>
-          {/* Card 4: Stopped */}
+
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="error"
@@ -351,7 +323,7 @@ function Dashboard() {
               percentage={{ color: "success", label: "Total Stopped Fleet" }}
             />
           </Grid>
-          {/* Card 5: Offline */}
+
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="warning"
@@ -361,14 +333,14 @@ function Dashboard() {
               percentage={{ color: "error", label: "Total Offline Fleet" }}
             />
           </Grid>
-          {/* Card 6: Unreachable */}
+
           <Grid item xs={12} md={6} lg={2} onClick={scrollToProjects} sx={{ cursor: "pointer" }}>
             <ComplexStatisticsCard
               color="secondary"
               icon={<CloudOffIcon style={{ marginTop: "-15px" }} />}
               title="Unreachable"
               count={summaryData.unreachable.toLocaleString()}
-              percentage={{ color: "success", label: "Total Unreacble Fleet" }}
+              percentage={{ color: "success", label: "Total Unreachable Fleet" }}
             />
           </Grid>
         </Grid>
@@ -376,10 +348,14 @@ function Dashboard() {
         <MDBox mt={4}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>{renderChart1}</MDBox>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
+                {renderChart1}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} sx={{ height: "300px !important" }}>{renderChart2}</MDBox>
+              <MDBox mb={3} sx={{ height: "300px !important" }}>
+                {renderChart2}
+              </MDBox>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
               <MDBox
@@ -395,24 +371,20 @@ function Dashboard() {
                 {renderChart3}
               </MDBox>
             </Grid>
-            {/* <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart4}</MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart5}</MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3} mt={-10} sx={{ height: "300px !important" }}>{renderChart6}</MDBox>
-            </Grid> */}
           </Grid>
         </MDBox>
 
-        {/* Updated section with ref for scrolling */}
-        <MDBox sx={{ marginTop: "-105px" }} ref={projectsRef} >
+        <MDBox sx={{ marginTop: "-105px" }} ref={projectsRef}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <MDBox sx={{ width: "100%", overflowX: "auto" }}>
-                <Projects accountId={selectedAccountId} />
+                <Projects
+                  accountId={selectedAccountId}
+                  vtsData={vtsRawData}
+                  elkData={elkRawData}
+                  unreachableData={unreachableRawData}
+                  loading={isRefreshing}
+                />
               </MDBox>
             </Grid>
           </Grid>
@@ -432,4 +404,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard; 
+export default Dashboard;

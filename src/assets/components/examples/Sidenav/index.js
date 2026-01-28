@@ -75,6 +75,7 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
 
         // Standard Route Logic
         const isActive = key === collapseName;
+
         if (href) {
           return (
             <Link href={href} key={key} target="_blank" sx={{ textDecoration: "none" }}>
@@ -82,11 +83,14 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
             </Link>
           );
         }
+
         if (noRoute) {
           return (
             <SidenavCollapse key={key} name={name} icon={icon} active={isActive} />
           );
         }
+
+        // Normal navigation (this will handle Sign In and Sign Out too)
         return (
           <NavLink key={key} to={route}>
             <SidenavCollapse name={name} icon={icon} active={isActive} />
@@ -148,7 +152,12 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
         <MDBox component={NavLink} to="/" display="flex" alignItems="center">
           {brand && <MDBox component="img" src={brand} alt="Brand" width="2rem" />}
           <MDBox sx={(theme) => sidenavLogoLabel(theme, { miniSidenav: true })}>
-            <MDTypography component="h6" variant="button" fontWeight="medium" color={textColor}>
+            <MDTypography
+              component="h6"
+              variant="button"
+              fontWeight="medium"
+              color={textColor}
+            >
               {brandName}
             </MDTypography>
           </MDBox>
@@ -171,32 +180,31 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
 
         {/* BOTTOM: version label */}
         <MDBox
-  px={3}
-  py={1}
-  mt="auto"
-  sx={{
-    borderTop: ({ borders: { borderWidth } }) => ({
-      borderTop: `${borderWidth[1]} solid rgba(255,255,255,0.15)`,
-    }),
-  }}
->
-  <MDTypography
-    variant="overline"
-    color={textColor}
-    fontWeight="regular"
-    sx={{
-      opacity: 0.6,
-      textAlign: "center",
-      display: "block",
-      fontSize: "0.6rem",
-      letterSpacing: "0.08em",
-      ml: -1,                // ← margin-left
-    }}
-  >
-    Version 1.0.0
-  </MDTypography>
-</MDBox>
-
+          px={3}
+          py={1}
+          mt="auto"
+          sx={{
+            borderTop: ({ borders: { borderWidth } }) => ({
+              borderTop: `${borderWidth[1]} solid rgba(255,255,255,0.15)`,
+            }),
+          }}
+        >
+          <MDTypography
+            variant="overline"
+            color={textColor}
+            fontWeight="regular"
+            sx={{
+              opacity: 0.6,
+              textAlign: "center",
+              display: "block",
+              fontSize: "0.6rem",
+              letterSpacing: "0.08em",
+              ml: -1,
+            }}
+          >
+            V 1.0.0
+          </MDTypography>
+        </MDBox>
       </MDBox>
     </SidenavRoot>
   );

@@ -83,7 +83,7 @@ const getIconForStatus = (status, lock) => {
 // Main Component
 // -----------------------------
 const MapView = () => {
-  // --- ACCOUNT (from context) & REFRESH STATE ---
+  // --- ACCOUNT (from context) & REFRESH sSTATE ---
   const { selectedAccountId } = useAccount(); // accounts & setter are used in navbar
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
