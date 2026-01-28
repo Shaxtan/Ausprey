@@ -2,13 +2,25 @@ import axios from "axios";
 import authHeader from "./auth-header";
 import { callAlert } from "./CommonService";
 
+// const SERVICES = {
+//   main: process.env.REACT_APP_BASE_URL + ":8070",
+//   mainn: process.env.REACT_APP_BASE_URL + ":8071",
+//   report: process.env.REACT_APP_BASE_URL + ":8075",
+//   dashboard: process.env.REACT_APP_BASE_URL + ":8075", //Dashboard
+//   template: "http://103.178.113.129:8072",
+//   tripOps: "http://103.178.113.129:8011",
+// };
+
 const SERVICES = {
-  main: process.env.REACT_APP_BASE_URL + ":8070",
-  mainn: process.env.REACT_APP_BASE_URL + ":8071",
-  report: process.env.REACT_APP_BASE_URL + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + ":8075", //Dashboard
-  template: "http://103.178.113.129:8072",
-  tripOps: "http://103.178.113.129:8011",
+  main: process.env.REACT_APP_BASE_URL + "/users",
+  mainn: process.env.REACT_APP_BASE_URL + "/accounts",
+  report: process.env.REACT_APP_BASE_URL + "/usage",
+  // report: 'http://103.178.113.129' + ":8075",
+  // dashboard: 'http://103.178.113.129' + ":8075",
+  dashboard: process.env.REACT_APP_BASE_URL + "/usage",
+  commands: process.env.REACT_APP_BASE_URL + "/commands",
+  template: process.env.REACT_APP_BASE_URL + "/template",
+  tripOps: process.env.REACT_APP_BASE_URL + "/tripOps",
 };
 
 axios.interceptors.response.use(
