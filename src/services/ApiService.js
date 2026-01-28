@@ -21,6 +21,7 @@ const SERVICES = {
   commands: process.env.REACT_APP_BASE_URL + "/commands",
   template: process.env.REACT_APP_BASE_URL + "/template",
   tripOps: process.env.REACT_APP_BASE_URL + "/tripOps",
+  // geofance: process.env.REACT_APP_BASE_URL + "/geofence",
 };
 
 axios.interceptors.response.use(
