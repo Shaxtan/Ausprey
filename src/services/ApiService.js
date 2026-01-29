@@ -21,7 +21,7 @@ const SERVICES = {
   commands: process.env.REACT_APP_BASE_URL + "/commands",
   template: process.env.REACT_APP_BASE_URL + "/template",
   tripOps: process.env.REACT_APP_BASE_URL + "/tripOps",
-  // geofance: process.env.REACT_APP_BASE_URL + "/geofence",
+  geofence: process.env.REACT_APP_BASE_URL + "/geofence",
 };
 
 axios.interceptors.response.use(
@@ -454,13 +454,13 @@ class ApiService {
   getGeofences(pageNo = 0) {
     // Use a direct axios call if you need a specific base URL not in SERVICES
     // or add GEOFENCE: "http://103.178.113.129:8012" to your SERVICES object
-    const GEOFENCE_BASE = "http://103.178.113.129:8012";
+    // const GEOFENCE_BASE = "http://103.178.113.129:8012";
 
     return this.postRequest(
       "/geo-fence/view-all",
       { pageNo },
       true, // Set to true if it needs Auth header, false if not
-      GEOFENCE_BASE
+      SERVICES.geofence
     )
       .then((res) => {
         // Return only the data array for easier use in the component
