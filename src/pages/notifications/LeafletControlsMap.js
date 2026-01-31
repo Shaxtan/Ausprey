@@ -548,10 +548,10 @@ const LeafletControlsMap = () => {
         points.length > 10000
           ? 0.001
           : points.length > 5000
-          ? 0.0005
-          : points.length > 1000
-          ? 0.0002
-          : 0.0001;
+            ? 0.0005
+            : points.length > 1000
+              ? 0.0002
+              : 0.0001;
       const simplified = simplify(points, tolerance, true);
       const latLngs = simplified.map((p) => [p.y, p.x]);
 
@@ -626,6 +626,44 @@ const LeafletControlsMap = () => {
     startIcon,
     endIcon,
   ]);
+  // QUICK SELECT DATE HANDLER
+  const handleQuickSelect = (type) => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    // Reset seconds/milliseconds for consistency
+    now.setSeconds(0, 0);
+
+    switch (type) {
+      case "today":
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "yesterday":
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "week":
+        start.setDate(now.getDate() - 7);
+        // Usually, 'past week' goes up to right now
+        break;
+      default:
+        break;
+    }
+
+    // Convert to the format required by <TextField type="datetime-local" />
+    // Format: YYYY-MM-DDTHH:mm
+    const formatDateForInput = (date) => {
+      const pad = (num) => num.toString().padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    setFromDate(formatDateForInput(start));
+    setToDate(formatDateForInput(end));
+  };
 
   /* ---------- render ---------- */
   return (
@@ -784,6 +822,33 @@ const LeafletControlsMap = () => {
                 />
               </MDBox>
             </Grid>
+            {/* Quick Select Buttons */}
+            <MDBox mb={2} display="flex" gap={1} justifyContent="center" width="100%" mt={1} ml={2}>
+              <MDButton
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => handleQuickSelect("today")}
+              >
+                Today
+              </MDButton>
+              <MDButton
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => handleQuickSelect("yesterday")}
+              >
+                Yesterday
+              </MDButton>
+              <MDButton
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => handleQuickSelect("week")}
+              >
+                Last 7 Days
+              </MDButton>
+            </MDBox>
           </Grid>
         </MDBox>
 

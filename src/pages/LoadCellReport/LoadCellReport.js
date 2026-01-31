@@ -279,6 +279,44 @@ function LoadCellReport() {
   };
 
   const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
+  // QUICK SELECT DATE HANDLER
+  const handleQuickSelect = (type) => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    // Reset seconds/milliseconds for consistency
+    now.setSeconds(0, 0);
+
+    switch (type) {
+      case "today":
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "yesterday":
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "week":
+        start.setDate(now.getDate() - 7);
+        // Usually, 'past week' goes up to right now
+        break;
+      default:
+        break;
+    }
+
+    // Convert to the format required by <TextField type="datetime-local" />
+    // Format: YYYY-MM-DDTHH:mm
+    const formatDateForInput = (date) => {
+      const pad = (num) => num.toString().padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    setFromDate(formatDateForInput(start));
+    setToDate(formatDateForInput(end));
+  };
 
   return (
     <DashboardLayout>
@@ -298,61 +336,55 @@ function LoadCellReport() {
                   <Grid container spacing={3} alignItems="flex-end">
                     {/* IMEI Input */}
                     {/* Searchable IMEI Input */}
-                   <Grid item xs={12} md={3}>
-  <MDBox mb={0.5}>
-    <MDTypography
-      variant="caption"
-      display="block"
-      mb={0.5}
-      fontWeight="bold"
-    >
-      Select IMEI
-    </MDTypography>
-  </MDBox>
+                    <Grid item xs={12} md={3}>
+                      <MDBox mb={0.5}>
+                        <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
+                          Select IMEI
+                        </MDTypography>
+                      </MDBox>
 
-  <ReactSelect
-    options={imeiOptions}
-    value={imeiOptions.find((opt) => opt.value === imei) || null}
-    onChange={(selected) => {
-      setImei(selected ? selected.value : "");
-    }}
-    placeholder="Search IMEI..."
-    isClearable
-    isSearchable
-    styles={{
-      control: (base, state) => ({
-        ...base,
-        minHeight: 40,          // smaller box
-        height: 30,
-        borderRadius: 4,
-        fontSize: 12,
-        borderColor: state.isFocused ? "#1A73E8" : "#c4c4c4",
-        boxShadow: state.isFocused ? "0 0 0 1px #1A73E8" : "none",
-        "&:hover": {
-          borderColor: "#000",
-        },
-      }),
-      valueContainer: (base) => ({
-        ...base,
-        padding: "0 6px",
-      }),
-      input: (base) => ({
-        ...base,
-        margin: 0,
-        padding: 0,
-      }),
-      indicatorsContainer: (base) => ({
-        ...base,
-        padding: 4,
-      }),
-      menuPortal: (base) => ({
-        ...base,
-        zIndex: 9999,
-      }),
-    }}
-  />
-</Grid>
-
+                      <ReactSelect
+                        options={imeiOptions}
+                        value={imeiOptions.find((opt) => opt.value === imei) || null}
+                        onChange={(selected) => {
+                          setImei(selected ? selected.value : "");
+                        }}
+                        placeholder="Search IMEI..."
+                        isClearable
+                        isSearchable
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            minHeight: 40, // smaller box
+                            height: 30,
+                            borderRadius: 4,
+                            fontSize: 12,
+                            borderColor: state.isFocused ? "#1A73E8" : "#c4c4c4",
+                            boxShadow: state.isFocused ? "0 0 0 1px #1A73E8" : "none",
+                            "&:hover": {
+                              borderColor: "#000",
+                            },
+                          }),
+                          valueContainer: (base) => ({
+                            ...base,
+                            padding: "0 6px",
+                          }),
+                          input: (base) => ({
+                            ...base,
+                            margin: 0,
+                            padding: 0,
+                          }),
+                          indicatorsContainer: (base) => ({
+                            ...base,
+                            padding: 4,
+                          }),
+                          menuPortal: (base) => ({
+                            ...base,
+                            zIndex: 9999,
+                          }),
+                        }}
+                      />
+                    </Grid>
 
                     {/* From Date-Time */}
                     <Grid item xs={12} md={3}>
@@ -422,6 +454,40 @@ function LoadCellReport() {
                         Search
                       </MDButton>
                     </Grid>
+                    {/* Quick Select Buttons */}
+                    <MDBox
+                      mb={2}
+                      display="flex"
+                      gap={1}
+                      justifyContent="center"
+                      width="100%"
+                      mt={1}
+                    >
+                      <MDButton
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => handleQuickSelect("today")}
+                      >
+                        Today
+                      </MDButton>
+                      <MDButton
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => handleQuickSelect("yesterday")}
+                      >
+                        Yesterday
+                      </MDButton>
+                      <MDButton
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => handleQuickSelect("week")}
+                      >
+                        Last 7 Days
+                      </MDButton>
+                    </MDBox>
                   </Grid>
 
                   {/* --- Download Options --- */}
