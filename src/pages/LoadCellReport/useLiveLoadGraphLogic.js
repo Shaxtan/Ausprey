@@ -61,6 +61,8 @@ export default function useLiveLoadGraphLogic() {
   const [showAverage, setShowAverage] = useState(true);
   const [showData, setShowData] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
+  // Add a new state to track if we are in "Monitoring Mode"
+  const [isMonitoring, setIsMonitoring] = useState(false);
   const intervalRef = useRef(null);
 
   // --- FETCH IMEIs ON MOUNT ---
@@ -100,23 +102,17 @@ export default function useLiveLoadGraphLogic() {
     };
   }, []);
 
-  // --- DATA FETCHER ---
-  const fetchData = (imeiValue, startTime, endTime) => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+  // --- CLEAN DATA FETCHER ---
+  const fetchData = (targetImei, startTime, endTime) => {
+    if (!targetImei.trim() || !startTime || !endTime) return;
 
-    if (!imeiValue.trim() || !startTime || !endTime) return;
-
-    setDateRange(
-      `Data from: ${formatDateTimeDisplay(startTime)} to ${formatDateTimeDisplay(endTime)}`
-    );
-
-    const payload = {
-      imei: imeiValue,
-      startDate: toLocalString(startTime),
-      endDate: toLocalString(endTime),
-    };
-
-    ApiService.postRequest(`/reports/live-load-graph?IMEI=${imei}`, {}, true, SERVICES.dashboard)
+    // Use targetImei directly to avoid stale closures
+    ApiService.postRequest(
+      `/reports/live-load-graph?IMEI=${targetImei}`,
+      {},
+      true,
+      SERVICES.dashboard
+    )
       .then((res) => {
         if (res.data?.resultCode === 1) {
           const rows = res.data.data.map((d) => ({
@@ -129,45 +125,40 @@ export default function useLiveLoadGraphLogic() {
           }));
           setChartData(rows);
           setShowDownloadOptions(true);
-        } else {
-          setChartData([]);
-          setShowDownloadOptions(false);
-          callAlert("Error", res.data?.message || "No data found.");
         }
       })
-      .catch((error) => {
-        setChartData([]);
-        setShowDownloadOptions(false);
-        callAlert("Error", error?.response?.data?.message || "API Error");
-      });
+      .catch((error) => console.error("Auto-fetch error:", error));
   };
 
-  // --- SUBMIT HANDLER ---
+  // --- THE AUTO-REFRESH ENGINE ---
+  useEffect(() => {
+    let interval;
+    if (isMonitoring && imei) {
+      // Run immediately on start
+      fetchData(imei, fromDate, toDate);
+
+      // Set the 30-second loop
+      interval = setInterval(() => {
+        fetchData(imei, fromDate, toDate);
+      }, 30000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isMonitoring, imei]); // Refresh starts/restarts if monitoring toggles or IMEI changes
+
+  // --- UPDATED SUBMIT HANDLER ---
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     if (!imei.trim()) {
       callAlert("Error", "Select an IMEI");
       return;
     }
-    if (!fromDate || !toDate) {
-      callAlert("Error", "Select From and To Date-Time");
-      return;
-    }
-    if (new Date(fromDate) > new Date(toDate)) {
-      callAlert("Error", "From Date cannot be after To Date");
-      return;
-    }
-    if (!showAverage && !showData) {
-      callAlert("Error", "Select at least one of Average or Data to display");
-      return;
-    }
 
-    fetchData(imei, fromDate, toDate);
-
-    intervalRef.current = setInterval(() => {
-      fetchData(imei, fromDate, toDate);
-    }, 60000);
+    // This triggers the useEffect above
+    setIsMonitoring(true);
   };
 
   // --- RETURN ALL STATE & HANDLERS ---
@@ -191,7 +182,6 @@ export default function useLiveLoadGraphLogic() {
     handleSubmit,
   };
 }
-
 
 // import { useState, useEffect, useRef } from "react";
 // // import ApiService fyyrom "../../services/ApiService";
