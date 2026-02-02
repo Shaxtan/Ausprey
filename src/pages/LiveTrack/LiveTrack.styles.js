@@ -43,7 +43,7 @@ export const styles = {
 
   // --- Left Panel ---
   leftPanelContainer: (width) => ({
-    width: { xs: "100%", sm: `${width}px` },
+  width: { xs: "100%", sm: `${width * 0.5}px` }, // 👈 20% narrower
     flexShrink: 0,
     display: { xs: "block", sm: "flex" },
     flexDirection: "column",
