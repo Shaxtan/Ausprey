@@ -33,6 +33,7 @@ import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
 import MDInput from "../../assets/components/MDInput";
 import Icon from "@mui/material/Icon";
+import Autocomplete from "@mui/material/Autocomplete";
 
 /* -------------------------------------------------
    ICON FIX – default Leaflet marker
@@ -733,35 +734,37 @@ const LeafletControlsMap = () => {
         <MDTypography variant="h6" mb={2} color="info">
           Track Play Controls
         </MDTypography>
-        {/* Vehicle select */}
+        {/* Vehicle select - Searchable Autocomplete */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5}>
           Select Vehicle
         </MDTypography>
         <MDBox mb={2}>
-          <MDInput
-            select
-            value={selectedVehicle?.value || ""}
-            onChange={(e) => {
-              const veh = vehicleList.find((v) => v.value === e.target.value);
-              setSelectedVehicle(veh);
+          <Autocomplete
+            options={vehicleList}
+            getOptionLabel={(option) => option.label || ""}
+            value={selectedVehicle}
+            onChange={(event, newValue) => {
+              setSelectedVehicle(newValue);
               setShowHistory(false);
-              // Stop any ongoing animation when changing vehicle
               fullStopAnimation();
               setStatusFilter(["MOTION", "STOP", "IDLE"]);
             }}
-            fullWidth
-            size="small"
-            SelectProps={{ native: true }}
-          >
-            <option value="" disabled>
-              -- Select Vehicle --
-            </option>
-            {vehicleList.map((v) => (
-              <option key={v.value} value={v.value}>
-                {v.label}
-              </option>
-            ))}
-          </MDInput>
+            // Ensures the dropdown looks like your other MDInputs
+            renderInput={(params) => (
+              <MDInput
+                {...params}
+                placeholder="Search IMEI or Vehicle No."
+                size="small"
+                fullWidth
+              />
+            )}
+            // Styling to ensure it fits the Material Dashboard theme
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                padding: "2px",
+              },
+            }}
+          />
         </MDBox>
         {/* Date/Time Range */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
