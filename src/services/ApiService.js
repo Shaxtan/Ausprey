@@ -302,10 +302,9 @@ class ApiService {
           const lat = parseFloat(d.lat);
           const lng = parseFloat(d.lng);
 
-          // Map status
+          // Status mapping logic... (keep your existing logic)
           let status = "Inactive";
           if (d.deviceSource === "ELK") {
-            // For ELK, status might depend on lock state or speed
             status = speedNum > 0 ? "Running" : "Stopped";
           } else {
             if (ign === "Y") {
@@ -318,22 +317,29 @@ class ApiService {
           const location = lat && lng ? `${lat},${lng}` : null;
           const initialRoute = location ? [[lat, lng]] : [];
 
+          // CHANGE THIS PART:
+          // Instead of d.devTs || Date.now().toLocaleTimeString()
+          // We use the full devTs string from the API
+          const lastUpdateFormatted = d.devTs ? d.devTs : "No Data";
+
           return {
             id: d.imei,
             name: d.vehnum || d.name || d.imei,
             tripId: d.deviceSource === "ELK" ? "Padlock" : d.imei,
             status,
             speed: speedNum,
-            // ELK might use different battery field, fallback to 50
             battery: d.anl ? Math.round((Number(d.anl) / 4.2) * 100) : 50,
             ignition: ign === "Y",
-            lastUpdate: new Date(d.devTs || Date.now()).toLocaleTimeString(),
+
+            // Updated line to show both Date and Time by default
+            lastUpdate: lastUpdateFormatted,
+
             driverName: "N/A",
             vehicleType: d.deviceSource === "ELK" ? "Lock" : "Truck",
             route: initialRoute,
             location,
             accountId: d.accid || accountId,
-            deviceSource: d.deviceSource, // Carry this over to help LiveTrack logic
+            deviceSource: d.deviceSource,
             raw: d,
           };
         });

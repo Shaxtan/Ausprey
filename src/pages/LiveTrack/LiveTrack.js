@@ -234,20 +234,20 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     {d.name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" noWrap>
-                    {d.id} • {d.tripId}
+                    {d.id}
                   </Typography>
                 </TableCell>
 
                 {/* Status Column */}
-                <TableCell sx={styles.cell("25%", "center", { whiteSpace: "normal" })}>
+                <TableCell sx={styles.cell("35%", "center", { whiteSpace: "nowrap" })}>
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
                     <Typography
                       variant="caption"
                       display="block"
                       color="text.secondary"
-                      sx={{ mt: 0.5 }}
+                      sx={{ mt: 0.5, fontWeight: 500 }}
                     >
-                      {d.lastUpdate}
+                      {d.lastUpdate} {/* This will now show "YYYY-MM-DD HH:mm:ss" */}
                     </Typography>
                   </Tooltip>
                 </TableCell>
@@ -579,7 +579,7 @@ export default function LiveTrack() {
               </Tooltip>
             </Box>
 
-            <Stack direction="row" spacing={1} sx={styles.statusScrollContainer}>
+            {/* <Stack direction="row" spacing={1} sx={styles.statusScrollContainer}>
               {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
                 <StatusBox
                   key={status}
@@ -589,7 +589,7 @@ export default function LiveTrack() {
                   onClick={setFilterStatus}
                 />
               ))}
-            </Stack>
+            </Stack> */}
 
             <DeviceTable
               devices={filteredDevices}
