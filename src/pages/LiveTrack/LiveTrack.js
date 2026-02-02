@@ -56,7 +56,6 @@ const formatDevTimestamp = (devTs) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-
 /* ============================
   CONSTANTS & CONFIG
  ============================ */
@@ -267,18 +266,17 @@ function DeviceTable({ devices, selectedId, onSelect }) {
 
                 {/* Info Column */}
                 <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
-  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-    <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
-      <Icon
-        color={d.ignition ? "success" : "error"} // green when ON, red when OFF
-        sx={{ fontSize: "1.2rem !important" }}
-      >
-        vpn_key_off
-      </Icon>
-    </Tooltip>
-  </Stack>
-</TableCell>
-
+                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+                    <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
+                      <Icon
+                        color={d.ignition ? "success" : "error"} // green when ON, red when OFF
+                        sx={{ fontSize: "1.2rem !important" }}
+                      >
+                        vpn_key_off
+                      </Icon>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -430,7 +428,8 @@ export default function LiveTrack() {
                   battery: Number(batteryPercent),
                   odometer: Number(odometerValue),
                   address: addressString,
-                  lastUpdate: new Date().toLocaleTimeString(),
+                  lastUpdate: formatDevTimestamp(rawData.devTs),
+                  address: rawData.address ?? "Address not available",
                   location: `${rawData.lat},${rawData.lng}`,
                   route: accumulatedRoute,
                 };
@@ -560,7 +559,6 @@ export default function LiveTrack() {
 
   return (
     <DashboardLayout>
-      
       <Box
         sx={{
           ...styles.dashboardContainer(isLeftPanelOpen),

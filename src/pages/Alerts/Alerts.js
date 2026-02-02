@@ -41,6 +41,7 @@ function Alerts() {
   // State for the API response data
   const [alertLogs, setAlertLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedQuickRange, setSelectedQuickRange] = useState(null);
 
   // Fetch Accounts on Mount
   useEffect(() => {
@@ -103,11 +104,12 @@ function Alerts() {
 
   const inputStyleSx = { "& .MuiOutlinedInput-root": { borderRadius: "8px" } };
   const handleQuickSelect = (type) => {
+    setSelectedQuickRange(type); // ← remember which one is active
+
     const now = new Date();
     let start = new Date();
     let end = new Date();
 
-    // Reset seconds/milliseconds for consistency
     now.setSeconds(0, 0);
 
     switch (type) {
@@ -123,17 +125,17 @@ function Alerts() {
         break;
       case "week":
         start.setDate(now.getDate() - 7);
-        // Usually, 'past week' goes up to right now
+        // end remains = now
         break;
       default:
-        break;
+        return;
     }
 
-    // Convert to the format required by <TextField type="datetime-local" />
-    // Format: YYYY-MM-DDTHH:mm
     const formatDateForInput = (date) => {
       const pad = (num) => num.toString().padStart(2, "0");
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+        date.getHours()
+      )}:${pad(date.getMinutes())}`;
     };
 
     setFromDate(formatDateForInput(start));
@@ -212,28 +214,52 @@ function Alerts() {
                         justifyContent="center"
                         width="100%"
                         mt={1}
+                        ml={2}
                       >
                         <MDButton
-                          variant="outlined"
-                          color="secondary"
+                          variant="contained" // ← changed from outlined
+                          color={selectedQuickRange === "today" ? "info" : "secondary"}
                           size="small"
                           onClick={() => handleQuickSelect("today")}
+                          sx={{
+                            minWidth: "90px",
+                            ...(selectedQuickRange === "today" && {
+                              backgroundColor: "#2196f3 !important", // MUI blue
+                              color: "white !important",
+                            }),
+                          }}
                         >
                           Today
                         </MDButton>
+
                         <MDButton
-                          variant="outlined"
-                          color="secondary"
+                          variant="contained"
+                          color={selectedQuickRange === "yesterday" ? "info" : "secondary"}
                           size="small"
                           onClick={() => handleQuickSelect("yesterday")}
+                          sx={{
+                            minWidth: "110px",
+                            ...(selectedQuickRange === "yesterday" && {
+                              backgroundColor: "#2196f3 !important",
+                              color: "white !important",
+                            }),
+                          }}
                         >
                           Yesterday
                         </MDButton>
+
                         <MDButton
-                          variant="outlined"
-                          color="secondary"
+                          variant="contained"
+                          color={selectedQuickRange === "week" ? "info" : "secondary"}
                           size="small"
                           onClick={() => handleQuickSelect("week")}
+                          sx={{
+                            minWidth: "110px",
+                            ...(selectedQuickRange === "week" && {
+                              backgroundColor: "#2196f3 !important",
+                              color: "white !important",
+                            }),
+                          }}
                         >
                           Last 7 Days
                         </MDButton>
