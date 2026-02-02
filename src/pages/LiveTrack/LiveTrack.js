@@ -204,10 +204,10 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                     access_time
                   </Icon>
 
-                  <Icon fontSize="small" sx={{ mr: "110px" }}>
+                  {/* <Icon fontSize="small" sx={{ mr: "110px" }}>
                     speed
-                  </Icon>
-                  <Icon fontSize="small">info_outline</Icon>
+                  </Icon> */}
+                  {/* <Icon fontSize="small">info_outline</Icon> */}
                 </MDBox>
               </TableCell>
             </TableRow>
@@ -253,7 +253,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                 </TableCell>
 
                 {/* Speed Column */}
-                <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
+                {/* <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
                   <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
                     <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
                       speed
@@ -262,10 +262,10 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                       {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
                     </Typography>
                   </MDBox>
-                </TableCell>
+                </TableCell> */}
 
                 {/* Info Column */}
-                <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
+                {/* <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
                   <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
                     <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
                       <Icon
@@ -276,7 +276,7 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                       </Icon>
                     </Tooltip>
                   </Stack>
-                </TableCell>
+                </TableCell> */}
               </TableRow>
             ))}
           </TableBody>

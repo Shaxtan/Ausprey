@@ -43,7 +43,7 @@ export const styles = {
 
   // --- Left Panel ---
   leftPanelContainer: (width) => ({
-    width: { xs: "100%", sm: `${width}px` },
+    width: { xs: "100%", sm: `${width * 0.5}px` }, //20% narrower
     flexShrink: 0,
     display: { xs: "block", sm: "flex" },
     flexDirection: "column",
@@ -53,7 +53,7 @@ export const styles = {
     transition: "width 200ms ease",
     height: "100%",
     minHeight: 0,
-    marginLeft:-4,
+    marginLeft: -4,
     // removed negative margin to align with main layout
   }),
 
@@ -233,8 +233,7 @@ export const getCustomChipStyle = (status) => {
 };
 
 export const getVehicleMarkerHtml = (status) => {
-  const color =
-    status === "Running" ? "#4caf50" : status === "Stopped" ? "#f44336" : "#ff9800";
+  const color = status === "Running" ? "#4caf50" : status === "Stopped" ? "#f44336" : "#ff9800";
 
   return `
     <div style="
