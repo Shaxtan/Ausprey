@@ -769,29 +769,19 @@ const LeafletControlsMap = () => {
         </MDTypography>
         <MDBox mt={3} mb={3}>
           <Grid container spacing={2}>
-            {/* ----------------- FROM DATE/TIME PICKER (MUI TextField) ----------------- */}
+            {/* FROM DATE/TIME */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   From Date/Time
                 </MDTypography>
-
-                {/* Replaced DatePicker with TextField type="datetime-local" */}
                 <TextField
                   type="datetime-local"
                   fullWidth
                   value={fromDate}
-                  onChange={(e) => {
-                    setFromDate(e.target.value);
-                    // setShowHistory(false); // Uncomment if needed
-                  }}
-                  // The datetime-local input handles the placeholder and format natively
-                  // The format should be handled by converting the date object to the "YYYY-MM-DDThh:mm:ss" format
-                  // before setting it as the `value` prop, and then converting it back to a Date object
-                  // or desired format in the onChange handler, if necessary.
+                  onChange={(e) => setFromDate(e.target.value)}
                   InputProps={{
                     startAdornment: (
-                      // Icon is typically not needed for native datetime-local, but added for consistency
                       <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
                     ),
                   }}
@@ -799,22 +789,17 @@ const LeafletControlsMap = () => {
               </MDBox>
             </Grid>
 
-            {/* ----------------- TO DATE/TIME PICKER (MUI TextField) ----------------- */}
+            {/* TO DATE/TIME */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
                   To Date/Time
                 </MDTypography>
-
-                {/* Replaced DatePicker with TextField type="datetime-local" */}
                 <TextField
                   type="datetime-local"
                   fullWidth
                   value={toDate}
-                  onChange={(e) => {
-                    setToDate(e.target.value);
-                    // setShowHistory(false); // Uncomment if needed
-                  }}
+                  onChange={(e) => setToDate(e.target.value)}
                   InputProps={{
                     startAdornment: (
                       <Icon sx={{ mr: 1, color: "text.secondary" }}>calendar_today</Icon>
@@ -823,66 +808,70 @@ const LeafletControlsMap = () => {
                 />
               </MDBox>
             </Grid>
-            {/* Quick Select Buttons */}
-            <MDBox mb={2} display="flex" gap={1} justifyContent="center" width="100%" mt={1} ml={2}>
-              <MDBox
-                mb={2}
-                display="flex"
-                gap={1}
-                justifyContent="center"
-                width="100%"
-                mt={1}
-                ml={2}
+          </Grid>{" "}
+          {/* <--- THIS WAS LIKELY THE MISSING CLOSING TAG */}
+        </MDBox>
+
+        {/* Quick Select Buttons - Proportional Alignment */}
+        <MDBox mb={2} px={0.5}>
+          <Grid container spacing={1}>
+            <Grid item xs={4}>
+              <MDButton
+                variant="contained"
+                color={selectedQuickRange === "today" ? "info" : "secondary"}
+                size="small"
+                fullWidth
+                onClick={() => handleQuickSelect("today")}
+                sx={{
+                  fontSize: "0.75rem",
+                  px: 0,
+                  ...(selectedQuickRange === "today" && {
+                    backgroundColor: "#2196f3 !important",
+                    color: "white !important",
+                  }),
+                }}
               >
-                <MDButton
-                  variant="contained" // ← changed from outlined
-                  color={selectedQuickRange === "today" ? "info" : "secondary"}
-                  size="small"
-                  onClick={() => handleQuickSelect("today")}
-                  sx={{
-                    minWidth: "90px",
-                    ...(selectedQuickRange === "today" && {
-                      backgroundColor: "#2196f3 !important", // MUI blue
-                      color: "white !important",
-                    }),
-                  }}
-                >
-                  Today
-                </MDButton>
-
-                <MDButton
-                  variant="contained"
-                  color={selectedQuickRange === "yesterday" ? "info" : "secondary"}
-                  size="small"
-                  onClick={() => handleQuickSelect("yesterday")}
-                  sx={{
-                    minWidth: "110px",
-                    ...(selectedQuickRange === "yesterday" && {
-                      backgroundColor: "#2196f3 !important",
-                      color: "white !important",
-                    }),
-                  }}
-                >
-                  Yesterday
-                </MDButton>
-
-                <MDButton
-                  variant="contained"
-                  color={selectedQuickRange === "week" ? "info" : "secondary"}
-                  size="small"
-                  onClick={() => handleQuickSelect("week")}
-                  sx={{
-                    minWidth: "110px",
-                    ...(selectedQuickRange === "week" && {
-                      backgroundColor: "#2196f3 !important",
-                      color: "white !important",
-                    }),
-                  }}
-                >
-                  Last 7 Days
-                </MDButton>
-              </MDBox>
-            </MDBox>
+                Today
+              </MDButton>
+            </Grid>
+            <Grid item xs={4}>
+              <MDButton
+                variant="contained"
+                color={selectedQuickRange === "yesterday" ? "info" : "secondary"}
+                size="small"
+                fullWidth
+                onClick={() => handleQuickSelect("yesterday")}
+                sx={{
+                  fontSize: "0.75rem",
+                  px: 0,
+                  ...(selectedQuickRange === "yesterday" && {
+                    backgroundColor: "#2196f3 !important",
+                    color: "white !important",
+                  }),
+                }}
+              >
+                Yesterday
+              </MDButton>
+            </Grid>
+            <Grid item xs={4}>
+              <MDButton
+                variant="contained"
+                color={selectedQuickRange === "week" ? "info" : "secondary"}
+                size="small"
+                fullWidth
+                onClick={() => handleQuickSelect("week")}
+                sx={{
+                  fontSize: "0.75rem",
+                  px: 0,
+                  ...(selectedQuickRange === "week" && {
+                    backgroundColor: "#2196f3 !important",
+                    color: "white !important",
+                  }),
+                }}
+              >
+                7 Days
+              </MDButton>
+            </Grid>
           </Grid>
         </MDBox>
 
@@ -897,6 +886,17 @@ const LeafletControlsMap = () => {
         >
           {isLoading ? "Loading…" : "Get Track Data"}
         </MDButton>
+        {/* Submit
+        <MDButton
+          variant="gradient"
+          color="info"
+          fullWidth
+          onClick={handleTrackSubmit}
+          disabled={isLoading || !selectedVehicle || !fromDate || !toDate}
+          sx={{ mb: 3 }}
+        >
+          {isLoading ? "Loading…" : "Get Track Data"}
+        </MDButton> */}
 
         {/* ---------- when history is loaded ---------- */}
         {showHistory && filteredData.length > 0 && (
