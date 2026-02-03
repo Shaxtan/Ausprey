@@ -752,7 +752,7 @@ export default function LiveTrack() {
               />
               <InfoRow
                 label="Battery"
-                value={selectedTrip?.batteryVoltage ? `${selectedTrip.batteryVoltage} V` : "N/A"}
+                value={selectedTrip?.batteryVoltage ? `${selectedTrip.batteryVoltage} %` : "N/A"}
                 icon="battery_charging_full"
               />
               <InfoRow
