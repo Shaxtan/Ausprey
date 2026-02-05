@@ -20,7 +20,7 @@ const SERVICES = {
   dashboard: process.env.REACT_APP_BASE_URL + "/usage",
   commands: process.env.REACT_APP_BASE_URL + "/commands",
   template: process.env.REACT_APP_BASE_URL + "/template",
-  tripOps: process.env.REACT_APP_BASE_URL + "/tripOps",
+  tripOps: process.env.REACT_APP_BASE_URL + "/tripops",
   geofence: process.env.REACT_APP_BASE_URL + "/geofence",
 };
 
