@@ -480,10 +480,22 @@ class ApiService {
         return [];
       });
   }
-  // Add this inside the ApiService class in ApiService.js
-  // getLiveLoadGraph(imei) {
-  //   return this.postRequest(`/reports/live-load-graph?IMEI=861076080488743`);
-  // }
+  // Inside ApiService class in ApiService.js
+
+  getActiveTrips(pageNo = 0) {
+    return this.getRequest(`/trips/view-active?pageNo=${pageNo}`, null, true, SERVICES.tripOps)
+      .then((res) => {
+        // Return the nested trips array directly for easier component usage
+        if (res?.data?.resultCode === 1) {
+          return res.data.data; // This contains { trips: [], totalPages: x, ... }
+        }
+        return { trips: [], totalPages: 0 };
+      })
+      .catch((error) => {
+        console.error("Fetch Active Trips Error:", error);
+        throw error;
+      });
+  }
 }
 
 export { SERVICES };

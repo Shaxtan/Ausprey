@@ -419,19 +419,13 @@ function TripDashboard({ accountId }) {
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [trips, setTrips] = useState(
-    mockTrips.map((t) => ({
-      ...t,
-      progressIndex: 0,
-      routeIndex: 0,
-      isPlaying: false,
-    }))
-  );
-
+  const [trips, setTrips] = useState([]);
   const [expandedTripId, setExpandedTripId] = useState(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(0); // For pagination
 
   // CREATE TRIP DIALOG STATE
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -607,6 +601,47 @@ function TripDashboard({ accountId }) {
         alert("Error creating trip. Please check console.");
       });
   };
+
+  const fetchActiveTrips = (pageNumber) => {
+    setIsLoading(true);
+    ApiService.getActiveTrips(pageNumber)
+      .then((data) => {
+        const apiTrips = data.trips || [];
+
+        // Normalize API data to match your table's expected format
+        const normalized = apiTrips.map((t) => ({
+          ...t,
+          // The API returns 'vehNum', UI uses 'vehicleNumber'
+          vehicleNumber: t.vehNum || "N/A",
+          // The API uses objects for source/dest, UI wants strings
+          source: t.source?.name || "Unknown",
+          destination: t.destination?.name || "Unknown",
+          // The UI expected accountName, using placeholder or optMap
+          accountName: t.optMap?.["Account Name"] || "Default Account",
+          // Format the time for the 'Created' column
+          createdTime: t.cts ? new Date(t.cts).toLocaleString() : "N/A",
+          // Standardize properties for the Play/Pause logic
+          progressIndex: 0,
+          routeIndex: 0,
+          isPlaying: false,
+          // Ensure Leaflet doesn't crash if route is missing
+          route: t.route || [
+            { lat: t.source?.lat || 0, lng: t.source?.lng || 0 },
+            { lat: t.destination?.lat || 0, lng: t.destination?.lng || 0 },
+          ],
+        }));
+
+        setTrips(normalized);
+        setTotalPages(data.totalPages);
+        setIsLoading(false);
+      })
+      .catch(() => setIsLoading(false));
+  };
+
+  // Call this on mount and when page changes
+  useEffect(() => {
+    fetchActiveTrips(page);
+  }, [page]);
 
   // Load Leaflet
   useEffect(() => {
@@ -1050,13 +1085,14 @@ function TripDashboard({ accountId }) {
                   <TableHead sx={tableHeadSx}>
                     <TableRow>
                       <TableCell align="center">Actions</TableCell>
+                      <TableCell align="center">Trip ID</TableCell>
                       <TableCell align="left">Vehicle No</TableCell>
-                      <TableCell align="left">Account</TableCell>
+                      <TableCell align="center">IMEI</TableCell>
+                      {/* <TableCell align="left">Account</TableCell> */}
                       <TableCell align="left">Source</TableCell>
                       <TableCell align="left">Destination</TableCell>
-                      <TableCell align="center">IMEI</TableCell>
-                      <TableCell align="center">Trip ID</TableCell>
-                      <TableCell align="center">Created</TableCell>
+
+                      {/* <TableCell align="center">Created</TableCell> */}
                     </TableRow>
                   </TableHead>
 
@@ -1109,26 +1145,6 @@ function TripDashboard({ accountId }) {
                             </TableCell>
                             <TableCell>
                               <DataCell
-                                text={trip.vehicleNumber}
-                                fontWeight="bold"
-                                isClickable
-                                onClick={() => handleImeiClick(trip.imei)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <DataCell text={trip.accountName} />
-                            </TableCell>
-                            <TableCell>
-                              <DataCell text={trip.source} />
-                            </TableCell>
-                            <TableCell>
-                              <DataCell text={trip.destination} />
-                            </TableCell>
-                            <TableCell>
-                              <DataCell text={trip.imei} align="center" />
-                            </TableCell>
-                            <TableCell>
-                              <DataCell
                                 text={trip.id}
                                 color="info"
                                 fontWeight="bold"
@@ -1136,8 +1152,29 @@ function TripDashboard({ accountId }) {
                               />
                             </TableCell>
                             <TableCell>
-                              <DataCell text={trip.createdTime.split(" ")[1]} align="center" />
+                              <DataCell
+                                text={trip.vehicleNumber}
+                                fontWeight="bold"
+                                isClickable
+                                onClick={() => handleImeiClick(trip.imei)}
+                              />
                             </TableCell>
+                            <TableCell>
+                              <DataCell text={trip.imei} align="center" />
+                            </TableCell>
+                            {/* <TableCell>
+                              <DataCell text={trip.accountName} />
+                            </TableCell> */}
+                            <TableCell>
+                              <DataCell text={trip.source} />
+                            </TableCell>
+                            <TableCell>
+                              <DataCell text={trip.destination} />
+                            </TableCell>
+
+                            {/* <TableCell>
+                              <DataCell text={trip.createdTime.split(" ")[1]} align="center" />
+                            </TableCell> */}
                           </TableRow>
 
                           <TableRow>
