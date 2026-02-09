@@ -1072,14 +1072,14 @@ function TripDashboard({ accountId }) {
               >
                 <Table sx={tableSx}>
                   <colgroup>
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "15%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "10%" }} />
-                    <col style={{ width: "9%" }} />
+                    <col style={{ width: "25%" }} />
+                    <col style={{ width: "25%" }} />
+                    <col style={{ width: "25%" }} />
+                    <col style={{ width: "22%" }} />
+                    <col style={{ width: "52%" }} />
+                    <col style={{ width: "14%" }} />
+                    {/* <col style={{ width: "20%" }} /> */}
+                    {/* <col style={{ width: "9%" }} /> */}
                   </colgroup>
 
                   <TableHead sx={tableHeadSx}>
@@ -1322,7 +1322,7 @@ function TripDashboard({ accountId }) {
         open={createDialogOpen}
         form={createForm}
         errors={createErrors}
-        dynamicFields={dynamicFields} // Ensure this is passed!
+        dynamicFields={dynamicFields} // Ensure this is passefcd!
         geofenceList={geofenceList}
         imeiList={imeiList}
         onClose={handleCreateDialogClose}

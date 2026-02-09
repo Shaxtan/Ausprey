@@ -80,6 +80,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// Define this outside the component or use useMemo inside
+const vehicleIcon = L.icon({
+  iconUrl: "/iconss/vehiclemarker.png", // Path relative to the public folder
+  iconSize: [40, 40], // Adjust size based on your image
+  iconAnchor: [20, 20], // Point of the icon which will correspond to marker's location
+  popupAnchor: [0, -20], // Point from which the popup should open relative to the iconAnchor
+  className: "custom-vehicle-icon",
+});
+
 /* ============================
   SUB-COMPONENTS
  ============================ */
@@ -629,23 +638,27 @@ export default function LiveTrack() {
             {selectedDevice && selectedTrip?.route?.length > 0 && (
               <Marker
                 position={selectedTrip.route[selectedTrip.route.length - 1]}
-                icon={L.divIcon({
-                  className: "live-vehicle-marker",
-                  html: getVehicleMarkerHtml(selectedTrip.status),
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 12],
-                })}
+                icon={vehicleIcon}
               >
                 <Popup>
-                  <Box sx={{ minWidth: 180 }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
+                  <Box sx={{ minWidth: 160, p: 0.5 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" color="primary">
                       {selectedTrip.vehicle}
                     </Typography>
-                    <Typography variant="body2">
-                      Status: <strong>{selectedTrip.status}</strong>
-                    </Typography>
-                    <Typography variant="body2">
+                    <Divider sx={{ my: 1 }} />
+                    <Typography
+                      variant="body2"
+                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                      <Icon sx={{ fontSize: "18px !important" }}>speed</Icon>
                       Speed: <strong>{selectedTrip.speed} km/h</strong>
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                      <Icon sx={{ fontSize: "18px !important" }}>info</Icon>
+                      Status: <strong>{selectedTrip.status}</strong>
                     </Typography>
                   </Box>
                 </Popup>
