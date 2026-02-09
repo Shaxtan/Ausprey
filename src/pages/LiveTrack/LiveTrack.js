@@ -356,34 +356,34 @@ export default function LiveTrack() {
   }, [targetImei, targetAccountId]);
 
   // Load all devices and select correct initial one
-  useEffect(() => {
-    ApiService.getAllDevices()
-      .then((devices) => {
-        setAllDevices(devices || []);
+  // useEffect(() => {
+  //   ApiService.getAllDevices()
+  //     .then((devices) => {
+  //       setAllDevices(devices || []);
 
-        let initialSelectedDevice = null;
+  //       let initialSelectedDevice = null;
 
-        if (targetImei) {
-          // Try match by id first, then by imei (adjust field if needed)
-          initialSelectedDevice =
-            devices.find((d) => d.id === targetImei) || devices.find((d) => d.imei === targetImei);
-        }
+  //       if (targetImei) {
+  //         // Try match by id first, then by imei (adjust field if needed)
+  //         initialSelectedDevice =
+  //           devices.find((d) => d.id === targetImei) || devices.find((d) => d.imei === targetImei);
+  //       }
 
-        if (initialSelectedDevice && targetAccountId) {
-          initialSelectedDevice = {
-            ...initialSelectedDevice,
-            accountId: targetAccountId,
-          };
-        }
+  //       if (initialSelectedDevice && targetAccountId) {
+  //         initialSelectedDevice = {
+  //           ...initialSelectedDevice,
+  //           accountId: targetAccountId,
+  //         };
+  //       }
 
-        if (!initialSelectedDevice && devices.length > 0) {
-          initialSelectedDevice = devices[0];
-        }
+  //       if (!initialSelectedDevice && devices.length > 0) {
+  //         initialSelectedDevice = devices[0];
+  //       }
 
-        setSelectedDevice(initialSelectedDevice);
-      })
-      .catch(console.error);
-  }, [targetImei, targetAccountId]);
+  //       setSelectedDevice(initialSelectedDevice);
+  //     })
+  //     .catch(console.error);
+  // }, [targetImei, targetAccountId]);
 
   // Live updates for selected device
   useEffect(() => {
