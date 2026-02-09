@@ -415,6 +415,19 @@ TripProgress.propTypes = {
 
 // --- MAIN COMPONENT ---
 function TripDashboard({ accountId }) {
+  const [tripFilter, setTripFilter] = useState("Active"); // "Active" | "Completed" | "All"
+
+  // const filteredTrips = useMemo(
+  //   () =>
+  //     trips.filter((trip) => {
+  //       if (tripFilter === "All") return true;
+  //       if (tripFilter === "Active") return trip.status !== "Completed";
+  //       if (tripFilter === "Completed") return trip.status === "Completed";
+  //       return true;
+  //     }),
+  //   [trips, tripFilter]
+  // );
+
   const navigate = useNavigate();
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1020,6 +1033,33 @@ function TripDashboard({ accountId }) {
               <MDTypography variant="h6" color="white">
                 Trip Dashboard
               </MDTypography>
+
+              <MDBox display="flex" gap={1} ml="-1000px">
+                <MDButton
+                  variant="contained"
+                  color={tripFilter === "Active" ? "success" : "white"}
+                  size="small"
+                  onClick={() => setTripFilter("Active")}
+                >
+                  Active
+                </MDButton>
+                <MDButton
+                  variant="contained"
+                  color={tripFilter === "Completed" ? "info" : "white"}
+                  size="small"
+                  onClick={() => setTripFilter("Completed")}
+                >
+                  Completed
+                </MDButton>
+                {/* <MDButton
+                  variant="contained"
+                  color={tripFilter === "All" ? "secondary" : "white"}
+                  size="small"
+                  onClick={() => setTripFilter("All")}
+                >
+                  All
+                </MDButton> */}
+              </MDBox>
 
               <MDBox display="flex" gap={1}>
                 <MDButton variant="contained" color="white" size="small" onClick={handleCreateTrip}>
