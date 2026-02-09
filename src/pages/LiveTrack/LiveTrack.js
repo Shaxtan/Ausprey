@@ -33,7 +33,12 @@ import MDBox from "../../assets/components/MDBox";
 import ApiService from "../../services/ApiService";
 
 // Styles
-import { styles, getVehicleMarkerHtml, getPlaybackMarkerHtml } from "./LiveTrack.styles";
+import {
+  styles,
+  getVehicleMarkerHtml,
+  getPlaybackMarkerHtml,
+  getRotatingTruckHtml,
+} from "./LiveTrack.styles";
 
 const formatDevTimestamp = (devTs) => {
   if (!devTs) return "—"; // fallback
@@ -80,15 +85,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Define this outside the component or use useMemo inside
-const vehicleIcon = L.icon({
-  iconUrl: "/iconss/vehiclemarker.png", // Path relative to the public folder
-  iconSize: [40, 40], // Adjust size based on your image
-  iconAnchor: [20, 20], // Point of the icon which will correspond to marker's location
-  popupAnchor: [0, -20], // Point from which the popup should open relative to the iconAnchor
-  className: "custom-vehicle-icon",
+const TRUCK_ICON_URL = "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
+
+const truckIcon = new L.Icon({
+  iconUrl: TRUCK_ICON_URL,
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -28],
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  shadowSize: [41, 41],
 });
 
+const truckHighlightIcon = new L.Icon({
+  iconUrl: TRUCK_ICON_URL,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -32],
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+  shadowSize: [41, 41],
+});
 /* ============================
   SUB-COMPONENTS
  ============================ */
@@ -298,6 +313,24 @@ DeviceTable.propTypes = {
   devices: PropTypes.array.isRequired,
   selectedId: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
+};
+/**
+ * Calculates the bearing between two points in degrees
+ */
+const calculateBearing = (start, end) => {
+  if (!start || !end) return 0;
+  const startLat = (start[0] * Math.PI) / 180;
+  const startLng = (start[1] * Math.PI) / 180;
+  const endLat = (end[0] * Math.PI) / 180;
+  const endLng = (end[1] * Math.PI) / 180;
+
+  const y = Math.sin(endLng - startLng) * Math.cos(endLat);
+  const x =
+    Math.cos(startLat) * Math.sin(endLat) -
+    Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng);
+
+  const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  return (bearing + 360) % 360; // Normalize to 0-360
 };
 
 /* ============================
@@ -510,6 +543,15 @@ export default function LiveTrack() {
       engineHours: liveData.engineHours || "00:00",
     };
   }, [liveMetrics, selectedDevice]);
+  const currentBearing = useMemo(() => {
+    const route = selectedTrip?.route;
+    if (route && route.length >= 2) {
+      const prev = route[route.length - 2];
+      const curr = route[route.length - 1];
+      return calculateBearing(prev, curr);
+    }
+    return 0;
+  }, [selectedTrip?.route]);
 
   const mapCenter = useMemo(() => {
     const r = selectedTrip?.route;
@@ -638,27 +680,31 @@ export default function LiveTrack() {
             {selectedDevice && selectedTrip?.route?.length > 0 && (
               <Marker
                 position={selectedTrip.route[selectedTrip.route.length - 1]}
-                icon={vehicleIcon}
+                icon={L.divIcon({
+                  className: "rotating-truck-container",
+                  html: getRotatingTruckHtml(
+                    selectedTrip.status,
+                    currentBearing - 90,
+                    true // Highlighted
+                  ),
+                  iconSize: [40, 40],
+                  iconAnchor: [20, 20], // Center anchor for rotation
+                })}
               >
                 <Popup>
-                  <Box sx={{ minWidth: 160, p: 0.5 }}>
-                    <Typography variant="subtitle2" fontWeight="bold" color="primary">
+                  <Box sx={{ minWidth: 150 }}>
+                    <Typography variant="subtitle2" fontWeight="700" color="info.main">
                       {selectedTrip.vehicle}
                     </Typography>
                     <Divider sx={{ my: 1 }} />
-                    <Typography
-                      variant="body2"
-                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                    >
-                      <Icon sx={{ fontSize: "18px !important" }}>speed</Icon>
+                    <Typography variant="body2">
+                      Status: <strong>{selectedTrip.status}</strong>
+                    </Typography>
+                    <Typography variant="body2">
                       Speed: <strong>{selectedTrip.speed} km/h</strong>
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                    >
-                      <Icon sx={{ fontSize: "18px !important" }}>info</Icon>
-                      Status: <strong>{selectedTrip.status}</strong>
+                    <Typography variant="caption" color="text.secondary">
+                      Last updated: {selectedTrip.lastUpdate}
                     </Typography>
                   </Box>
                 </Popup>

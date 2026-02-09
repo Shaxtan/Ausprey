@@ -221,6 +221,27 @@ export const styles = {
   },
 };
 
+// Add this to LiveTrack.styles.js
+// In LiveTrack.styles.js
+export const getRotatingTruckHtml = (status, bearing = 0, isHighlighted = false) => {
+  const TRUCK_ICON_URL = "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
+
+  return `
+    <div style="
+      width: 40px; 
+      height: 40px; 
+      transform: rotate(${bearing}deg); 
+      transition: transform 0.4s ease-out; /* Makes the turn look smooth */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));
+    ">
+      <img src="${TRUCK_ICON_URL}" style="width: 100%; height: 100%;" />
+    </div>
+  `;
+};
+
 export const getCustomChipStyle = (status) => {
   const normalizedStatus = String(status || "").trim();
   if (normalizedStatus === "Inactive") {
