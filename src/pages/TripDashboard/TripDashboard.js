@@ -711,8 +711,13 @@ function TripDashboard({ accountId }) {
 
   const toggleTripDetails = (id) => setExpandedTripId((prev) => (prev === id ? null : id));
 
-  const handleImeiClick = (imei) => alert(`Maps to Live Track: ${imei}`);
-
+  const handleImeiClick = (imei) => {
+    // We pass the imei in the 'state' object so it doesn't clutter the URL,
+    // but LiveTrack is also ready to read it from there.
+    navigate("/live-track", {
+      state: { targetImei: imei },
+    });
+  };
   const handlePlayProgress = (id) => {
     setTrips((prev) =>
       prev.map((t) => {
@@ -1200,7 +1205,12 @@ function TripDashboard({ accountId }) {
                               />
                             </TableCell>
                             <TableCell>
-                              <DataCell text={trip.imei} align="center" />
+                              <DataCell
+                                text={trip.imei}
+                                align="center"
+                                isClickable
+                                onClick={() => handleImeiClick(trip.imei)}
+                              />
                             </TableCell>
                             {/* <TableCell>
                               <DataCell text={trip.accountName} />

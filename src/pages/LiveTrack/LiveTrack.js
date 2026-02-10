@@ -25,6 +25,8 @@ import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import { useTheme } from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
 import truckImage from "../../assets/images/truckImage.jpg";
 
 // Layout & Components
@@ -41,10 +43,8 @@ import {
 } from "./LiveTrack.styles";
 
 const formatDevTimestamp = (devTs) => {
-  if (!devTs) return "—"; // fallback
+  if (!devTs) return "—";
 
-  // devTs: "2026-01-13 21:08:25"
-  // Convert to Date safely (replace space with 'T' to make it ISO-like)
   const isoLike = devTs.replace(" ", "T");
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return devTs;
@@ -57,7 +57,6 @@ const formatDevTimestamp = (devTs) => {
   const minutes = pad(date.getMinutes());
   const seconds = pad(date.getSeconds());
 
-  // 2026-01-13 21:08:25
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
@@ -104,6 +103,7 @@ const truckHighlightIcon = new L.Icon({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   shadowSize: [41, 41],
 });
+
 /* ============================
   SUB-COMPONENTS
  ============================ */
@@ -206,13 +206,33 @@ StatusBox.propTypes = {
   onClick: PropTypes.func.isRequired,
 };
 
-function DeviceTable({ devices, selectedId, onSelect }) {
+// UPDATED: DeviceTable now receives deviceSearch and setDeviceSearch as props
+function DeviceTable({ devices, selectedId, onSelect, deviceSearch, setDeviceSearch }) {
   return (
     <Card sx={styles.tableCard}>
-      <MDBox p={2} bgColor="dark" borderRadius="0px" coloredShadow="dark">
+      <MDBox p={2} borderRadius="0px" coloredShadow="dark">
         <Typography variant="h6" color="white" fontWeight={600}>
           Live Device List ({devices.length})
         </Typography>
+
+        {/* Search bar inside this box */}
+        <Box sx={{ mt: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search device..."
+            variant="outlined"
+            value={deviceSearch}
+            onChange={(e) => setDeviceSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Icon fontSize="small">search</Icon>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
       </MDBox>
 
       <TableContainer component={Paper} sx={styles.tableContainer}>
@@ -227,11 +247,6 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                   <Icon fontSize="small" sx={{ mr: "120px" }}>
                     access_time
                   </Icon>
-
-                  {/* <Icon fontSize="small" sx={{ mr: "110px" }}>
-                    speed
-                  </Icon> */}
-                  {/* <Icon fontSize="small">info_outline</Icon> */}
                 </MDBox>
               </TableCell>
             </TableRow>
@@ -263,44 +278,18 @@ function DeviceTable({ devices, selectedId, onSelect }) {
                 </TableCell>
 
                 {/* Status Column */}
-                <TableCell sx={styles.cell("35%", "center", { whiteSpace: "nowrap" })}>
+                <TableCell sx={styles.cell("25%", "center", { whiteSpace: "normal" })}>
                   <Tooltip title={`Last Update: ${d.lastUpdate}`} placement="right">
                     <Typography
                       variant="caption"
                       display="block"
                       color="text.secondary"
-                      sx={{ mt: 0.5, fontWeight: 500 }}
+                      sx={{ mt: 0.5 }}
                     >
-                      {d.lastUpdate} {/* This will now show "YYYY-MM-DD HH:mm:ss" */}
+                      {d.lastUpdate}
                     </Typography>
                   </Tooltip>
                 </TableCell>
-
-                {/* Speed Column */}
-                {/* <TableCell sx={styles.cell("15%", "center", { py: 1 })}>
-                  <MDBox display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-                    <Icon fontSize="medium" color={d.speed > 0 ? "success" : "text"}>
-                      speed
-                    </Icon>
-                    <Typography variant="caption" color="text.secondary">
-                      {d.speed > 0 ? `${d.speed} km/h` : "Stopped"}
-                    </Typography>
-                  </MDBox>
-                </TableCell> */}
-
-                {/* Info Column */}
-                {/* <TableCell sx={styles.cell("15%", "center", { py: 1, pr: 2 })}>
-                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-                    <Tooltip title={`Ignition: ${d.ignition ? "ON" : "OFF"}`}>
-                      <Icon
-                        color={d.ignition ? "success" : "error"} // green when ON, red when OFF
-                        sx={{ fontSize: "1.2rem !important" }}
-                      >
-                        vpn_key_off
-                      </Icon>
-                    </Tooltip>
-                  </Stack>
-                </TableCell> */}
               </TableRow>
             ))}
           </TableBody>
@@ -313,7 +302,10 @@ DeviceTable.propTypes = {
   devices: PropTypes.array.isRequired,
   selectedId: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
+  deviceSearch: PropTypes.string.isRequired,
+  setDeviceSearch: PropTypes.func.isRequired,
 };
+
 /**
  * Calculates the bearing between two points in degrees
  */
@@ -340,7 +332,6 @@ const calculateBearing = (start, end) => {
 export default function LiveTrack() {
   const LEFT_PANEL_WIDTH = 550;
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
-
   const toggleLeftPanel = () => setIsLeftPanelOpen((v) => !v);
 
   const [allDevices, setAllDevices] = useState([]);
@@ -351,6 +342,9 @@ export default function LiveTrack() {
   const intervalRef = useRef(null);
   const [liveMetrics, setLiveMetrics] = useState({});
   const [filterStatus, setFilterStatus] = useState("Total");
+
+  // Search state for devices
+  const [deviceSearch, setDeviceSearch] = useState("");
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -372,12 +366,10 @@ export default function LiveTrack() {
         let initialSelectedDevice = null;
 
         if (targetImei) {
-          // TEMP: show exactly what matches
           initialSelectedDevice =
             devices.find((d) => d.id === targetImei) ||
             devices.find((d) => d.imei === targetImei) ||
-            devices.find((d) => d.deviceId === targetImei); // try other likely keys
-
+            devices.find((d) => d.deviceId === targetImei);
           console.log("Matched initialSelectedDevice:", initialSelectedDevice);
         }
 
@@ -406,7 +398,6 @@ export default function LiveTrack() {
   //       let initialSelectedDevice = null;
 
   //       if (targetImei) {
-  //         // Try match by id first, then by imei (adjust field if needed)
   //         initialSelectedDevice =
   //           devices.find((d) => d.id === targetImei) || devices.find((d) => d.imei === targetImei);
   //       }
@@ -492,7 +483,7 @@ export default function LiveTrack() {
     return () => clearInterval(liveInterval);
   }, [selectedDevice?.id, selectedDevice?.accountId]);
 
-  // Filter devices and counts
+  // Filter devices and counts (status + search)
   const { filteredDevices, counts } = useMemo(() => {
     const statusMap = { Running: 0, Stopped: 0, Idle: 0, Inactive: 0, "No Data": 0 };
     let total = 0;
@@ -506,15 +497,24 @@ export default function LiveTrack() {
       statusMap[statusKey]++;
     });
 
-    const devicesToRender = allDevices.filter((d) => {
+    const statusFiltered = allDevices.filter((d) => {
       if (filterStatus === "Total") return true;
       const isNoData = !["Running", "Stopped", "Idle", "Inactive"].includes(d.status);
       if (filterStatus === "No Data") return isNoData;
       return d.status === filterStatus;
     });
 
+    const search = deviceSearch.trim().toLowerCase();
+    const devicesToRender = !search
+      ? statusFiltered
+      : statusFiltered.filter((d) => {
+          const name = (d.name || "").toLowerCase();
+          const id = (d.id || "").toString().toLowerCase();
+          return name.includes(search) || id.includes(search);
+        });
+
     return { filteredDevices: devicesToRender, counts: { ...statusMap, Total: total } };
-  }, [filterStatus, allDevices]);
+  }, [filterStatus, allDevices, deviceSearch]);
 
   // Selected trip view model
   const selectedTrip = useMemo(() => {
@@ -543,6 +543,7 @@ export default function LiveTrack() {
       engineHours: liveData.engineHours || "00:00",
     };
   }, [liveMetrics, selectedDevice]);
+
   const currentBearing = useMemo(() => {
     const route = selectedTrip?.route;
     if (route && route.length >= 2) {
@@ -620,32 +621,31 @@ export default function LiveTrack() {
         {isLeftPanelOpen && (
           <Box sx={styles.leftPanelContainer(LEFT_PANEL_WIDTH)}>
             <Box sx={styles.leftPanelHeader}>
-              <Typography variant="subtitle1" fontWeight={700}>
-                Devices
-              </Typography>
-              <Tooltip title="Collapse sidebar">
-                <IconButton onClick={toggleLeftPanel} size="small" sx={styles.collapseButton}>
-                  <Icon sx={{ fontSize: 20 }}>chevron_left</Icon>
-                </IconButton>
-              </Tooltip>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  mb: 1,
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Devices
+                </Typography>
+                <Tooltip title="Collapse sidebar">
+                  <IconButton onClick={toggleLeftPanel} size="small" sx={styles.collapseButton}>
+                    <Icon sx={{ fontSize: 20 }}>chevron_left</Icon>
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
-
-            {/* <Stack direction="row" spacing={1} sx={styles.statusScrollContainer}>
-              {["Total", "Running", "Stopped", "Idle", "Inactive", "No Data"].map((status) => (
-                <StatusBox
-                  key={status}
-                  status={status}
-                  count={counts[status] || 0}
-                  isSelected={filterStatus === status}
-                  onClick={setFilterStatus}
-                />
-              ))}
-            </Stack> */}
 
             <DeviceTable
               devices={filteredDevices}
               selectedId={selectedDevice?.id}
               onSelect={setSelectedDevice}
+              deviceSearch={deviceSearch}
+              setDeviceSearch={setDeviceSearch}
             />
           </Box>
         )}
@@ -692,19 +692,15 @@ export default function LiveTrack() {
                 })}
               >
                 <Popup>
-                  <Box sx={{ minWidth: 150 }}>
-                    <Typography variant="subtitle2" fontWeight="700" color="info.main">
+                  <Box sx={{ minWidth: 180 }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
                       {selectedTrip.vehicle}
                     </Typography>
-                    <Divider sx={{ my: 1 }} />
                     <Typography variant="body2">
                       Status: <strong>{selectedTrip.status}</strong>
                     </Typography>
                     <Typography variant="body2">
                       Speed: <strong>{selectedTrip.speed} km/h</strong>
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Last updated: {selectedTrip.lastUpdate}
                     </Typography>
                   </Box>
                 </Popup>
@@ -762,26 +758,7 @@ export default function LiveTrack() {
 
               <Box sx={{ mt: 1 }}>
                 <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
-                  {/* <Button
-                    variant="contained"
-                    color={isPlaying ? "error" : "primary"}
-                    startIcon={<Icon>{isPlaying ? "pause" : "play_arrow"}</Icon>}
-                    onClick={isPlaying ? pausePlayback : startPlayback}
-                    disabled={!selectedTrip?.route?.length}
-                    sx={styles.playButton}
-                  >
-                    {isPlaying ? "Pause" : "Play"}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    startIcon={<Icon>stop</Icon>}
-                    onClick={stopPlayback}
-                    disabled={!selectedTrip?.route?.length || (!isPlaying && currentStep === 0)}
-                    sx={styles.stopButton}
-                  >
-                    Stop
-                  </Button> */}
+                  {/* playback buttons commented */}
                 </Stack>
               </Box>
             </Card>
@@ -811,7 +788,7 @@ export default function LiveTrack() {
               />
               <InfoRow
                 label="Battery"
-                value={selectedTrip?.batteryVoltage ? `${selectedTrip.batteryVoltage} %` : "N/A"}
+                value={selectedTrip?.batteryVoltage ? `${selectedTrip.batteryVoltage} V` : "N/A"}
                 icon="battery_charging_full"
               />
               <InfoRow

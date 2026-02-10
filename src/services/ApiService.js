@@ -353,25 +353,25 @@ class ApiService {
       });
   }
 
-  testData(data = {}, header = true) {
-    return (
-      this.postRequest(
-        "/reports/livetrack?accountId=1&imei=869356078374846",
-        data,
-        header,
-        SERVICES.dashboard
-        // { accid }
-      )
-        // .then((res) => {
-        //   if (callback) callback(res);
-        // })
-        .catch((error) => {
-          // Only callAlert here, but re-throw the error
-          callAlert("Error", error?.message);
-          throw error;
-        })
-    );
-  }
+  // testData(data = {}, header = true) {
+  //   return (
+  //     this.postRequest(
+  //       "/reports/livetrack?accountId=1&imei=869356078374846",
+  //       data,
+  //       header,
+  //       SERVICES.dashboard
+  //       // { accid }
+  //     )
+  //       // .then((res) => {
+  //       //   if (callback) callback(res);
+  //       // })
+  //       .catch((error) => {
+  //         // Only callAlert here, but re-throw the error
+  //         callAlert("Error", error?.message);
+  //         throw error;
+  //       })
+  //   );
+  // }
 
   testData(accountId, imei, header = true) {
     // Update the hardcoded URL to use the passed parameters
