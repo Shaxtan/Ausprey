@@ -29,6 +29,7 @@ import MDButton from "../../assets/components/MDButton";
 import ApiService from "../../services/ApiService";
 
 import CreateTripDialog from "./CreateTripDialog";
+import LiveTrackMini from "./LiveTrackMini";
 
 const LEAFLET_CSS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
 const LEAFLET_JS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
@@ -1319,23 +1320,11 @@ function TripDashboard({ accountId }) {
                                     </Grid>
 
                                     <Grid item xs={12} md={8}>
-                                      {leafletLoaded ? (
-                                        <LeafletMap
-                                          route={trip.route}
-                                          currentRouteIndex={routeIndex}
-                                          vehicleNumber={trip.vehicleNumber}
-                                          tripId={trip.id}
+                                      {isExpanded && (
+                                        <LiveTrackMini
+                                          imei={trip.imei}
+                                          accountId={accountId || trip.accid || 1}
                                         />
-                                      ) : (
-                                        <Box
-                                          height="400px"
-                                          display="flex"
-                                          alignItems="center"
-                                          justifyContent="center"
-                                          bgcolor="#f5f5f5"
-                                        >
-                                          <CircularProgress />
-                                        </Box>
                                       )}
                                     </Grid>
                                   </Grid>
