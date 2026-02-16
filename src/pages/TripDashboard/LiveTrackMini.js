@@ -56,7 +56,13 @@ export default function LiveTrackMini({ imei, accountId }) {
         position={currentPos}
         icon={L.divIcon({
           className: "custom-truck",
-          html: getRotatingTruckHtml("Running", deviceData.course || 0, true),
+          // 1. Use deviceData.disha here
+          // 2. Default to 0 if disha is undefined
+          html: getRotatingTruckHtml(
+            deviceData.ign === "Y" ? "Running" : "Stopped",
+            deviceData.disha || 0,
+            true
+          ),
           iconSize: [40, 40],
           iconAnchor: [20, 20],
         })}
