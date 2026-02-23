@@ -288,7 +288,7 @@ LeafletMap.propTypes = {
   tripId: PropTypes.string.isRequired,
 };
 
-const TripProgress = ({ steps, currentIndex }) => {
+const TripProgress = ({ steps, currentIndex, sourceData, destData }) => {
   return (
     <Box sx={{ width: "100%", mb: 3 }}>
       <Box
@@ -382,26 +382,31 @@ const TripProgress = ({ steps, currentIndex }) => {
           justifyContent: "space-between",
         }}
       >
-        <Box>
+        {/* SOURCE BOX */}
+        <Box sx={{ flex: 1 }}>
           <MDTypography variant="caption" color="text">
-            Booked at
+            Source: <strong>{sourceData?.name || "N/A"}</strong>
           </MDTypography>
-          <MDTypography variant="body2" fontWeight="medium">
-            Vatika India Sec 82 SO - 122012
+          <MDTypography variant="body2" fontWeight="medium" color="info">
+            Out: {sourceData?.out && sourceData.out !== "NA" ? sourceData.out : "--:--"}
           </MDTypography>
         </Box>
-        <Box textAlign="center">
+
+        {/* CENTER ICON */}
+        <Box textAlign="center" sx={{ flex: 0.5 }}>
           <Icon sx={{ color: "#4caf50", fontSize: 30 }}>local_shipping</Icon>
-          <MDTypography variant="body2" fontWeight="medium">
-            {steps[currentIndex]?.label || "Booked"}
+          <MDTypography variant="caption" display="block" fontWeight="bold">
+            {steps[currentIndex]?.label || "In Transit"}
           </MDTypography>
         </Box>
-        <Box textAlign="right">
+
+        {/* DESTINATION BOX */}
+        <Box textAlign="right" sx={{ flex: 1 }}>
           <MDTypography variant="caption" color="text">
-            Destination
+            Destination: <strong>{destData?.name || "N/A"}</strong>
           </MDTypography>
-          <MDTypography variant="body2" fontWeight="medium">
-            Noida HO - 201301
+          <MDTypography variant="body2" fontWeight="medium" color="success">
+            In: {destData?.in && destData.in !== "NA" ? destData.in : "--:--"}
           </MDTypography>
         </Box>
       </Box>
@@ -410,8 +415,21 @@ const TripProgress = ({ steps, currentIndex }) => {
 };
 
 TripProgress.propTypes = {
-  steps: PropTypes.array.isRequired,
+  steps: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string,
+      label: PropTypes.string,
+    })
+  ).isRequired,
   currentIndex: PropTypes.number.isRequired,
+  sourceData: PropTypes.shape({
+    name: PropTypes.string,
+    out: PropTypes.string,
+  }),
+  destData: PropTypes.shape({
+    name: PropTypes.string,
+    in: PropTypes.string,
+  }),
 };
 
 // --- MAIN COMPONENT ---
@@ -625,12 +643,13 @@ function TripDashboard({ accountId }) {
         // Normalize API data to match your table's expected format
         const normalized = apiTrips.map((t) => ({
           ...t,
-          // The API returns 'vehNum', UI uses 'vehicleNumber'
           vehicleNumber: t.vehNum || "N/A",
-          // The API uses objects for source/dest, UI wants strings
+          // Keep the full objects for the expanded view details
+          rawSource: t.source,
+          rawDestination: t.destination,
+          // For the main table cell (keep as string)
           source: t.source?.name || "Unknown",
           destination: t.destination?.name || "Unknown",
-          // The UI expected accountName, using placeholder or optMap
           accountName: t.optMap?.["Account Name"] || "Default Account",
           // Format the time for the 'Created' column
           createdTime: t.cts ? new Date(t.cts).toLocaleString() : "N/A",
@@ -1276,6 +1295,8 @@ function TripDashboard({ accountId }) {
                                       <TripProgress
                                         steps={BASE_STEPS}
                                         currentIndex={currentIndex}
+                                        sourceData={trip.rawSource} // Ensure you store the raw object during normalization
+                                        destData={trip.rawDestination}
                                       />
                                     </Grid>
 
