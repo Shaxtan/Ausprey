@@ -3,7 +3,7 @@
 * Material Dashboard 2 React - v2.2.0
 =========================================================
 */
-
+import Geozone from "pages/Geozone/Geozone";
 import MDBox from "assets/components/MDBox";
 import LiveTrack from "pages/LiveTrack/LiveTrack";
 import Alerts from "../src/pages/Alerts/Alerts";
@@ -165,6 +165,15 @@ const routes = [
     route: "/authentication/sign-in",
     component: <SignIn />,
   },
+  {
+    type: "collapse",
+    name: "Geozone",
+    key: "geozone",
+    icon: <Icon fontSize="small">public</Icon>, // or any other icon
+    route: "/geozone",
+    component: <Geozone />,
+  },
+
   {
     type: "collapse",
     name: "Sign Out",
