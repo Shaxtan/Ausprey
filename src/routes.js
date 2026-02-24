@@ -100,6 +100,14 @@ const routes = [
     route: "/map-view",
     component: <MapView />,
   },
+  {
+    type: "collapse",
+    name: "Geozone",
+    key: "geozone",
+    icon: <Icon fontSize="small">public</Icon>, // or any other icon
+    route: "/geozone",
+    component: <Geozone />,
+  },
 
   // ----------------------------------------------------------------------
   // PARENT: REPORTS (placeholder)
@@ -164,14 +172,6 @@ const routes = [
     icon: <Icon fontSize="small">login</Icon>,
     route: "/authentication/sign-in",
     component: <SignIn />,
-  },
-  {
-    type: "collapse",
-    name: "Geozone",
-    key: "geozone",
-    icon: <Icon fontSize="small">public</Icon>, // or any other icon
-    route: "/geozone",
-    component: <Geozone />,
   },
 
   {

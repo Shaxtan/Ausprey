@@ -12,16 +12,16 @@ import { callAlert } from "./CommonService";
 // };
 
 const SERVICES = {
-  main: process.env.REACT_APP_BASE_URL + "/users",
-  mainn: process.env.REACT_APP_BASE_URL + "/accounts",
-  report: process.env.REACT_APP_BASE_URL + "/usage",
+  main: process.env.REACT_APP_BASE_URL + "/users", //8070
+  mainn: process.env.REACT_APP_BASE_URL + "/accounts", //8071
+  report: process.env.REACT_APP_BASE_URL + "/usage", //8075
   // report: 'http://103.178.113.129' + ":8075",
   // dashboard: 'http://103.178.113.129' + ":8075",
-  dashboard: process.env.REACT_APP_BASE_URL + "/usage",
+  dashboard: process.env.REACT_APP_BASE_URL + "/usage", //8075
   commands: process.env.REACT_APP_BASE_URL + "/commands",
-  template: process.env.REACT_APP_BASE_URL + "/template",
-  tripOps: process.env.REACT_APP_BASE_URL + "/tripops",
-  geofence: process.env.REACT_APP_BASE_URL + "/geofence",
+  template: process.env.REACT_APP_BASE_URL + "/template", //8072
+  tripOps: process.env.REACT_APP_BASE_URL + "/tripops", //8011
+  geofence: process.env.REACT_APP_BASE_URL + "/geofence", //8012
 };
 
 axios.interceptors.response.use(
@@ -353,26 +353,6 @@ class ApiService {
       });
   }
 
-  // testData(data = {}, header = true) {
-  //   return (
-  //     this.postRequest(
-  //       "/reports/livetrack?accountId=1&imei=869356078374846",
-  //       data,
-  //       header,
-  //       SERVICES.dashboard
-  //       // { accid }
-  //     )
-  //       // .then((res) => {
-  //       //   if (callback) callback(res);
-  //       // })
-  //       .catch((error) => {
-  //         // Only callAlert here, but re-throw the error
-  //         callAlert("Error", error?.message);
-  //         throw error;
-  //       })
-  //   );
-  // }
-
   testData(accountId, imei, header = true) {
     // Update the hardcoded URL to use the passed parameters
     return this.postRequest(
@@ -495,6 +475,28 @@ class ApiService {
         console.error("Fetch Active Trips Error:", error);
         throw error;
       });
+  }
+  getViewDetailed() {
+    return this.getRequest("/geo-fence/view-detailed", null, true, SERVICES.geofence)
+      .then((res) => {
+        // Return the data array directly if the resultCode is 1
+        if (res?.data?.resultCode === 1) {
+          return res.data.data;
+        }
+        return [];
+      })
+      .catch((error) => {
+        console.error("Fetch Detailed Geofences Error:", error);
+        throw error;
+      });
+  }
+  createGeofence(payload) {
+    // Wrap the single geofence object into the geoHubList array required by API
+    const finalPayload = {
+      geoHubList: [payload],
+    };
+
+    return this.postRequest("/geo-fence/create", finalPayload, true, SERVICES.geofence);
   }
 }
 

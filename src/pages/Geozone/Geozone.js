@@ -19,6 +19,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
 
 import { useAccount } from "context/AccountContext";
+import ApiService from "../../services/ApiService";
 
 // -----------------------------
 // Tile Layer
@@ -49,7 +50,8 @@ const Geozone = () => {
   const mapRef = useRef(null);
 
   const [searchValue, setSearchValue] = useState("");
-  const [trips, setTrips] = useState(mockTrips);
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
@@ -65,6 +67,23 @@ const Geozone = () => {
   const circleCenterRef = useRef(null);
   const tempCircleRef = useRef(null);
   const circlesRef = useRef([]);
+
+  const fetchGeozones = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await ApiService.getViewDetailed();
+      setTrips(data);
+    } catch (error) {
+      console.error("Failed to load geozones");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch data on mount or when account changes
+  useEffect(() => {
+    fetchGeozones();
+  }, [fetchGeozones, selectedAccountId]);
 
   // keep ref in sync with state
   useEffect(() => {
@@ -111,120 +130,66 @@ const Geozone = () => {
 
     // helper to open popup with form on a circle
     const openCirclePopup = (circle) => {
-      const radius = circle.getRadius(); // meters
+      const radius = Math.round(circle.getRadius());
+      const latLng = circle.getLatLng();
 
       const popupContent = `
-        <div style="min-width: 220px; font-family: Arial, sans-serif; font-size: 12px;">
-          <h4 style="margin: 0 0 8px; font-size: 14px;">Create circle</h4>
-          <div style="margin-bottom: 6px;">
-            <label style="display:block; margin-bottom:2px;">Circle name</label>
-            <input
-              id="circle-name-input"
-              type="text"
-              style="width:100%; padding:4px; box-sizing:border-box; font-size:12px;"
-              placeholder="Enter circle name"
-            />
-          </div>
-          <div style="margin-bottom: 6px;">
-            <label style="display:block; margin-bottom:2px;">Circle radius (m)</label>
-            <input
-              id="circle-radius-input"
-              type="text"
-              value="${radius.toFixed(0)}"
-              readonly
-              style="width:100%; padding:4px; box-sizing:border-box; font-size:12px; background:#f5f5f5;"
-            />
-          </div>
-          <div style="margin-bottom: 6px;">
-            <label style="display:block; margin-bottom:2px;">Mobile number</label>
-            <input
-              id="circle-mobile-input"
-              type="text"
-              style="width:100%; padding:4px; box-sizing:border-box; font-size:12px;"
-              placeholder="Enter mobile number"
-            />
-          </div>
-          <div style="margin-bottom: 6px;">
-            <label style="display:block; margin-bottom:2px;">Category</label>
-            <select
-              id="circle-category-select"
-              style="width:100%; padding:4px; box-sizing:border-box; font-size:12px;"
-            >
-              <option value="option1">Option 1</option>
-              <option value="option2">Option 2</option>
-            </select>
-          </div>
-          <div style="margin-bottom: 8px;">
-            <label style="display:block; margin-bottom:2px;">Client</label>
-            <select
-              id="circle-client-select"
-              style="width:100%; padding:4px; box-sizing:border-box; font-size:12px;"
-            >
-              <option value="clientA">Client A</option>
-              <option value="clientB">Client B</option>
-            </select>
-          </div>
-          <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
-            <button
-              id="circle-cancel-btn"
-              type="button"
-              style="padding:4px 8px; font-size:12px; background:#e0e0e0; border:1px solid #bdbdbd; border-radius:3px; cursor:pointer;"
-            >
-              Cancel
-            </button>
-            <button
-              id="circle-done-btn"
-              type="button"
-              style="padding:4px 8px; font-size:12px; background:#1976d2; color:#fff; border:1px solid #1565c0; border-radius:3px; cursor:pointer;"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      `;
+    <div style="min-width: 240px; font-family: sans-serif; padding: 10px;">
+      <h4 style="margin: 0 0 10px;">Create Geozone</h4>
+      <input id="pop-name" type="text" placeholder="Name (e.g. testgeo)" style="width:100%; margin-bottom:8px; padding:5px;"/>
+      <input id="pop-category" type="text" placeholder="Category (e.g. OFFICE)" style="width:100%; margin-bottom:8px; padding:5px;"/>
+      <input id="pop-client" type="text" placeholder="Client (e.g. AUSPREY)" style="width:100%; margin-bottom:8px; padding:5px;"/>
+      <input id="pop-mobile" type="text" placeholder="Mobile Number" style="width:100%; margin-bottom:8px; padding:5px;"/>
+      <div style="font-size: 11px; color: #666; margin-bottom: 10px;">
+        Radius: ${radius}m | Lat: ${latLng.lat.toFixed(4)}
+      </div>
+      <div style="display:flex; justify-content: flex-end; gap: 5px;">
+        <button id="pop-cancel" style="background:#eee; border:none; padding:5px 10px; cursor:pointer;">Cancel</button>
+        <button id="pop-done" style="background:#1976d2; color:white; border:none; padding:5px 10px; cursor:pointer;">Done</button>
+      </div>
+    </div>
+  `;
 
-      // bind + OPEN immediately
       circle.bindPopup(popupContent).openPopup();
 
       circle.on("popupopen", () => {
-        const doneBtn = document.getElementById("circle-done-btn");
-        const cancelBtn = document.getElementById("circle-cancel-btn");
+        document.getElementById("pop-done").onclick = async () => {
+          const name = document.getElementById("pop-name").value;
+          const category = document.getElementById("pop-category").value;
+          const client = document.getElementById("pop-client").value;
+          const mobile = document.getElementById("pop-mobile").value;
 
-        if (doneBtn) {
-          doneBtn.onclick = () => {
-            const nameInput = document.getElementById("circle-name-input");
-            const mobileInput = document.getElementById("circle-mobile-input");
-            const categorySelect = document.getElementById("circle-category-select");
-            const clientSelect = document.getElementById("circle-client-select");
-
-            const payload = {
-              name: nameInput ? nameInput.value : "",
-              radius,
-              mobile: mobileInput ? mobileInput.value : "",
-              category: categorySelect ? categorySelect.value : "",
-              client: clientSelect ? clientSelect.value : "",
-              center: circle.getLatLng(),
-            };
-
-            // TODO: send to backend or save in state
-            console.log("Circle form data:", payload);
-
-            circle.closePopup();
+          const payload = {
+            id: "string", // Backend usually generates this, or use Date.now().toString()
+            name: name || "Unnamed Geozone",
+            category: category || "GENERAL",
+            client: client || "DEFAULT",
+            type: "CIRCLE",
+            mobileno: mobile || "0",
+            accid: selectedAccountId || 1, // Using context ID
+            radius: radius,
+            location: {
+              x: latLng.lng, // Longitude
+              y: latLng.lat, // Latitude
+              type: "Point",
+              coordinates: [latLng.lng, latLng.lat],
+            },
           };
-        }
 
-        if (cancelBtn) {
-          cancelBtn.onclick = () => {
+          try {
+            await ApiService.createGeofence(payload);
             circle.closePopup();
+            // Refresh the sidebar list to show the new geozone
+            fetchGeozones();
+          } catch (error) {
+            console.error("API Error:", error);
+          }
+        };
 
-            const mapInstance = mapRef.current;
-            if (mapInstance) {
-              mapInstance.removeLayer(circle);
-            }
-
-            circlesRef.current = circlesRef.current.filter((c) => c !== circle);
-          };
-        }
+        document.getElementById("pop-cancel").onclick = () => {
+          circle.closePopup();
+          mapRef.current.removeLayer(circle);
+        };
       });
     };
 
@@ -482,31 +447,17 @@ const Geozone = () => {
                   p: 0,
                 }}
               >
-                {trips.map((trip, index) => (
-                  <React.Fragment key={trip.id}>
+                {trips.map((geozone, index) => (
+                  <React.Fragment key={geozone.id}>
                     <ListItem
-                      sx={{
-                        px: 1.5,
-                        py: 1,
-                        alignItems: "flex-start",
-                      }}
+                      sx={{ px: 1.5, py: 1, alignItems: "flex-start" }}
                       disableGutters
                       secondaryAction={
-                        <MDBox
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 0.5,
-                          }}
-                        >
-                          <IconButton edge="end" size="small" onClick={() => handleEditTrip(trip)}>
+                        <MDBox sx={{ display: "flex", gap: 0.5 }}>
+                          <IconButton size="small" onClick={() => handleEditTrip(geozone)}>
                             <Icon fontSize="small">edit</Icon>
                           </IconButton>
-                          <IconButton
-                            edge="end"
-                            size="small"
-                            onClick={() => handleDeleteTrip(trip)}
-                          >
+                          <IconButton size="small" onClick={() => handleDeleteTrip(geozone)}>
                             <Icon fontSize="small">delete</Icon>
                           </IconButton>
                         </MDBox>
@@ -514,24 +465,26 @@ const Geozone = () => {
                     >
                       <ListItemIcon sx={{ minWidth: 32, mt: 0.2 }}>
                         <Icon fontSize="small" color="primary">
-                          local_shipping
+                          {/* Change icon based on type if needed */}
+                          {geozone.type === "CIRCLE" ? "radio_button_unchecked" : "shutter_speed"}
                         </Icon>
                       </ListItemIcon>
 
                       <ListItemText
                         primary={
-                          <MDTypography
-                            variant="body2"
-                            fontWeight="medium"
-                            sx={{ lineHeight: 1.3 }}
-                          >
-                            {trip.name}
+                          <MDTypography variant="body2" fontWeight="medium">
+                            {geozone.name}
                           </MDTypography>
                         }
                         secondary={
-                          <MDTypography variant="caption" color="text.secondary">
-                            Category: {trip.category}
-                          </MDTypography>
+                          <MDBox>
+                            <MDTypography variant="caption" color="text.secondary" display="block">
+                              Category: {geozone.category} | Client: {geozone.client}
+                            </MDTypography>
+                            <MDTypography variant="caption" color="info" fontWeight="bold">
+                              Radius: {geozone.radius}m
+                            </MDTypography>
+                          </MDBox>
                         }
                       />
                     </ListItem>
