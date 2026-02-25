@@ -33,17 +33,6 @@ const createTileLayers = () => ({
 
 const indiaCenter = { lat: 22.5589409, lng: 75.6089374 };
 
-// -----------------------------
-// Mock trip data
-// -----------------------------
-const mockTrips = [
-  { id: 1, name: "Associates wines pvt ltd", category: "Select" },
-  { id: 2, name: "kidderpore IML Depot", category: "DISTILLERY" },
-  { id: 3, name: "Agarpara depot", category: "DISTILLERY" },
-  { id: 4, name: "Ranidanga Depo WBEX", category: "DISTILLERY" },
-  { id: 5, name: "IOCL Bhubaneswar", category: "DISTILLERY" },
-];
-
 const Geozone = () => {
   const { selectedAccountId } = useAccount();
   const mapContainerRef = useRef(null);
@@ -59,14 +48,16 @@ const Geozone = () => {
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
   // drawing tools
-  const [activeTool, setActiveTool] = useState(null); // "place" | null
+  const [activeTool, setActiveTool] = useState(null);
   const activeToolRef = useRef(null);
 
   // circle drawing state kept in refs for map event handlers
   const isDrawingRef = useRef(false);
   const circleCenterRef = useRef(null);
   const tempCircleRef = useRef(null);
-  const circlesRef = useRef([]);
+
+  // NEW: Ref to store existing geozone layers for lookups
+  const circlesRef = useRef({});
 
   const fetchGeozones = useCallback(async () => {
     setLoading(true);
@@ -89,6 +80,62 @@ const Geozone = () => {
   useEffect(() => {
     activeToolRef.current = activeTool;
   }, [activeTool]);
+
+  // -----------------------------
+  // NEW: Sync Trips to Map
+  // -----------------------------
+  useEffect(() => {
+    if (!mapRef.current || trips.length === 0) return;
+
+    // Clear previous layers before re-drawing
+    Object.values(circlesRef.current).forEach((layer) => mapRef.current.removeLayer(layer));
+    circlesRef.current = {};
+
+    trips.forEach((gz) => {
+      if (gz.location?.coordinates && (gz.type === "CIRCLE" || gz.radius)) {
+        const [lng, lat] = gz.location.coordinates;
+
+        const circle = L.circle([lat, lng], {
+          radius: gz.radius || 100,
+          color: "#1976d2",
+          fillOpacity: 0.2,
+        }).addTo(mapRef.current);
+
+        // Standard Display Popup
+        circle.bindPopup(`
+          <div style="padding: 5px;">
+            <strong style="font-size: 14px;">${gz.name}</strong><br/>
+            <span style="font-size: 12px; color: #666;">Category: ${gz.category}</span><br/>
+            <span style="font-size: 12px; color: #666;">Radius: ${gz.radius}m</span>
+          </div>
+        `);
+
+        // Store by ID so we can trigger it from the list
+        circlesRef.current[gz.id] = circle;
+      }
+    });
+  }, [trips]);
+
+  // -----------------------------
+  // NEW: Handle Zoom and Show
+  // -----------------------------
+  const handleSelectGeozone = (geozone) => {
+    if (!mapRef.current || !geozone.location?.coordinates) return;
+
+    const [lng, lat] = geozone.location.coordinates;
+
+    // Fly to location
+    mapRef.current.flyTo([lat, lng], 16, {
+      animate: true,
+      duration: 1.5,
+    });
+
+    // Open existing popup
+    const layer = circlesRef.current[geozone.id];
+    if (layer) {
+      layer.openPopup();
+    }
+  };
 
   // -----------------------------
   // Init map
@@ -128,124 +175,125 @@ const Geozone = () => {
       if (map.tap) map.tap.enable();
     };
 
-    // helper to open popup with form on a circle
+    // -----------------------------
+    // Creation Popup Logic
+    // -----------------------------
     const openCirclePopup = (circle) => {
       const radius = Math.round(circle.getRadius());
       const latLng = circle.getLatLng();
 
       const popupContent = `
-    <div style="min-width: 240px; font-family: sans-serif; padding: 10px;">
+    <div id="geozone-form" style="min-width: 240px; font-family: sans-serif; padding: 10px;">
       <h4 style="margin: 0 0 10px;">Create Geozone</h4>
-      <input id="pop-name" type="text" placeholder="Name (e.g. testgeo)" style="width:100%; margin-bottom:8px; padding:5px;"/>
-      <input id="pop-category" type="text" placeholder="Category (e.g. OFFICE)" style="width:100%; margin-bottom:8px; padding:5px;"/>
-      <input id="pop-client" type="text" placeholder="Client (e.g. AUSPREY)" style="width:100%; margin-bottom:8px; padding:5px;"/>
-      <input id="pop-mobile" type="text" placeholder="Mobile Number" style="width:100%; margin-bottom:8px; padding:5px;"/>
+      <input id="pop-name" type="text" placeholder="Name (e.g. testgeo)" style="width:100%; margin-bottom:8px; padding:5px; border:1px solid #ccc; border-radius:4px;"/>
+      <input id="pop-category" type="text" placeholder="Category (e.g. OFFICE)" style="width:100%; margin-bottom:8px; padding:5px; border:1px solid #ccc; border-radius:4px;"/>
+      <input id="pop-client" type="text" placeholder="Client (e.g. AUSPREY)" style="width:100%; margin-bottom:8px; padding:5px; border:1px solid #ccc; border-radius:4px;"/>
+      <input id="pop-mobile" type="text" placeholder="Mobile Number" style="width:100%; margin-bottom:8px; padding:5px; border:1px solid #ccc; border-radius:4px;"/>
       <div style="font-size: 11px; color: #666; margin-bottom: 10px;">
         Radius: ${radius}m | Lat: ${latLng.lat.toFixed(4)}
       </div>
       <div style="display:flex; justify-content: flex-end; gap: 5px;">
-        <button id="pop-cancel" style="background:#eee; border:none; padding:5px 10px; cursor:pointer;">Cancel</button>
-        <button id="pop-done" style="background:#1976d2; color:white; border:none; padding:5px 10px; cursor:pointer;">Done</button>
+        <button id="pop-cancel" style="background:#eee; border:none; padding:6px 12px; cursor:pointer; border-radius:4px;">Cancel</button>
+        <button id="pop-done" style="background:#1976d2; color:white; border:none; padding:6px 12px; cursor:pointer; border-radius:4px;">Done</button>
       </div>
     </div>
   `;
 
-      circle.bindPopup(popupContent).openPopup();
+      // Bind the popup
+      circle.bindPopup(popupContent);
 
+      // Open it
+      circle.openPopup();
+
+      // IMPORTANT: Listen for when the popup is actually added to the DOM
       circle.on("popupopen", () => {
-        document.getElementById("pop-done").onclick = async () => {
-          const name = document.getElementById("pop-name").value;
-          const category = document.getElementById("pop-category").value;
-          const client = document.getElementById("pop-client").value;
-          const mobile = document.getElementById("pop-mobile").value;
+        const doneBtn = document.getElementById("pop-done");
+        const cancelBtn = document.getElementById("pop-cancel");
 
-          const payload = {
-            id: "string", // Backend usually generates this, or use Date.now().toString()
-            name: name || "Unnamed Geozone",
-            category: category || "GENERAL",
-            client: client || "DEFAULT",
-            type: "CIRCLE",
-            mobileno: mobile || "0",
-            accid: selectedAccountId || 1, // Using context ID
-            radius: radius,
-            location: {
-              x: latLng.lng, // Longitude
-              y: latLng.lat, // Latitude
-              type: "Point",
-              coordinates: [latLng.lng, latLng.lat],
-            },
+        if (doneBtn) {
+          doneBtn.onclick = async () => {
+            // Disable button to prevent double clicks
+            doneBtn.disabled = true;
+            doneBtn.innerText = "Saving...";
+
+            const name = document.getElementById("pop-name").value;
+            const category = document.getElementById("pop-category").value;
+            const client = document.getElementById("pop-client").value;
+            const mobile = document.getElementById("pop-mobile").value;
+
+            const payload = {
+              name: name || "Unnamed Geozone",
+              category: category || "GENERAL",
+              client: client || "DEFAULT",
+              type: "CIRCLE",
+              mobileno: mobile || "0",
+              accid: selectedAccountId || 1,
+              radius: radius,
+              location: {
+                x: latLng.lng,
+                y: latLng.lat,
+                type: "Point",
+                coordinates: [latLng.lng, latLng.lat],
+              },
+            };
+
+            console.log("Submitting Payload:", payload);
+
+            try {
+              await ApiService.createGeofence(payload);
+              circle.closePopup();
+              // Refresh the list
+              fetchGeozones();
+            } catch (error) {
+              console.error("API Error:", error);
+              alert("Failed to save geozone. Check console for details.");
+              doneBtn.disabled = false;
+              doneBtn.innerText = "Done";
+            }
           };
+        }
 
-          try {
-            await ApiService.createGeofence(payload);
+        if (cancelBtn) {
+          cancelBtn.onclick = () => {
             circle.closePopup();
-            // Refresh the sidebar list to show the new geozone
-            fetchGeozones();
-          } catch (error) {
-            console.error("API Error:", error);
-          }
-        };
-
-        document.getElementById("pop-cancel").onclick = () => {
-          circle.closePopup();
-          mapRef.current.removeLayer(circle);
-        };
+            if (mapRef.current) {
+              mapRef.current.removeLayer(circle);
+            }
+          };
+        }
       });
     };
 
-    // ----- circle draw handlers -----
     const handleMouseDown = (e) => {
       if (activeToolRef.current !== "place") return;
-
       isDrawingRef.current = true;
       circleCenterRef.current = e.latlng;
-
-      // stop map from moving while drawing
       disableMapInteractions();
-
-      // create initial tiny circle
       const circle = L.circle(e.latlng, {
         radius: 10,
         color: "#1976d2",
         fillColor: "#1976d2",
         fillOpacity: 0.2,
       }).addTo(map);
-
       tempCircleRef.current = circle;
     };
 
     const handleMouseMove = (e) => {
       if (!isDrawingRef.current || activeToolRef.current !== "place") return;
       if (!circleCenterRef.current || !tempCircleRef.current) return;
-
-      const center = circleCenterRef.current;
-      const currentLatLng = e.latlng;
-
-      const radius = map.distance(center, currentLatLng); // meters
+      const radius = map.distance(circleCenterRef.current, e.latlng);
       tempCircleRef.current.setRadius(radius);
     };
 
     const finishDrawing = () => {
       if (!isDrawingRef.current) return;
       isDrawingRef.current = false;
-
       if (tempCircleRef.current) {
-        const circle = tempCircleRef.current;
-
-        circlesRef.current.push(circle);
-
-        // open popup on this circle with form immediately
-        openCirclePopup(circle);
-
+        openCirclePopup(tempCircleRef.current);
         tempCircleRef.current = null;
       }
-
       circleCenterRef.current = null;
-
-      // re-enable map interactions
       enableMapInteractions();
-
-      // exit place mode after one circle
       activeToolRef.current = null;
       setActiveTool(null);
     };
@@ -263,57 +311,36 @@ const Geozone = () => {
       map.off("mousedown", handleMouseDown);
       map.off("mousemove", handleMouseMove);
       map.off("mouseup", handleMouseUp);
-
-      if (tempCircleRef.current) {
-        map.removeLayer(tempCircleRef.current);
-      }
-
       map.remove();
       mapRef.current = null;
-      circlesRef.current = [];
     };
   }, []);
 
-  // -----------------------------
-  // Manual refresh handler
-  // -----------------------------
   const handleManualRefresh = useCallback(() => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    fetchGeozones().then(() => {
       setIsRefreshing(false);
       setLastRefreshTime(Date.now());
-    }, 800);
-  }, []);
+    });
+  }, [fetchGeozones]);
 
-  // -----------------------------
-  // Search handler
-  // -----------------------------
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      // TODO: parse/center map
     }
   };
 
-  // -----------------------------
-  // Action handlers
-  // -----------------------------
-  const handleEditTrip = (trip) => {
+  const handleEditTrip = (e, trip) => {
+    e.stopPropagation(); // Stop flyTo when clicking edit
     console.log("Edit trip:", trip);
   };
 
-  const handleDeleteTrip = (trip) => {
+  const handleDeleteTrip = (e, trip) => {
+    e.stopPropagation(); // Stop flyTo when clicking delete
     setTrips((prev) => prev.filter((t) => t.id !== trip.id));
   };
 
   const bottomIcons = ["place", "polyline", "route", "layers", "settings"];
-
-  // inline style for map cursor depending on activeTool
-  const mapContainerStyle = {
-    height: "100%",
-    width: "100%",
-    cursor: activeTool === "place" ? "crosshair" : "grab",
-  };
 
   return (
     <DashboardLayout>
@@ -323,7 +350,6 @@ const Geozone = () => {
         lastRefreshTime={lastRefreshTime}
       />
 
-      {/* Non-scrollable main area (clamped to viewport minus navbar) */}
       <MDBox
         sx={{
           position: "relative",
@@ -332,10 +358,16 @@ const Geozone = () => {
           overflow: "hidden",
         }}
       >
-        {/* Map */}
-        <div ref={mapContainerRef} style={mapContainerStyle} />
+        <div
+          ref={mapContainerRef}
+          style={{
+            height: "100%",
+            width: "100%",
+            cursor: activeTool === "place" ? "crosshair" : "grab",
+          }}
+        />
 
-        {/* Top-left search bar + toggle button for right panel */}
+        {/* Search Bar */}
         <MDBox
           sx={{
             position: "absolute",
@@ -343,35 +375,21 @@ const Geozone = () => {
             left: 50,
             zIndex: 1000,
             display: "flex",
-            flexDirection: "row",
             alignItems: "center",
             gap: 1.5,
           }}
         >
-          {/* Search card */}
           <Card
             sx={{
               p: 1,
               px: 1.5,
               display: "flex",
-              flexDirection: "row",
               alignItems: "center",
               boxShadow: 6,
               minWidth: 280,
-              maxWidth: 360,
             }}
           >
-            <Icon
-              sx={{
-                mr: 1.5,
-                color: "text.secondary",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              search
-            </Icon>
+            <Icon sx={{ mr: 1.5, color: "text.secondary" }}>search</Icon>
             <MDInput
               variant="standard"
               fullWidth
@@ -379,29 +397,18 @@ const Geozone = () => {
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              InputProps={{
-                disableUnderline: true,
-                sx: { fontSize: "0.875rem" },
-              }}
+              InputProps={{ disableUnderline: true, sx: { fontSize: "0.875rem" } }}
             />
           </Card>
 
-          {/* Toggle button to show/hide right panel */}
-          <Card
-            sx={{
-              p: 0.5,
-              display: "flex",
-              alignItems: "center",
-              boxShadow: 6,
-            }}
-          >
+          <Card sx={{ p: 0.5, display: "flex", alignItems: "center", boxShadow: 6 }}>
             <IconButton size="small" onClick={() => setIsRightPanelOpen((prev) => !prev)}>
               <Icon fontSize="small">{isRightPanelOpen ? "chevron_right" : "chevron_left"}</Icon>
             </IconButton>
           </Card>
         </MDBox>
 
-        {/* Right-side toggleable list panel */}
+        {/* Right Panel */}
         {isRightPanelOpen && (
           <MDBox
             sx={{
@@ -411,19 +418,11 @@ const Geozone = () => {
               bottom: 24,
               zIndex: 1000,
               width: "430px",
-              maxWidth: "90vw",
               display: "flex",
               flexDirection: "column",
             }}
           >
-            <Card
-              sx={{
-                height: "60%",
-                display: "flex",
-                flexDirection: "column",
-                boxShadow: 6,
-              }}
-            >
+            <Card sx={{ height: "60%", display: "flex", flexDirection: "column", boxShadow: 6 }}>
               <MDBox
                 p={1.5}
                 borderBottom="1px solid #eee"
@@ -439,25 +438,25 @@ const Geozone = () => {
                 </IconButton>
               </MDBox>
 
-              <List
-                dense
-                sx={{
-                  flex: 1,
-                  overflow: "auto",
-                  p: 0,
-                }}
-              >
+              <List dense sx={{ flex: 1, overflow: "auto", p: 0 }}>
                 {trips.map((geozone, index) => (
                   <React.Fragment key={geozone.id}>
                     <ListItem
-                      sx={{ px: 1.5, py: 1, alignItems: "flex-start" }}
-                      disableGutters
+                      button // Makes the item clickable
+                      onClick={() => handleSelectGeozone(geozone)}
+                      sx={{
+                        px: 1.5,
+                        py: 1,
+                        alignItems: "flex-start",
+                        transition: "background 0.2s",
+                        "&:hover": { backgroundColor: "#f8f9fa" },
+                      }}
                       secondaryAction={
                         <MDBox sx={{ display: "flex", gap: 0.5 }}>
-                          <IconButton size="small" onClick={() => handleEditTrip(geozone)}>
+                          <IconButton size="small" onClick={(e) => handleEditTrip(e, geozone)}>
                             <Icon fontSize="small">edit</Icon>
                           </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteTrip(geozone)}>
+                          <IconButton size="small" onClick={(e) => handleDeleteTrip(e, geozone)}>
                             <Icon fontSize="small">delete</Icon>
                           </IconButton>
                         </MDBox>
@@ -465,8 +464,7 @@ const Geozone = () => {
                     >
                       <ListItemIcon sx={{ minWidth: 32, mt: 0.2 }}>
                         <Icon fontSize="small" color="primary">
-                          {/* Change icon based on type if needed */}
-                          {geozone.type === "CIRCLE" ? "radio_button_unchecked" : "shutter_speed"}
+                          {geozone.type === "CIRCLE" ? "radio_button_unchecked" : "place"}
                         </Icon>
                       </ListItemIcon>
 
@@ -496,37 +494,19 @@ const Geozone = () => {
           </MDBox>
         )}
 
-        {/* Bottom-left horizontal rectangular bar with 5 icons */}
-        <MDBox
-          sx={{
-            position: "absolute",
-            left: 24,
-            bottom: 24,
-            zIndex: 1000,
-          }}
-        >
+        {/* Bottom Toolbar */}
+        <MDBox sx={{ position: "absolute", left: 24, bottom: 24, zIndex: 1000 }}>
           <Card
-            sx={{
-              px: 1.5,
-              py: 0.75,
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 0.5,
-              boxShadow: 6,
-              borderRadius: 2,
-            }}
+            sx={{ px: 1.5, py: 0.75, display: "flex", gap: 0.5, boxShadow: 6, borderRadius: 2 }}
           >
-            {bottomIcons.map((iconName, idx) => (
+            {bottomIcons.map((iconName) => (
               <IconButton
-                key={iconName + idx}
+                key={iconName}
                 size="small"
-                title={iconName === "place" ? "Create circle" : ""}
                 onClick={() => {
                   if (iconName === "place") {
                     setActiveTool((prev) => (prev === "place" ? null : "place"));
                   }
-                  // later: handle polyline, route, etc.
                 }}
                 sx={{
                   width: 36,
