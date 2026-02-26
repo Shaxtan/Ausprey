@@ -640,32 +640,60 @@ function TripDashboard({ accountId }) {
       .then((data) => {
         const apiTrips = data.trips || [];
 
-        // Normalize API data to match your table's expected format
-        const normalized = apiTrips.map((t) => ({
-          ...t,
-          vehicleNumber: t.vehNum || "N/A",
-          // Keep the full objects for the expanded view details
-          rawSource: t.source,
-          rawDestination: t.destination,
-          // For the main table cell (keep as string)
-          source: t.source?.name || "Unknown",
-          destination: t.destination?.name || "Unknown",
-          accountName: t.optMap?.["Account Name"] || "Default Account",
-          // Format the time for the 'Created' column
-          createdTime: t.cts ? new Date(t.cts).toLocaleString() : "N/A",
-          // Standardize properties for the Play/Pause logic
-          progressIndex: 0,
-          routeIndex: 0,
-          isPlaying: false,
-          // Ensure Leaflet doesn't crash if route is missing
-          route: t.route || [
-            { lat: t.source?.lat || 0, lng: t.source?.lng || 0 },
-            { lat: t.destination?.lat || 0, lng: t.destination?.lng || 0 },
-          ],
-        }));
+        const normalized = apiTrips.map((t) => {
+          // ✅ Extract waypoints from optMap OR fallback to source→waypoints→destination
+          const waypointsStr = t.optMap?.["Way Points"] || "";
+          let steps = [];
+
+          // Parse waypoints (handle single or comma-separated)
+          if (waypointsStr) {
+            steps = waypointsStr
+              .split(",")
+              .map((s) => s.trim())
+              .map((name) => ({
+                key: name.toLowerCase().replace(/[^a-z0-9]/g, ""),
+                label: name,
+                isWaypoint: true,
+              }));
+          }
+
+          // Always include source + destination
+          const fullSteps = [
+            { key: "source", label: t.source?.name || "Source", isSource: true },
+            ...steps,
+            {
+              key: "destination",
+              label: t.destination?.name || "Destination",
+              isDestination: true,
+            },
+          ].filter((s) => s.label !== "NA" && s.label); // Remove invalid entries
+
+          return {
+            ...t,
+            vehicleNumber: t.vehNum || "N/A",
+            source: t.source?.name || "Unknown",
+            destination: t.destination?.name || "Unknown",
+            accountName: t.optMap?.["Account Name"] || "Default Account",
+            createdTime: t.cts ? new Date(t.cts).toLocaleString() : "N/A",
+
+            // ✅ Store steps for this specific trip
+            tripSteps: fullSteps,
+
+            // Existing properties...
+            rawSource: t.source,
+            rawDestination: t.destination,
+            progressIndex: 0,
+            routeIndex: 0,
+            isPlaying: false,
+            route: t.route || [
+              { lat: t.source?.lat || 28.6139, lng: t.source?.lng || 77.209 }, // Delhi fallback
+              { lat: t.destination?.lat || 28.4595, lng: t.destination?.lng || 77.0266 }, // Gurgaon fallback
+            ],
+          };
+        });
 
         setTrips(normalized);
-        setTotalPages(data.totalPages);
+        setTotalPages(data.totalPages || data.currentPage + 1);
         setIsLoading(false);
       })
       .catch(() => setIsLoading(false));
@@ -1168,6 +1196,7 @@ function TripDashboard({ accountId }) {
                       const currentIndex = state?.progressIndex || 0;
                       const routeIndex = state?.routeIndex || 0;
                       const isPlaying = state?.isPlaying || false;
+                      const tripSteps = state?.tripSteps || []; // ✅ Use real trip steps
 
                       return (
                         <React.Fragment key={trip.id}>
@@ -1267,7 +1296,9 @@ function TripDashboard({ accountId }) {
                                         alignItems="center"
                                         mb={1}
                                       >
-                                        <MDTypography variant="h6">Trip Progress</MDTypography>
+                                        <MDTypography variant="h6">
+                                          Trip Progress: {tripSteps.map((s) => s.label).join(" → ")}
+                                        </MDTypography>
                                         <Box display="flex" gap={1}>
                                           <Button
                                             size="small"
@@ -1292,10 +1323,11 @@ function TripDashboard({ accountId }) {
                                         </Box>
                                       </Box>
 
+                                      {/* ✅ Updated TripProgress with real API data */}
                                       <TripProgress
-                                        steps={BASE_STEPS}
+                                        steps={tripSteps} // Now uses real waypoints from API
                                         currentIndex={currentIndex}
-                                        sourceData={trip.rawSource} // Ensure you store the raw object during normalization
+                                        sourceData={trip.rawSource}
                                         destData={trip.rawDestination}
                                       />
                                     </Grid>
