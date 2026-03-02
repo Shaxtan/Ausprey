@@ -94,6 +94,20 @@ const Ignition = ({ status }) => {
 
 Ignition.propTypes = { status: PropTypes.number.isRequired };
 
+const PowerStatus = ({ status }) => {
+  const isConnected = status === "Y";
+  const text = isConnected ? "Connected" : "Disconnected";
+  const color = isConnected ? "success" : "error";
+
+  return (
+    <MDTypography variant="caption" color={color} fontWeight="bold">
+      {text}
+    </MDTypography>
+  );
+};
+
+PowerStatus.propTypes = { status: PropTypes.string };
+
 const LockUnlock = ({ isLocked, deviceStatus, elkType }) => {
   let iconName, color, tooltipText;
 
@@ -195,6 +209,7 @@ const VTS_COLUMNS = [
   { Header: "VEHICLE NO.", accessor: "vehicleNo", width: "10%", align: "left" },
   { Header: "IMEI", accessor: "imei", width: "12%", align: "center" },
   { Header: "SIM NO", accessor: "simNo", width: "12%", align: "center" },
+  { Header: "POWER", accessor: "power", width: "12%", align: "center" },
   { Header: "DATE/TIME", accessor: "date", width: "12%", align: "center" },
   { Header: "ADDRESS", accessor: "address", width: "20%", align: "left" },
   { Header: "LATITUDE", accessor: "latitude", width: "10%", align: "center" },
@@ -421,13 +436,10 @@ function Projects({
         gpsStatus: <Status status={gpsDisplay} />,
         ignitionStatus: <Ignition status={item.ign === "Y" ? 1 : 0} />,
         imei: (
-          <DataCell
-            text={imei}
-            isClickable
-            onClick={() => handleImeiClick(imei, item.accid)}
-          />
+          <DataCell text={imei} isClickable onClick={() => handleImeiClick(imei, item.accid)} />
         ),
         simNo: <DataCell text={item.simNo || "N/A"} />,
+        power: <PowerStatus status={item.powsts} />,
         date: <DataCell text={item.devTs || item.cts || "N/A"} />,
         latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
         longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
@@ -485,13 +497,10 @@ function Projects({
           />
         ),
         imei: (
-          <DataCell
-            text={imei}
-            isClickable
-            onClick={() => handleImeiClick(imei, item.accid)}
-          />
+          <DataCell text={imei} isClickable onClick={() => handleImeiClick(imei, item.accid)} />
         ),
         simNo: <DataCell text={item.simNo || "N/A"} />,
+        power: <PowerStatus status={item.powsts} />,
         date: <DataCell text={item.devTs || item.cts || "N/A"} />,
         latitude: <DataCell text={item.lat ? `${item.lat.toFixed(6)}°` : "N/A"} />,
         longitude: <DataCell text={item.lng ? `${item.lng.toFixed(6)}°` : "N/A"} />,
@@ -537,11 +546,7 @@ function Projects({
           />
         ),
         imei: (
-          <DataCell
-            text={imei}
-            isClickable
-            onClick={() => handleImeiClick(imei, item.accid)}
-          />
+          <DataCell text={imei} isClickable onClick={() => handleImeiClick(imei, item.accid)} />
         ),
         deviceType: <DataCell text={item.deviceType || "N/A"} />,
         createdOn: <DataCell text={item.createdOn || "N/A"} />,
@@ -718,9 +723,7 @@ function Projects({
       typeKey = "vts";
     } else if (tripFilterType === "elk") {
       rawData = elkData;
-      fileName = `Padlock_Report.${
-        format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"
-      }`;
+      fileName = `Padlock_Report.${format === "csv" ? "csv" : format === "excel" ? "xlsx" : "pdf"}`;
       typeKey = "elk";
     } else {
       rawData = unreachableData;
@@ -775,15 +778,15 @@ function Projects({
     tripFilterType === "vts"
       ? VTS_COLUMNS
       : tripFilterType === "elk"
-      ? ELK_COLUMNS
-      : UNREACHABLE_COLUMNS;
+        ? ELK_COLUMNS
+        : UNREACHABLE_COLUMNS;
 
   const activeRows =
     tripFilterType === "vts"
       ? filteredVts
       : tripFilterType === "elk"
-      ? filteredElk
-      : filteredUnreachable;
+        ? filteredElk
+        : filteredUnreachable;
 
   return (
     <Card sx={tableCardSx}>
@@ -814,8 +817,8 @@ function Projects({
             {tripFilterType === "vts"
               ? "Live Trip Report"
               : tripFilterType === "elk"
-              ? "Padlock Devices"
-              : "Unreachable Devices"}
+                ? "Padlock Devices"
+                : "Unreachable Devices"}
             <MDTypography variant="button" color="text" ml={1}>
               ({activeRows.length} units)
             </MDTypography>
