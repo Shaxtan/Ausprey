@@ -458,6 +458,9 @@ function TripDashboard({ accountId }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0); // For pagination
+  const [waypoints, setWaypoints] = useState([]); // Array of selected waypoints
+  const [waypointInOut, setWaypointInOut] = useState({});
+  const [waypointList, setWaypointList] = useState([]);
 
   // CREATE TRIP DIALOG STATE
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -496,6 +499,17 @@ function TripDashboard({ accountId }) {
     });
   }, []);
 
+  // Add this useEffect after geofenceList fetch
+  useEffect(() => {
+    // Fetch Geofences AND Waypoints
+    ApiService.getGeofences(0).then((data) => {
+      setGeofenceList(data);
+      // ✅ Filter waypoints from geofences (no separate API call needed)
+      const waypointList = data.filter((g) => g.type === "waypoint" || g.isWaypoint);
+      setWaypointList(waypointList);
+    });
+  }, []);
+
   // Fetch template on component mount or when opening Dialog
   // Inside TripDashboard component
   useEffect(() => {
@@ -527,6 +541,10 @@ function TripDashboard({ accountId }) {
 
   const handleCreateDialogSubmit = () => {
     const newErrors = {};
+    const validateTimeFormat = (time) => {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      return timeRegex.test(time);
+    };
 
     // 1. Static Validations
     if (!createForm.vehicleNumber?.trim()) newErrors.vehicleNumber = "Vehicle Number is required";
@@ -535,6 +553,25 @@ function TripDashboard({ accountId }) {
     // These now store the Geofence ID from the dropdown
     if (!createForm.source) newErrors.source = "Source is required";
     if (!createForm.destination) newErrors.destination = "Destination is required";
+    // ✅ NEW: Waypoint validation (MANDATORY)
+    if (waypoints.length === 0) {
+      newErrors.waypoints = "At least one waypoint is required";
+    } else {
+      waypoints.forEach((wpId) => {
+        const timings = waypointInOut[wpId];
+        if (!timings?.in?.trim()) {
+          newErrors[`waypointIn_${wpId}`] = `In time required for ${wpId}`;
+        } else if (!validateTimeFormat(timings.in)) {
+          newErrors[`waypointIn_${wpId}`] = `Invalid format. Use HH:MM (09:30)`;
+        }
+
+        if (!timings?.out?.trim()) {
+          newErrors[`waypointOut_${wpId}`] = `Out time required for ${wpId}`;
+        } else if (!validateTimeFormat(timings.out)) {
+          newErrors[`waypointOut_${wpId}`] = `Invalid format. Use HH:MM (09:30)`;
+        }
+      });
+    }
 
     // 2. Dynamic Validations based on Datatype
     dynamicFields.forEach((field) => {
@@ -565,8 +602,22 @@ function TripDashboard({ accountId }) {
       return;
     }
 
-    // 3. Lookup Geofence Objects for Source and Destination
-    // We find the full object to get both the ID and the Name for the payload
+    // ✅ NEW: Build waypoints array for API
+    const waypointObjects = waypoints.map((wpId) => {
+      const geoObj = geofenceList.find((g) => g.id === wpId);
+      const timings = waypointInOut[wpId] || {};
+      return {
+        id: wpId,
+        name: geoObj?.name || "",
+        lat: geoObj?.lat || 0,
+        lng: geoObj?.lng || 0,
+        radius: geoObj?.radius || 0,
+        in: timings.in || "",
+        out: timings.out || "",
+      };
+    });
+
+    // Update source/destination with in/out timings
     const selectedSource = geofenceList.find((g) => g.id === createForm.source);
     const selectedDest = geofenceList.find((g) => g.id === createForm.destination);
 
@@ -593,17 +644,24 @@ function TripDashboard({ accountId }) {
           imei: createForm.imei,
           vehNum: createForm.vehicleNumber,
           source: {
-            id: selectedSource?.id || "S1", // Actual Geofence ID
-            name: selectedSource?.name || "", // Actual Geofence Name
-            lat: 0,
-            lng: 0,
+            id: selectedSource?.id || "",
+            name: selectedSource?.name || "",
+            lat: selectedSource?.lat || 0,
+            lng: selectedSource?.lng || 0,
+            radius: selectedSource?.radius || 0,
+            in: "", // Source in time usually empty
+            out: "", // Source out time usually empty
           },
           destination: {
-            id: selectedDest?.id || "D1", // Actual Geofence ID
-            name: selectedDest?.name || "", // Actual Geofence Name
-            lat: 0,
-            lng: 0,
+            id: selectedDest?.id || "",
+            name: selectedDest?.name || "",
+            lat: selectedDest?.lat || 0,
+            lng: selectedDest?.lng || 0,
+            radius: selectedDest?.radius || 0,
+            in: "", // Destination in time
+            out: "", // Destination out time
           },
+          waypoints: waypointObjects,
           optMap: optMap,
           status: "In Transit",
           cts: new Date().toISOString(),
@@ -803,11 +861,31 @@ function TripDashboard({ accountId }) {
       imei: "",
       driver: "",
     });
+    setWaypoints([]);
+    setWaypointInOut({});
     setCreateErrors({});
   };
 
   const handleCreateFieldChange = (field) => (e) => {
     setCreateForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  // Add these handlers
+  const handleWaypointChange = (selectedWaypoints) => {
+    setWaypoints(selectedWaypoints);
+    // Reset timings for new selection
+    setWaypointInOut({});
+  };
+
+  // ✅ Parent (TripDashboard) - This should already exist
+  const handleWaypointTimingChange = (waypointId, field, value) => {
+    setWaypointInOut((prev) => ({
+      ...prev,
+      [waypointId]: {
+        ...prev[waypointId],
+        [field]: value,
+      },
+    }));
   };
 
   // const handleCreateDialogSubmit = () => {
@@ -1416,9 +1494,14 @@ function TripDashboard({ accountId }) {
         errors={createErrors}
         dynamicFields={dynamicFields} // Ensure this is passefcd!
         geofenceList={geofenceList}
+        waypointList={waypointList}
         imeiList={imeiList}
+        waypoints={waypoints} // ✅ NEW
+        waypointInOut={waypointInOut} // ✅ NEW
         onClose={handleCreateDialogClose}
         onFieldChange={handleCreateFieldChange}
+        onWaypointChange={setWaypoints} // ✅ NEW
+        onWaypointTimingChange={handleWaypointTimingChange} // ✅ NEW
         onSubmit={handleCreateDialogSubmit}
       />
     </MDBox>

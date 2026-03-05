@@ -1,4 +1,5 @@
-import React from "react";
+import React, { Fragment } from "react"; // ✅ Changed from just "react"
+
 import PropTypes from "prop-types";
 import Select from "react-select";
 
@@ -23,6 +24,10 @@ const CreateTripDialog = ({
   dynamicFields = [],
   imeiList = [],
   geofenceList = [],
+  waypoints = [], // ✅ NEW
+  waypointInOut = {}, // ✅ NEW
+  onWaypointChange, // ✅ NEW
+  onWaypointTimingChange, // ✅ NEW
   title = "Create Trip",
 }) => {
   /**
@@ -62,6 +67,12 @@ const CreateTripDialog = ({
         </TextField>
       );
     }
+
+    // Add this inside the component (before return)
+    const handleTimingChange = (waypointId, field) => (e) => {
+      const value = e.target.value;
+      onWaypointTimingChange(waypointId, field, value);
+    };
 
     // DATETIME / TEXT
     return (
@@ -164,48 +175,47 @@ const CreateTripDialog = ({
               </MDTypography> */}
 
               <Select
-  options={imeiOptions}
-  value={imeiOptions.find((opt) => opt.value === form.imei) || null}
-  onChange={(selected) => {
-    onFieldChange("imei")({
-      target: { value: selected ? selected.value : "" },
-    });
-  }}
-  placeholder="Search vehicle or IMEI..."
-  isClearable
-  isSearchable
-  menuPortalTarget={document.body}
-  styles={{
-    control: (base, state) => ({
-      ...base,
-      minHeight: 40,
-      borderRadius: 4,
-      borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
-      boxShadow: "none",
-      "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
-      fontSize: "0.875rem",
-    }),
-    placeholder: (base) => ({
-      ...base,
-      fontSize: "0.875rem",
-      color: "#adb5bd",
-      marginTop: "2px",
-    }),
-    singleValue: (base) => ({
-      ...base,
-      fontSize: "0.875rem",
-    }),
-    menuPortal: (base) => ({
-      ...base,
-      zIndex: 1300, 
-    }),
-    menu: (base) => ({
-      ...base,
-      zIndex: 1301,
-    }),
-  }}
-/>
-
+                options={imeiOptions}
+                value={imeiOptions.find((opt) => opt.value === form.imei) || null}
+                onChange={(selected) => {
+                  onFieldChange("imei")({
+                    target: { value: selected ? selected.value : "" },
+                  });
+                }}
+                placeholder="Search vehicle or IMEI..."
+                isClearable
+                isSearchable
+                menuPortalTarget={document.body}
+                styles={{
+                  control: (base, state) => ({
+                    ...base,
+                    minHeight: 40,
+                    borderRadius: 4,
+                    borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
+                    boxShadow: "none",
+                    "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
+                    fontSize: "0.875rem",
+                  }),
+                  placeholder: (base) => ({
+                    ...base,
+                    fontSize: "0.875rem",
+                    color: "#adb5bd",
+                    marginTop: "2px",
+                  }),
+                  singleValue: (base) => ({
+                    ...base,
+                    fontSize: "0.875rem",
+                  }),
+                  menuPortal: (base) => ({
+                    ...base,
+                    zIndex: 1300,
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 1301,
+                  }),
+                }}
+              />
 
               {errors.imei && (
                 <MDTypography variant="caption" color="error" ml={0.5} mt={0.2}>
@@ -277,6 +287,76 @@ const CreateTripDialog = ({
             </TextField>
           </Grid>
 
+          {/* ✅ WAYPOINTS SECTION - MANDATORY */}
+          <Grid item xs={12}>
+            <MDTypography variant="body2" color="info" mb={1}>
+              {waypoints.length} waypoints selected
+            </MDTypography>
+            <TextField
+              select
+              fullWidth
+              label="Waypoints * (Required)"
+              multiple
+              value={waypoints}
+              onChange={(e) => onWaypointChange(e.target.value)}
+              error={!!errors.waypoints}
+              helperText={errors.waypoints || "Hold Ctrl/Cmd to select multiple"}
+              SelectProps={{ multiple: true }}
+              InputLabelProps={{ shrink: true }}
+              size="small"
+              sx={{ "& .MuiInputBase-root": { height: 40 } }}
+            >
+              {geofenceList.map(
+                (
+                  geo // ✅ FIXED: Use geofenceList
+                ) => (
+                  <MenuItem key={geo.id} value={geo.id}>
+                    {geo.name} {geo.type === "waypoint" ? "⚡" : ""}
+                  </MenuItem>
+                )
+              )}
+              {geofenceList.length === 0 && <MenuItem disabled>No Geofences</MenuItem>}
+            </TextField>
+          </Grid>
+
+          {/* ✅ FIXED WAYPOINT TIMINGS - Dynamic fields for selected waypoints */}
+          {waypoints.map((waypointId) => {
+            const waypointName = geofenceList.find((g) => g.id === waypointId)?.name || waypointId;
+
+            return (
+              <React.Fragment key={waypointId}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={`In Time - ${waypointName}`}
+                    type="time"
+                    // Ensure we are accessing the state correctly
+                    value={waypointInOut[waypointId]?.in || ""}
+                    onChange={(e) => onWaypointTimingChange(waypointId, "in", e.target.value)}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    // This ensures the browser's time picker doesn't conflict with React
+                    inputProps={{ step: 300 }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={`Out Time - ${waypointName}`}
+                    type="time"
+                    // Ensure we are accessing the state correctly
+                    value={waypointInOut[waypointId]?.out || ""}
+                    onChange={(e) => onWaypointTimingChange(waypointId, "out", e.target.value)}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    // This ensures the browser's time picker doesn't conflict with React
+                    inputProps={{ step: 300 }}
+                  />
+                </Grid>
+              </React.Fragment>
+            );
+          })}
+
           {/* Dynamic Fields from API */}
           {dynamicFields.length > 0 &&
             dynamicFields.map((field) => (
@@ -317,6 +397,10 @@ CreateTripDialog.propTypes = {
   onFieldChange: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   imeiList: PropTypes.array,
+  waypoints: PropTypes.array,
+  waypointInOut: PropTypes.object,
+  onWaypointChange: PropTypes.func,
+  onWaypointTimingChange: PropTypes.func,
   geofenceList: PropTypes.array,
   dynamicFields: PropTypes.arrayOf(
     PropTypes.shape({
