@@ -25,6 +25,7 @@ const CreateTripDialog = ({
   imeiList = [],
   geofenceList = [],
   waypoints = [], // ✅ NEW
+  excludeList = [],
   waypointInOut = {}, // ✅ NEW
   onWaypointChange, // ✅ NEW
   onWaypointTimingChange, // ✅ NEW
@@ -288,6 +289,7 @@ const CreateTripDialog = ({
           </Grid>
 
           {/* ✅ WAYPOINTS SECTION - MANDATORY */}
+          {/* ✅ WAYPOINTS SECTION */}
           <Grid item xs={12}>
             <MDTypography variant="body2" color="info" mb={1}>
               {waypoints.length} waypoints selected
@@ -296,66 +298,33 @@ const CreateTripDialog = ({
               select
               fullWidth
               label="Waypoints * (Required)"
-              multiple
+              SelectProps={{ multiple: true }}
               value={waypoints}
               onChange={(e) => onWaypointChange(e.target.value)}
               error={!!errors.waypoints}
               helperText={errors.waypoints || "Hold Ctrl/Cmd to select multiple"}
-              SelectProps={{ multiple: true }}
               InputLabelProps={{ shrink: true }}
               size="small"
               sx={{ "& .MuiInputBase-root": { height: 40 } }}
             >
-              {geofenceList.map(
-                (
-                  geo // ✅ FIXED: Use geofenceList
-                ) => (
+              {geofenceList
+                .filter((geo) => {
+                  // 1. If the geo is ALREADY a selected waypoint, keep it (so it doesn't vanish from the UI)
+                  if (waypoints.includes(geo.id)) return true;
+
+                  // 2. If the geo is the current Source or Destination, HIDE it
+                  if (geo.id === form.source || geo.id === form.destination) return false;
+
+                  // 3. Otherwise, check the general excludeList
+                  return !excludeList.includes(geo.id);
+                })
+                .map((geo) => (
                   <MenuItem key={geo.id} value={geo.id}>
                     {geo.name} {geo.type === "waypoint" ? "⚡" : ""}
                   </MenuItem>
-                )
-              )}
-              {geofenceList.length === 0 && <MenuItem disabled>No Geofences</MenuItem>}
+                ))}
             </TextField>
           </Grid>
-
-          {/* ✅ FIXED WAYPOINT TIMINGS - Dynamic fields for selected waypoints */}
-          {waypoints.map((waypointId) => {
-            const waypointName = geofenceList.find((g) => g.id === waypointId)?.name || waypointId;
-
-            return (
-              <React.Fragment key={waypointId}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label={`In Time - ${waypointName}`}
-                    type="time"
-                    // Ensure we are accessing the state correctly
-                    value={waypointInOut[waypointId]?.in || ""}
-                    onChange={(e) => onWaypointTimingChange(waypointId, "in", e.target.value)}
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    // This ensures the browser's time picker doesn't conflict with React
-                    inputProps={{ step: 300 }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label={`Out Time - ${waypointName}`}
-                    type="time"
-                    // Ensure we are accessing the state correctly
-                    value={waypointInOut[waypointId]?.out || ""}
-                    onChange={(e) => onWaypointTimingChange(waypointId, "out", e.target.value)}
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    // This ensures the browser's time picker doesn't conflict with React
-                    inputProps={{ step: 300 }}
-                  />
-                </Grid>
-              </React.Fragment>
-            );
-          })}
 
           {/* Dynamic Fields from API */}
           {dynamicFields.length > 0 &&

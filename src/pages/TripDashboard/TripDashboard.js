@@ -1448,6 +1448,7 @@ function TripDashboard({ accountId }) {
         geofenceList={geofenceList}
         waypointList={waypointList}
         imeiList={imeiList}
+        excludeList={excludeList}
         waypoints={waypoints} // ✅ NEW
         onClose={handleCreateDialogClose}
         onFieldChange={handleCreateFieldChange}
