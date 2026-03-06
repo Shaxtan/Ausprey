@@ -459,7 +459,7 @@ function TripDashboard({ accountId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0); // For pagination
   const [waypoints, setWaypoints] = useState([]); // Array of selected waypoints
-  const [waypointInOut, setWaypointInOut] = useState({});
+  // const [waypointInOut, setWaypointInOut] = useState({});
   const [waypointList, setWaypointList] = useState([]);
 
   // CREATE TRIP DIALOG STATE
@@ -482,6 +482,32 @@ function TripDashboard({ accountId }) {
   const [imeiList, setImeiList] = useState([]);
   const [geofenceList, setGeofenceList] = useState([]);
 
+  // Inside TripDashboard component
+
+  // 1. Memoize the list of IDs to exclude based on current selections
+  const excludeList = useMemo(() => {
+    const ids = [];
+    if (createForm.source) ids.push(createForm.source);
+    if (createForm.destination) ids.push(createForm.destination);
+    if (waypoints && waypoints.length > 0) {
+      ids.push(...waypoints); // Add all selected waypoint IDs
+    }
+    return ids;
+  }, [createForm.source, createForm.destination, waypoints]);
+
+  // 2. Re-fetch geofences whenever the excludeList changes
+  useEffect(() => {
+    if (!createDialogOpen) return; // Only fetch if the dialog is actually open
+
+    ApiService.getGeofences(0, excludeList).then((data) => {
+      setGeofenceList(data);
+
+      // Also update the filtered waypointList used by the multi-select
+      const filteredWaypoints = data.filter((g) => g.type === "waypoint" || g.isWaypoint);
+      setWaypointList(filteredWaypoints);
+    });
+  }, [excludeList, createDialogOpen]);
+
   useEffect(() => {
     ApiService.getImeiDropdown(accountId)
       .then((res) => {
@@ -500,15 +526,15 @@ function TripDashboard({ accountId }) {
   }, []);
 
   // Add this useEffect after geofenceList fetch
-  useEffect(() => {
-    // Fetch Geofences AND Waypoints
-    ApiService.getGeofences(0).then((data) => {
-      setGeofenceList(data);
-      // ✅ Filter waypoints from geofences (no separate API call needed)
-      const waypointList = data.filter((g) => g.type === "waypoint" || g.isWaypoint);
-      setWaypointList(waypointList);
-    });
-  }, []);
+  // useEffect(() => {
+  //   // Fetch Geofences AND Waypoints
+  //   ApiService.getGeofences(0).then((data) => {
+  //     setGeofenceList(data);
+  //     // ✅ Filter waypoints from geofences (no separate API call needed)
+  //     const waypointList = data.filter((g) => g.type === "waypoint" || g.isWaypoint);
+  //     setWaypointList(waypointList);
+  //   });
+  // }, []);
 
   // Fetch template on component mount or when opening Dialog
   // Inside TripDashboard component
@@ -553,25 +579,6 @@ function TripDashboard({ accountId }) {
     // These now store the Geofence ID from the dropdown
     if (!createForm.source) newErrors.source = "Source is required";
     if (!createForm.destination) newErrors.destination = "Destination is required";
-    // ✅ NEW: Waypoint validation (MANDATORY)
-    if (waypoints.length === 0) {
-      newErrors.waypoints = "At least one waypoint is required";
-    } else {
-      waypoints.forEach((wpId) => {
-        const timings = waypointInOut[wpId];
-        if (!timings?.in?.trim()) {
-          newErrors[`waypointIn_${wpId}`] = `In time required for ${wpId}`;
-        } else if (!validateTimeFormat(timings.in)) {
-          newErrors[`waypointIn_${wpId}`] = `Invalid format. Use HH:MM (09:30)`;
-        }
-
-        if (!timings?.out?.trim()) {
-          newErrors[`waypointOut_${wpId}`] = `Out time required for ${wpId}`;
-        } else if (!validateTimeFormat(timings.out)) {
-          newErrors[`waypointOut_${wpId}`] = `Invalid format. Use HH:MM (09:30)`;
-        }
-      });
-    }
 
     // 2. Dynamic Validations based on Datatype
     dynamicFields.forEach((field) => {
@@ -605,15 +612,15 @@ function TripDashboard({ accountId }) {
     // ✅ NEW: Build waypoints array for API
     const waypointObjects = waypoints.map((wpId) => {
       const geoObj = geofenceList.find((g) => g.id === wpId);
-      const timings = waypointInOut[wpId] || {};
+      // const timings = waypointInOut[wpId] || {};
       return {
         id: wpId,
         name: geoObj?.name || "",
         lat: geoObj?.lat || 0,
         lng: geoObj?.lng || 0,
         radius: geoObj?.radius || 0,
-        in: timings.in || "",
-        out: timings.out || "",
+        // in: timings.in || "",
+        // out: timings.out || "",
       };
     });
 
@@ -862,7 +869,7 @@ function TripDashboard({ accountId }) {
       driver: "",
     });
     setWaypoints([]);
-    setWaypointInOut({});
+    // setWaypointInOut({});
     setCreateErrors({});
   };
 
@@ -874,62 +881,7 @@ function TripDashboard({ accountId }) {
   const handleWaypointChange = (selectedWaypoints) => {
     setWaypoints(selectedWaypoints);
     // Reset timings for new selection
-    setWaypointInOut({});
   };
-
-  // ✅ Parent (TripDashboard) - This should already exist
-  const handleWaypointTimingChange = (waypointId, field, value) => {
-    setWaypointInOut((prev) => ({
-      ...prev,
-      [waypointId]: {
-        ...prev[waypointId],
-        [field]: value,
-      },
-    }));
-  };
-
-  // const handleCreateDialogSubmit = () => {
-  //   const requiredFields = [
-  //     "vehicleNumber",
-  //     "accountName",
-  //     "source",
-  //     "destination",
-  //     "imei",
-  //     "driver",
-  //   ];
-  //   const newErrors = {};
-  //   requiredFields.forEach((f) => {
-  //     if (!createForm[f]?.trim()) newErrors[f] = "Required";
-  //   });
-  //   if (Object.keys(newErrors).length > 0) {
-  //     setCreateErrors(newErrors);
-  //     return;
-  //   }
-
-  //   const newTrip = {
-  //     id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
-  //     vehicleNumber: createForm.vehicleNumber,
-  //     accountName: createForm.accountName,
-  //     source: createForm.source,
-  //     destination: createForm.destination,
-  //     imei: createForm.imei,
-  //     createdTime: new Date().toISOString(),
-  //     status: "In Transit",
-  //     driver: createForm.driver,
-  //     distance: "0 km",
-  //     eta: "N/A",
-  //     route: [
-  //       { lat: 19.076, lng: 72.8777 },
-  //       { lat: 18.5204, lng: 73.8567 },
-  //     ],
-  //     progressIndex: 0,
-  //     routeIndex: 0,
-  //     isPlaying: false,
-  //   };
-
-  //   setTrips((prev) => [newTrip, ...prev]);
-  //   handleCreateDialogClose();
-  // };
 
   const filteredTrips = useMemo(() => {
     if (!searchTerm) return trips;
@@ -1497,11 +1449,9 @@ function TripDashboard({ accountId }) {
         waypointList={waypointList}
         imeiList={imeiList}
         waypoints={waypoints} // ✅ NEW
-        waypointInOut={waypointInOut} // ✅ NEW
         onClose={handleCreateDialogClose}
         onFieldChange={handleCreateFieldChange}
         onWaypointChange={setWaypoints} // ✅ NEW
-        onWaypointTimingChange={handleWaypointTimingChange} // ✅ NEW
         onSubmit={handleCreateDialogSubmit}
       />
     </MDBox>

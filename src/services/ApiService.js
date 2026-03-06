@@ -437,26 +437,22 @@ class ApiService {
     return this.postRequest("/trips/create", payload, true, SERVICES.tripOps);
   }
   // Add this inside the ApiService class
-  getGeofences(pageNo = 0) {
-    // Use a direct axios call if you need a specific base URL not in SERVICES
-    // or add GEOFENCE: "http://103.178.113.129:8012" to your SERVICES object
-    // const GEOFENCE_BASE = "http://103.178.113.129:8012";
+  getGeofences(pageNo = 0, excludeIds = []) {
+    // We send the array of IDs that should NOT appear in the results
+    const payload = {
+      pageNo: pageNo,
+      exclude: excludeIds, // This matches your CURL requirement
+    };
 
-    return this.postRequest(
-      "/geo-fence/view-all",
-      { pageNo },
-      true, // Set to true if it needs Auth header, false if not
-      SERVICES.geofence
-    )
+    return this.postRequest("/geo-fence/view-all", payload, true, SERVICES.geofence)
       .then((res) => {
-        // Return only the data array for easier use in the component
         if (res?.data?.resultCode === 1) {
-          return res.data.data; // This is the list of geofences
+          return res.data.data; // Array of geofences
         }
         return [];
       })
       .catch((err) => {
-        console.error("Geofence API Error:", err);
+        console.error("Geofence Exclusion API Error:", err);
         return [];
       });
   }
