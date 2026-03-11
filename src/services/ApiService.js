@@ -494,7 +494,20 @@ class ApiService {
 
     return this.postRequest("/geo-fence/create", finalPayload, true, SERVICES.geofence);
   }
+  // Add this method to your ApiService class
+  getDistanceReport(data = {}) {
+    return this.postRequest("/reports/distance-report", data, true, SERVICES.dashboard)
+      .then((res) => {
+        if (res?.data?.resultCode === 1) {
+          return res.data;
+        }
+        throw new Error(res?.data?.message || "Failed to fetch distance report");
+      })
+      .catch((error) => {
+        callAlert("Error", error?.message || "Failed to fetch distance report");
+        throw error;
+      });
+  }
 }
-
 export { SERVICES };
 export default new ApiService();

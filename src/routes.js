@@ -9,6 +9,7 @@ import LiveTrack from "pages/LiveTrack/LiveTrack";
 import Alerts from "../src/pages/Alerts/Alerts";
 import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
 import LiveLoadGraph from "../src/pages/LoadCellReport/LiveLoadGraph";
+import DistanceReport from "pages/DistanceReport/DistanceReport";
 import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 import TripDashboard2 from "pages/TripDashboard/TripDashboard2";
 
@@ -159,6 +160,15 @@ const routes = [
     icon: <Icon fontSize="small">bolt</Icon>,
     route: "/live-load-cell-report",
     component: <LiveLoadGraph />,
+    parent: "reports",
+  },
+  {
+    type: "collapse",
+    name: "Distance Report",
+    key: "distance-report",
+    icon: <Icon fontSize="small">directions_car</Icon>,
+    route: "/distance-report",
+    component: <DistanceReport />,
     parent: "reports",
   },
 
