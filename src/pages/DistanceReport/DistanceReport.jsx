@@ -371,7 +371,7 @@ function DistanceReport() {
 
         {/* DISTANCE AREA CHART */}
         <Grid container spacing={2.5} mb={3}>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={12}>
             <Card sx={{ borderRadius: 3, border: "1px solid #E5E7EB" }}>
               <MDBox pt={2.5} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
@@ -410,7 +410,7 @@ function DistanceReport() {
           </Grid>
 
           {/* FUEL DONUT (Mock preserved) */}
-          <Grid item xs={12} md={4}>
+          {/* <Grid item xs={12} md={4}>
             <Card sx={{ borderRadius: 3, p: 3, border: "1px solid #E5E7EB" }}>
               <MDTypography variant="h6">Fuel Usage</MDTypography>
               <FuelDonut data={fuelUsageData} />
@@ -419,7 +419,7 @@ function DistanceReport() {
                 <LegendItem color="#4FD1C5" label="Remaining" />
               </MDBox>
             </Card>
-          </Grid>
+          </Grid> */}
         </Grid>
 
         {/* BOTTOM ROW (Mock data preserved) */}
