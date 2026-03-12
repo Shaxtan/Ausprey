@@ -145,6 +145,45 @@ function DistanceReport() {
     setChatStep(CHAT_STEP.SHOW_OPTIONS);
   };
 
+  const handleQuickSelect = (type) => {
+    const now = new Date();
+    const end = new Date(); // Current time for the 'End' date
+    let start = new Date();
+
+    // Reset start to beginning of the day (00:00) for Today/Yesterday
+    // or set back for Last 7 Days
+    switch (type) {
+      case "today":
+        start.setHours(0, 0, 0, 0);
+        break;
+      case "yesterday":
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "last7":
+        start.setDate(now.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        break;
+      default:
+        break;
+    }
+
+    const format = (date) => {
+      const pad = (num) => num.toString().padStart(2, "0");
+      const y = date.getFullYear();
+      const m = pad(date.getMonth() + 1);
+      const d = pad(date.getDate());
+      const hh = pad(date.getHours());
+      const mm = pad(date.getMinutes());
+      return `${y}-${m}-${d}T${hh}:${mm}`;
+    };
+
+    setStartDate(format(start));
+    setEndDate(format(end));
+  };
+
   const handleOptionSelect = (option) => {
     setMessages((prev) => [...prev, { type: "user", text: option }]);
     if (option === "Alert Logs") navigate("/alerts");
@@ -212,6 +251,34 @@ function DistanceReport() {
         {/* FILTER ROW */}
         <Card sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12}>
+              <MDBox display="flex" gap={1} mb={1}>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("today")}
+                >
+                  Today
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("yesterday")}
+                >
+                  Yesterday
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("last7")}
+                >
+                  Last 7 Days
+                </MDButton>
+              </MDBox>
+            </Grid>
             <Grid item xs={12} md={4}>
               <Autocomplete
                 options={imeiList}
