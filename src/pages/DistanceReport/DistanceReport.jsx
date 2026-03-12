@@ -303,7 +303,7 @@ function DistanceReport() {
               </MDButton>
             </Grid>
             <Grid item xs={12}>
-              <MDBox display="flex" gap={1} mb={1} ml={40}>
+              <MDBox display="flex" gap={1} mb={1} ml={70}>
                 <MDButton
                   variant="outlined"
                   color="info"
