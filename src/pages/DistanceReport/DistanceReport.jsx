@@ -35,6 +35,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import DashboardNavbarWithAccountContext from "assets/components/examples/Navbars/DashboardNavbar/DashboardNavbarWithAccountContext";
 
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
@@ -246,7 +247,7 @@ function DistanceReport() {
 
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      <DashboardNavbarWithAccountContext />
       <MDBox py={2.5} px={1}>
         {/* FILTER ROW */}
         <Card sx={{ p: 2, mb: 3 }}>
