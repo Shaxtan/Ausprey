@@ -202,7 +202,7 @@ function Sidenav({ color, brand, brandName, routes, ...rest }) {
               ml: -1,
             }}
           >
-            V 1.0.0
+            V 1.0.1
           </MDTypography>
         </MDBox>
       </MDBox>
