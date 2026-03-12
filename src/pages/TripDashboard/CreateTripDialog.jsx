@@ -371,6 +371,7 @@ CreateTripDialog.propTypes = {
   onWaypointChange: PropTypes.func,
   onWaypointTimingChange: PropTypes.func,
   geofenceList: PropTypes.array,
+  excludeList: PropTypes.array,
   dynamicFields: PropTypes.arrayOf(
     PropTypes.shape({
       key: PropTypes.string.isRequired,
