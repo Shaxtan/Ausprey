@@ -8,6 +8,7 @@ import MDBox from "../../../src/assets/components/MDBox";
 import MDTypography from "../../../src/assets/components/MDTypography";
 import MDButton from "../../../src/assets/components/MDButton";
 import MDInput from "../../../src/assets/components/MDInput";
+import Autocomplete from "@mui/material/Autocomplete";
 
 // Layout
 import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
@@ -88,19 +89,30 @@ function DistanceReport() {
   }, [selectedImei]);
 
   const fetchReport = (imei) => {
+    if (!imei) return;
     setLoading(true);
-    const payload = {
-      imei: imei,
-      startTime: new Date(startDate).toISOString(),
-      endTime: new Date(endDate).toISOString(),
-      pageNo: 0,
+
+    // Helper to format date as D/MM/YYYY
+    const formatDateForPayload = (dateStr) => {
+      const d = new Date(dateStr);
+      return `${d.getDate()}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
     };
 
-    ApiService.postRequest("/reports/distance-report", payload, true, "http://103.178.113.129:8075")
-      .then((res) => {
-        if (res?.data?.resultCode === 1) {
-          setReportData(res.data.data);
+    const payload = {
+      imei: imei, // Dynamically use the passed imei
+      startDate: formatDateForPayload(startDate), // Formats to "1/01/2026"
+      endDate: formatDateForPayload(endDate), // Formats to "11/03/2026"
+    };
+
+    // Using the helper method from ApiService
+    ApiService.getDistanceReport(payload)
+      .then((responseData) => {
+        if (responseData) {
+          setReportData(responseData.data);
         }
+      })
+      .catch((err) => {
+        console.error("Report Fetch Error:", err);
       })
       .finally(() => setLoading(false));
   };
@@ -201,23 +213,25 @@ function DistanceReport() {
         <Card sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={4}>
-              <MDInput
-                select
-                label="Select Vehicle"
-                value={selectedImei}
-                fullWidth
-                onChange={(e) => setSelectedImei(e.target.value)}
-                SelectProps={{ native: true }}
-              >
-                <option value="" disabled>
-                  Select a vehicle
-                </option>
-                {imeiList.map((v) => (
-                  <option key={v.imei} value={v.imei}>
-                    {v.vehnum} ({v.imei})
-                  </option>
-                ))}
-              </MDInput>
+              <Autocomplete
+                options={imeiList}
+                getOptionLabel={(option) => `${option.vehnum} (${option.imei})`}
+                value={imeiList.find((v) => v.imei === selectedImei) || null}
+                onChange={(event, newValue) => {
+                  if (newValue) {
+                    setSelectedImei(newValue.imei);
+                  }
+                }}
+                renderInput={(params) => (
+                  <MDInput {...params} label="Search Vehicle / IMEI" fullWidth />
+                )}
+                // Optional: stylistic tweaks to match Material Dashboard 2
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "2px",
+                  },
+                }}
+              />
             </Grid>
             <Grid item xs={12} md={3}>
               <MDInput
