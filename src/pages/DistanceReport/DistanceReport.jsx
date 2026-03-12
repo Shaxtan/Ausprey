@@ -251,34 +251,6 @@ function DistanceReport() {
         {/* FILTER ROW */}
         <Card sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12}>
-              <MDBox display="flex" gap={1} mb={1}>
-                <MDButton
-                  variant="outlined"
-                  color="info"
-                  size="small"
-                  onClick={() => handleQuickSelect("today")}
-                >
-                  Today
-                </MDButton>
-                <MDButton
-                  variant="outlined"
-                  color="info"
-                  size="small"
-                  onClick={() => handleQuickSelect("yesterday")}
-                >
-                  Yesterday
-                </MDButton>
-                <MDButton
-                  variant="outlined"
-                  color="info"
-                  size="small"
-                  onClick={() => handleQuickSelect("last7")}
-                >
-                  Last 7 Days
-                </MDButton>
-              </MDBox>
-            </Grid>
             <Grid item xs={12} md={4}>
               <Autocomplete
                 options={imeiList}
@@ -329,6 +301,34 @@ function DistanceReport() {
               >
                 {loading ? "..." : "Refresh"}
               </MDButton>
+            </Grid>
+            <Grid item xs={12}>
+              <MDBox display="flex" gap={1} mb={1} ml={40}>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("today")}
+                >
+                  Today
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("yesterday")}
+                >
+                  Yesterday
+                </MDButton>
+                <MDButton
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  onClick={() => handleQuickSelect("last7")}
+                >
+                  Last 7 Days
+                </MDButton>
+              </MDBox>
             </Grid>
           </Grid>
         </Card>
