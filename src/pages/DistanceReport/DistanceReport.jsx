@@ -12,18 +12,14 @@ import Autocomplete from "@mui/material/Autocomplete";
 
 // Layout
 import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
 
 // MUI
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
-import Icon from "@mui/material/Icon";
 import SendIcon from "@mui/icons-material/Send";
 
 // Recharts
 import {
-  AreaChart,
-  Area,
   LineChart,
   Line,
   BarChart,
@@ -32,7 +28,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import DashboardNavbarWithAccountContext from "assets/components/examples/Navbars/DashboardNavbar/DashboardNavbarWithAccountContext";
@@ -44,11 +39,6 @@ const vehicleSummaryMock = {
   vehicleNumber: "MH12-AB-1234",
   activeAlerts: 12,
 };
-
-const fuelUsageData = [
-  { name: "Consumed", value: 68, color: "#FF6B6B" },
-  { name: "Remaining", value: 32, color: "#4FD1C5" },
-];
 
 const avgSpeedData = [
   { trip: "Trip 1", actual: 60, limit: 80 },
@@ -72,8 +62,8 @@ function DistanceReport() {
   const [loading, setLoading] = useState(false);
 
   // Date Selection States
-  const [startDate, setStartDate] = useState("2026-01-01T14:09");
-  const [endDate, setEndDate] = useState("2026-03-09T14:09");
+  const [startDate, setStartDate] = useState("2026-03-18T00:00");
+  const [endDate, setEndDate] = useState("2026-03-18T23:59");
 
   // 1. Fetch IMEI Dropdown
   useEffect(() => {
@@ -93,19 +83,17 @@ function DistanceReport() {
     if (!imei) return;
     setLoading(true);
 
-    // Helper to format date as D/MM/YYYY
     const formatDateForPayload = (dateStr) => {
       const d = new Date(dateStr);
       return `${d.getDate()}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
     };
 
     const payload = {
-      imei: imei, // Dynamically use the passed imei
-      startDate: formatDateForPayload(startDate), // Formats to "1/01/2026"
-      endDate: formatDateForPayload(endDate), // Formats to "11/03/2026"
+      imei: imei,
+      startDate: formatDateForPayload(startDate),
+      endDate: formatDateForPayload(endDate),
     };
 
-    // Using the helper method from ApiService
     ApiService.getDistanceReport(payload)
       .then((responseData) => {
         if (responseData) {
@@ -118,11 +106,33 @@ function DistanceReport() {
       .finally(() => setLoading(false));
   };
 
-  // ---- CHART DATE FORMATTER ----
-  const formatChartDate = (tickItem) => {
-    if (!tickItem) return "";
-    return new Date(tickItem).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  // ---- DYNAMIC CHART LOGIC ----
+
+  const isSingleDay = useMemo(() => {
+    if (!startDate || !endDate) return false;
+    return startDate.split("T")[0] === endDate.split("T")[0];
+  }, [startDate, endDate]);
+
+  const xAxisKey = isSingleDay ? "hr" : "repDate";
+
+  const formatXAxis = (tickItem) => {
+    if (tickItem === null || tickItem === undefined) return "";
+
+    if (isSingleDay) {
+      return `${tickItem}:00`;
+    }
+
+    return new Date(tickItem).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+    });
   };
+
+  // Filter data to ensure valid bars are rendered
+  const chartData = useMemo(() => {
+    const rawData = reportData?.vehicleDistances || [];
+    return rawData.filter((item) => item[xAxisKey] !== null && item[xAxisKey] !== undefined);
+  }, [reportData, xAxisKey]);
 
   // ---- CHATBOT STATE ----
   const CHAT_STEP = useMemo(
@@ -148,11 +158,9 @@ function DistanceReport() {
 
   const handleQuickSelect = (type) => {
     const now = new Date();
-    const end = new Date(); // Current time for the 'End' date
+    const end = new Date();
     let start = new Date();
 
-    // Reset start to beginning of the day (00:00) for Today/Yesterday
-    // or set back for Last 7 Days
     switch (type) {
       case "today":
         start.setHours(0, 0, 0, 0);
@@ -265,7 +273,6 @@ function DistanceReport() {
                 renderInput={(params) => (
                   <MDInput {...params} label="Search Vehicle / IMEI" fullWidth />
                 )}
-                // Optional: stylistic tweaks to match Material Dashboard 2
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     padding: "2px",
@@ -370,60 +377,55 @@ function DistanceReport() {
           </Grid>
         </Grid>
 
-        {/* DISTANCE AREA CHART */}
+        {/* DISTANCE BAR CHART */}
         <Grid container spacing={2.5} mb={3}>
-          <Grid item xs={12} md={12}>
+          <Grid item xs={12}>
             <Card sx={{ borderRadius: 3, border: "1px solid #E5E7EB" }}>
               <MDBox pt={2.5} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
-                  Daily Distance Covered
+                  {isSingleDay ? "Hourly Distance Covered (km)" : "Daily Distance Covered (km)"}
                 </MDTypography>
               </MDBox>
-              <MDBox p={3} sx={{ height: 260 }}>
+              <MDBox p={3} sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={reportData?.vehicleDistances || []}>
-                    <defs>
-                      <linearGradient id="usageGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#E0F2FE" stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis
-                      dataKey="repDate"
-                      tickFormatter={formatChartDate}
-                      tick={{ fontSize: 10 }}
+                      dataKey={xAxisKey}
+                      tickFormatter={formatXAxis}
+                      tick={{ fontSize: 11, fill: "#6B7280" }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={isSingleDay ? 0 : "preserveStartEnd"}
                     />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip labelFormatter={formatChartDate} />
-                    <Area
-                      type="monotone"
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#6B7280" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "#f3f4f6" }}
+                      labelFormatter={formatXAxis}
+                      contentStyle={{
+                        borderRadius: "10px",
+                        border: "none",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                      }}
+                    />
+                    <Bar
                       dataKey="distance"
-                      stroke="#0EA5E9"
-                      fill="url(#usageGrad)"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
+                      fill="#0EA5E9"
+                      radius={[4, 4, 0, 0]}
+                      barSize={isSingleDay ? 18 : 35}
                     />
-                  </AreaChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </MDBox>
             </Card>
           </Grid>
-
-          {/* FUEL DONUT (Mock preserved) */}
-          {/* <Grid item xs={12} md={4}>
-            <Card sx={{ borderRadius: 3, p: 3, border: "1px solid #E5E7EB" }}>
-              <MDTypography variant="h6">Fuel Usage</MDTypography>
-              <FuelDonut data={fuelUsageData} />
-              <MDBox mt={2} display="flex" justifyContent="center" gap={2}>
-                <LegendItem color="#FF6B6B" label="Consumed" />
-                <LegendItem color="#4FD1C5" label="Remaining" />
-              </MDBox>
-            </Card>
-          </Grid> */}
         </Grid>
 
-        {/* BOTTOM ROW (Mock data preserved) */}
+        {/* BOTTOM ROW */}
         <Grid container spacing={2.5}>
           <Grid item xs={12} md={6}>
             <Card sx={{ p: 3, border: "1px solid #E5E7EB" }}>
@@ -531,75 +533,12 @@ function SummaryCard({ label, value, gradient, accent }) {
     </Card>
   );
 }
+
 SummaryCard.propTypes = {
   label: PropTypes.string.isRequired,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   gradient: PropTypes.string.isRequired,
   accent: PropTypes.string.isRequired,
 };
-
-function LegendItem({ color, label }) {
-  return (
-    <MDBox display="flex" alignItems="center" gap={0.8}>
-      <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: color }} />
-      <MDTypography variant="caption" sx={{ fontSize: 11 }}>
-        {label}
-      </MDTypography>
-    </MDBox>
-  );
-}
-LegendItem.propTypes = { color: PropTypes.string.isRequired, label: PropTypes.string.isRequired };
-
-function FuelDonut({ data }) {
-  const consumed = data.find((d) => d.name === "Consumed")?.value || 0;
-  const size = 180;
-  const strokeWidth = 18;
-  const radius = (size - strokeWidth) / 2;
-  const center = size / 2;
-  const circumference = 2 * Math.PI * radius;
-  const consumedLength = (consumed / 100) * circumference;
-  return (
-    <div style={{ position: "relative", width: size, height: size, margin: "auto" }}>
-      <svg width={size} height={size}>
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="#E5E7EB"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="#FB7185"
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${consumedLength} ${circumference}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${center} ${center})`}
-        />
-      </svg>
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-        }}
-      >
-        <MDTypography variant="h5" fontWeight="bold">
-          {consumed}%
-        </MDTypography>
-        <MDTypography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
-          Fuel
-        </MDTypography>
-      </div>
-    </div>
-  );
-}
-FuelDonut.propTypes = { data: PropTypes.array.isRequired };
 
 export default DistanceReport;
