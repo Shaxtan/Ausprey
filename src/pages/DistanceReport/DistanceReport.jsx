@@ -29,6 +29,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import DashboardNavbarWithAccountContext from "assets/components/examples/Navbars/DashboardNavbar/DashboardNavbarWithAccountContext";
 
@@ -133,6 +134,16 @@ function DistanceReport() {
     const rawData = reportData?.vehicleDistances || [];
     return rawData.filter((item) => item[xAxisKey] !== null && item[xAxisKey] !== undefined);
   }, [reportData, xAxisKey]);
+  // Calculate average speed from the vehicleDistances array
+  const averageSpeed = useMemo(() => {
+    const distances = reportData?.vehicleDistances || [];
+    if (distances.length === 0) return 0;
+
+    const totalSpeed = distances.reduce((sum, item) => sum + (Number(item.speed) || 0), 0);
+    const avg = totalSpeed / distances.length;
+
+    return avg.toFixed(1); // Keep one decimal place
+  }, [reportData]);
 
   // ---- CHATBOT STATE ----
   const CHAT_STEP = useMemo(
@@ -369,24 +380,28 @@ function DistanceReport() {
           </Grid>
           <Grid item xs={12} md={3}>
             <SummaryCard
-              label="Active Alerts"
-              value={vehicleSummaryMock.activeAlerts}
-              gradient="linear-gradient(135deg,#FEF2F2,#FEE2E2)"
-              accent="#DC2626"
+              label="Average Speed"
+              value={`${averageSpeed} km/h`}
+              gradient="linear-gradient(135deg,#FFF7ED,#FFEDD5)" // Light orange theme
+              accent="#F97316" // Match the orange speed bars in the chart
             />
           </Grid>
         </Grid>
 
-        {/* DISTANCE BAR CHART */}
+        {/* DISTANCE & SPEED BAR CHART */}
         <Grid container spacing={2.5} mb={3}>
           <Grid item xs={12}>
             <Card sx={{ borderRadius: 3, border: "1px solid #E5E7EB" }}>
               <MDBox pt={2.5} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
-                  {isSingleDay ? "Hourly Distance Covered (km)" : "Daily Distance Covered (km)"}
+                  {isSingleDay
+                    ? "Hourly Distance & Average Speed"
+                    : "Daily Distance & Average Speed"}
                 </MDTypography>
               </MDBox>
-              <MDBox p={3} sx={{ height: 300 }}>
+              <MDBox p={3} sx={{ height: 350 }}>
+                {" "}
+                {/* Increased height slightly for Legend */}
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -412,11 +427,26 @@ function DistanceReport() {
                         boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
                       }}
                     />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      wrapperStyle={{ paddingBottom: "20px", fontSize: "12px" }}
+                    />
+                    {/* Distance Bar */}
                     <Bar
+                      name="Distance (km)"
                       dataKey="distance"
-                      fill="#0EA5E9"
+                      fill="#0EA5E9" // Blue
                       radius={[4, 4, 0, 0]}
-                      barSize={isSingleDay ? 18 : 35}
+                      barSize={isSingleDay ? 12 : 25} // Slightly smaller barSize to fit two bars side-by-side
+                    />
+                    {/* Speed Bar */}
+                    <Bar
+                      name=" Speed (km/h)"
+                      dataKey="speed"
+                      fill="#F97316" // Orange
+                      radius={[4, 4, 0, 0]}
+                      barSize={isSingleDay ? 12 : 25}
                     />
                   </BarChart>
                 </ResponsiveContainer>
