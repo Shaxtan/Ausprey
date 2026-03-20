@@ -63,9 +63,8 @@ function DistanceReport() {
   const [loading, setLoading] = useState(false);
 
   // Date Selection States
-  const [startDate, setStartDate] = useState("2026-03-18T00:00");
-  const [endDate, setEndDate] = useState("2026-03-18T23:59");
-
+  const [startDate, setStartDate] = useState("2026-03-18");
+  const [endDate, setEndDate] = useState("2026-03-18");
   // 1. Fetch IMEI Dropdown
   useEffect(() => {
     ApiService.getImeiDropdown(1).then((res) => {
@@ -76,9 +75,9 @@ function DistanceReport() {
   }, []);
 
   // 2. Fetch Report when IMEI changes
-  useEffect(() => {
-    if (selectedImei) fetchReport(selectedImei);
-  }, [selectedImei]);
+  // useEffect(() => {
+  //   if (selectedImei) fetchReport(selectedImei);
+  // }, [selectedImei]);
 
   const fetchReport = (imei) => {
     if (!imei) return;
@@ -195,9 +194,7 @@ function DistanceReport() {
       const y = date.getFullYear();
       const m = pad(date.getMonth() + 1);
       const d = pad(date.getDate());
-      const hh = pad(date.getHours());
-      const mm = pad(date.getMinutes());
-      return `${y}-${m}-${d}T${hh}:${mm}`;
+      return `${y}-${m}-${d}`; // No time segment
     };
 
     setStartDate(format(start));
@@ -293,8 +290,8 @@ function DistanceReport() {
             </Grid>
             <Grid item xs={12} md={3}>
               <MDInput
-                type="datetime-local"
-                label="Start"
+                type="date"
+                label="Start Date"
                 value={startDate}
                 fullWidth
                 onChange={(e) => setStartDate(e.target.value)}
@@ -303,8 +300,8 @@ function DistanceReport() {
             </Grid>
             <Grid item xs={12} md={3}>
               <MDInput
-                type="datetime-local"
-                label="End"
+                type="date"
+                label="End Date"
                 value={endDate}
                 fullWidth
                 onChange={(e) => setEndDate(e.target.value)}
@@ -454,36 +451,6 @@ function DistanceReport() {
             </Card>
           </Grid>
         </Grid>
-
-        {/* BOTTOM ROW */}
-        {/* <Grid container spacing={2.5}>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3, border: "1px solid #E5E7EB" }}>
-              <MDTypography variant="h6">Average Speed</MDTypography>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={avgSpeedData}>
-                  <XAxis dataKey="trip" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="actual" fill="#FB7185" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3, border: "1px solid #E5E7EB" }}>
-              <MDTypography variant="h6">Fuel Trend</MDTypography>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={fuelTrendData}>
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line dataKey="current" stroke="#F97316" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </Grid>
-        </Grid> */}
       </MDBox>
 
       {/* CHATBOT ICON & WIDGET */}
