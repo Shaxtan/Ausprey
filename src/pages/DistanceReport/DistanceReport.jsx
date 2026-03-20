@@ -456,7 +456,7 @@ function DistanceReport() {
         </Grid>
 
         {/* BOTTOM ROW */}
-        <Grid container spacing={2.5}>
+        {/* <Grid container spacing={2.5}>
           <Grid item xs={12} md={6}>
             <Card sx={{ p: 3, border: "1px solid #E5E7EB" }}>
               <MDTypography variant="h6">Average Speed</MDTypography>
@@ -483,7 +483,7 @@ function DistanceReport() {
               </ResponsiveContainer>
             </Card>
           </Grid>
-        </Grid>
+        </Grid> */}
       </MDBox>
 
       {/* CHATBOT ICON & WIDGET */}
