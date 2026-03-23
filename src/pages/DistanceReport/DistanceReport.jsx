@@ -61,10 +61,11 @@ function DistanceReport() {
   const [selectedImei, setSelectedImei] = useState("");
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const getTodayDate = () => new Date().toISOString().split("T")[0];
 
   // Date Selection States
-  const [startDate, setStartDate] = useState("2026-03-18");
-  const [endDate, setEndDate] = useState("2026-03-18");
+  const [startDate, setStartDate] = useState(getTodayDate());
+  const [endDate, setEndDate] = useState(getTodayDate());
   // 1. Fetch IMEI Dropdown
   useEffect(() => {
     ApiService.getImeiDropdown(1).then((res) => {
