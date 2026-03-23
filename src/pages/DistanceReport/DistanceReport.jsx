@@ -355,7 +355,9 @@ function DistanceReport() {
           <Grid item xs={12} md={3}>
             <SummaryCard
               label="Vehicle Number"
-              value={reportData?.vehicleDistances?.[0]?.vehNum || vehicleSummaryMock.vehicleNumber}
+              // If reportData exists and the first vehicle has a vehNum, show it.
+              // Otherwise, show "NA".
+              value={reportData?.vehicleDistances?.[0]?.vehNum ?? "NA"}
               gradient="linear-gradient(135deg,#E0F2FE,#EFF6FF)"
               accent="#2563EB"
             />
