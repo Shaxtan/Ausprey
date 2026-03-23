@@ -134,16 +134,8 @@ function DistanceReport() {
     const rawData = reportData?.vehicleDistances || [];
     return rawData.filter((item) => item[xAxisKey] !== null && item[xAxisKey] !== undefined);
   }, [reportData, xAxisKey]);
-  // Calculate average speed from the vehicleDistances array
-  const averageSpeed = useMemo(() => {
-    const distances = reportData?.vehicleDistances || [];
-    if (distances.length === 0) return 0;
-
-    const totalSpeed = distances.reduce((sum, item) => sum + (Number(item.speed) || 0), 0);
-    const avg = totalSpeed / distances.length;
-
-    return avg.toFixed(1); // Keep one decimal place
-  }, [reportData]);
+  // Pull Average Speed directly from API response
+  const averageSpeed = reportData?.avgSpeed ?? 0;
 
   // ---- CHATBOT STATE ----
   const CHAT_STEP = useMemo(
@@ -381,9 +373,10 @@ function DistanceReport() {
           <Grid item xs={12} md={3}>
             <SummaryCard
               label="Average Speed"
+              // Displays the avgSpeed directly from the API response
               value={`${averageSpeed} km/h`}
-              gradient="linear-gradient(135deg,#FFF7ED,#FFEDD5)" // Light orange theme
-              accent="#F97316" // Match the orange speed bars in the chart
+              gradient="linear-gradient(135deg,#FFF7ED,#FFEDD5)"
+              accent="#F97316"
             />
           </Grid>
         </Grid>
