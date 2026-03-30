@@ -117,18 +117,23 @@ class ApiService {
   }
 
   getAccountDropdown(callback, header = true) {
-    // The URL provided is '/accounts/accountDropdown' and uses SERVICES.main
-    return this.getRequest(
-      "/accounts/accountDropdown",
-      null, // No local success callback passed here, handle in .then()
-      header,
-      SERVICES.mainn // Use the main service endpoint
-    )
+    return this.getRequest("/accounts/accountDropdown", null, header, SERVICES.mainn)
       .then((res) => {
-        // Check for resultCode and pass data to component callback if successful
         if (res?.data?.resultCode === 1) {
-          if (callback) callback(res);
-          return res;
+          // Create a new version of the response with filtered data
+          const filteredData = res.data.data.filter((acc) => acc.status === "A");
+
+          // Pass the modified response to the callback
+          const modifiedRes = {
+            ...res,
+            data: {
+              ...res.data,
+              data: filteredData,
+            },
+          };
+
+          if (callback) callback(modifiedRes);
+          return modifiedRes;
         } else {
           callAlert("Error", res?.data?.message || "Failed to fetch account list");
           return res;
