@@ -468,7 +468,7 @@ const LeafletControlsMap = () => {
     map.addControl(
       new (L.Control.extend({
         onAdd: () => container,
-      }))({ position: "topright" })
+      }))({ position: "bottomleft" })
     );
 
     /* ---- custom zoom buttons ---- */

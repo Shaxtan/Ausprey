@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
+import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers";
 
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
@@ -48,12 +49,12 @@ const truckHighlightIcon = new L.Icon({
 // -----------------------------
 // Tile Layer
 // -----------------------------
-const createTileLayers = () => ({
-  OpenStreet: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap contributors",
-  }),
-});
+// const createTileLayers = () => ({
+//   OpenStreet: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+//     maxZoom: 19,
+//     attribution: "© OpenStreetMap contributors",
+//   }),
+// });
 
 // -----------------------------
 // Helper functions
@@ -116,55 +117,109 @@ const MapView = () => {
   // Map Initialization
   // -----------------------------
   useEffect(() => {
-    if (mapRef.current || !mapContainerRef.current) return;
+  if (mapRef.current || !mapContainerRef.current) return;
 
-    const ZoomView = L.Control.extend({
-      onAdd: (map) => {
-        const div = L.DomUtil.create(
-          "div",
-          "leaflet-bar leaflet-control leaflet-control-custom"
-        );
-        div.style.background = "white";
-        div.style.padding = "5px 10px";
-        div.style.fontWeight = "bold";
-        div.innerHTML = `Zoom: ${map.getZoom()}`;
-        zoomDivRef.current = div;
-        return div;
-      },
-    });
+  const ZoomView = L.Control.extend({
+    onAdd: (map) => {
+      const div = L.DomUtil.create(
+        "div",
+        "leaflet-bar leaflet-control leaflet-control-custom"
+      );
+      div.style.background = "white";
+      div.style.padding = "5px 10px";
+      div.style.fontWeight = "bold";
+      div.innerHTML = `Zoom: ${map.getZoom()}`;
+      zoomDivRef.current = div;
+      return div;
+    },
+  });
 
-    L.control.zoomview = (opts) => new ZoomView(opts);
+  L.control.zoomview = (opts) => new ZoomView(opts);
 
-    const map = L.map(mapContainerRef.current, {
-      center: [indiaCenter.lat, indiaCenter.lng],
-      zoom: 5,
-      layers: [baseMaps.OpenStreet],
-      zoomControl: false,
-    });
+  const map = L.map(mapContainerRef.current, {
+    center: [indiaCenter.lat, indiaCenter.lng],
+    zoom: 5,
+    maxZoom: 18,
+    zoomControl: false,
+  });
 
-    mapRef.current = map;
-    L.control.zoomview({ position: "topleft" }).addTo(map);
-    L.control.scale().addTo(map);
+  mapRef.current = map;
+  L.control.zoomview({ position: "bottomright" }).addTo(map);
+  L.control.scale().addTo(map);
 
-    const cluster = L.markerClusterGroup({
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-    });
-    markerClusterRef.current = cluster;
-    map.addLayer(cluster);
+  const cluster = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+  });
+  markerClusterRef.current = cluster;
+  map.addLayer(cluster);
 
-    map.on("zoomend", () => {
-      if (zoomDivRef.current) {
-        zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
-      }
-    });
+  // --- Layer switcher ---
+  const baseMaps = createTileLayers();
+  let currentLayer = baseMaps["OpenStreet"];
+  map.addLayer(currentLayer);
 
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, []);
+  const makeBtn = (iconSrc, title, switchFn) => {
+    const btn = L.DomUtil.create("button");
+    btn.innerHTML = `<img src="${iconSrc}" alt="${title}" title="${title}" style="width:24px;height:24px"/>`;
+    btn.style.cssText = "background:none;border:none;cursor:pointer;margin:0 2px;";
+    btn.onclick = switchFn;
+    return btn;
+  };
+
+  const switchTo = (name) => {
+    const layer = baseMaps[name];
+    if (!layer) return;
+    if (currentLayer && map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
+    layer.addTo(map);
+    currentLayer = layer;
+  };
+
+  const switcherContainer = L.DomUtil.create("div");
+  switcherContainer.style.cssText =
+    "display:flex;gap:8px;background:#fff;padding:4px 8px;" +
+    "border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);margin-bottom:8px;";
+
+  switcherContainer.appendChild(
+    makeBtn(
+      "https://cdn-icons-png.flaticon.com/512/854/854929.png",
+      "OpenStreet",
+      () => switchTo("OpenStreet")
+    )
+  );
+  switcherContainer.appendChild(
+    makeBtn(
+      "https://cdn-icons-png.flaticon.com/512/1865/1865083.png",
+      "MapBox Dark",
+      () => switchTo("MapBoxDark")
+    )
+  );
+  switcherContainer.appendChild(
+    makeBtn(
+      "https://cdn-icons-png.flaticon.com/512/1865/1865269.png",
+      "Google Satellite",
+      () => switchTo("GoogleSatellite")
+    )
+  );
+
+  map.addControl(
+    new (L.Control.extend({
+      onAdd: () => switcherContainer,
+    }))({ position: "bottomleft" })
+  );
+
+  map.on("zoomend", () => {
+    if (zoomDivRef.current) {
+      zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
+    }
+  });
+
+  return () => {
+    map.remove();
+    mapRef.current = null;
+  };
+}, []);
 
   // -----------------------------
   // Data Fetching (depends on selectedAccountId from context)

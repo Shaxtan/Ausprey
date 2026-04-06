@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers";
 
 // MUI
 import Box from "@mui/material/Box";
@@ -328,6 +329,63 @@ const calculateBearing = (start, end) => {
 /* ============================
   MAIN COMPONENT
  ============================ */
+function LayerSwitcher() {
+  const map = useMap();
+
+  useEffect(() => {
+    const baseMaps = createTileLayers();
+
+    let currentLayer = baseMaps["OpenStreet"];
+    currentLayer.addTo(map);
+
+    const makeBtn = (iconSrc, title, switchFn) => {
+      const btn = L.DomUtil.create("button");
+      btn.innerHTML = `<img src="${iconSrc}" alt="${title}" title="${title}" style="width:24px;height:24px"/>`;
+      btn.style.cssText = "background:none;border:none;cursor:pointer;margin:0 2px;";
+      L.DomEvent.on(btn, "click", switchFn);
+      return btn;
+    };
+
+    const switchTo = (name) => {
+      const layer = baseMaps[name];
+      if (!layer) return;
+      if (currentLayer && map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
+      layer.addTo(map);
+      currentLayer = layer;
+    };
+
+    const container = L.DomUtil.create("div");
+    container.style.cssText =
+      "display:flex;gap:8px;background:#fff;padding:4px 8px;" +
+      "border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);";
+
+    container.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/854/854929.png",
+        "OpenStreet", () => switchTo("OpenStreet"))
+    );
+    container.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865083.png",
+        "MapBox Dark", () => switchTo("MapBoxDark"))
+    );
+    container.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865269.png",
+        "Google Satellite", () => switchTo("GoogleSatellite"))
+    );
+
+    const SwitcherControl = L.Control.extend({ onAdd: () => container });
+    const control = new SwitcherControl({ position: "bottomleft" });
+    control.addTo(map);
+
+    return () => {
+      control.remove();
+      Object.values(baseMaps).forEach((l) => {
+        if (map.hasLayer(l)) map.removeLayer(l);
+      });
+    };
+  }, [map]);
+
+  return null;
+}
 
 export default function LiveTrack() {
   const LEFT_PANEL_WIDTH = 550;
@@ -672,10 +730,7 @@ export default function LiveTrack() {
             style={{ height: "100%", width: "100%", zIndex: 0 }}
           >
             <MapFixer />
-            <TileLayer
-              attribution="&copy; OpenStreetMap"
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <LayerSwitcher />
 
             {selectedDevice && selectedTrip?.route?.length > 0 && (
               <Marker

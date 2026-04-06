@@ -62,6 +62,8 @@ function DistanceReport() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const getTodayDate = () => new Date().toISOString().split("T")[0];
+  const [committedStartDate, setCommittedStartDate] = useState(getTodayDate());
+const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
 
   // Date Selection States
   const [startDate, setStartDate] = useState(getTodayDate());
@@ -83,6 +85,9 @@ function DistanceReport() {
   const fetchReport = (imei) => {
     if (!imei) return;
     setLoading(true);
+    setCommittedStartDate(startDate);  // ← lock in the dates
+  setCommittedEndDate(endDate);      // ← lock in the dates
+
 
     const formatDateForPayload = (dateStr) => {
       const d = new Date(dateStr);
@@ -110,9 +115,9 @@ function DistanceReport() {
   // ---- DYNAMIC CHART LOGIC ----
 
   const isSingleDay = useMemo(() => {
-    if (!startDate || !endDate) return false;
-    return startDate.split("T")[0] === endDate.split("T")[0];
-  }, [startDate, endDate]);
+  if (!committedStartDate || !committedEndDate) return false;
+  return committedStartDate.split("T")[0] === committedEndDate.split("T")[0];
+}, [committedStartDate, committedEndDate]);
 
   const xAxisKey = isSingleDay ? "hr" : "repDate";
 
