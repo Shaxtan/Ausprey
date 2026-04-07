@@ -117,109 +117,100 @@ const MapView = () => {
   // Map Initialization
   // -----------------------------
   useEffect(() => {
-  if (mapRef.current || !mapContainerRef.current) return;
+    if (mapRef.current || !mapContainerRef.current) return;
 
-  const ZoomView = L.Control.extend({
-    onAdd: (map) => {
-      const div = L.DomUtil.create(
-        "div",
-        "leaflet-bar leaflet-control leaflet-control-custom"
-      );
-      div.style.background = "white";
-      div.style.padding = "5px 10px";
-      div.style.fontWeight = "bold";
-      div.innerHTML = `Zoom: ${map.getZoom()}`;
-      zoomDivRef.current = div;
-      return div;
-    },
-  });
+    const ZoomView = L.Control.extend({
+      onAdd: (map) => {
+        const div = L.DomUtil.create("div", "leaflet-bar leaflet-control leaflet-control-custom");
+        div.style.background = "white";
+        div.style.padding = "5px 10px";
+        div.style.fontWeight = "bold";
+        div.innerHTML = `Zoom: ${map.getZoom()}`;
+        zoomDivRef.current = div;
+        return div;
+      },
+    });
 
-  L.control.zoomview = (opts) => new ZoomView(opts);
+    L.control.zoomview = (opts) => new ZoomView(opts);
 
-  const map = L.map(mapContainerRef.current, {
-    center: [indiaCenter.lat, indiaCenter.lng],
-    zoom: 5,
-    maxZoom: 18,
-    zoomControl: false,
-  });
+    const map = L.map(mapContainerRef.current, {
+      center: [indiaCenter.lat, indiaCenter.lng],
+      zoom: 5,
+      maxZoom: 18,
+      zoomControl: false,
+    });
 
-  mapRef.current = map;
-  L.control.zoomview({ position: "bottomright" }).addTo(map);
-  L.control.scale().addTo(map);
+    mapRef.current = map;
+    L.control.zoomview({ position: "bottomright" }).addTo(map);
+    L.control.scale().addTo(map);
 
-  const cluster = L.markerClusterGroup({
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
-  });
-  markerClusterRef.current = cluster;
-  map.addLayer(cluster);
+    const cluster = L.markerClusterGroup({
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+    });
+    markerClusterRef.current = cluster;
+    map.addLayer(cluster);
 
-  // --- Layer switcher ---
-  const baseMaps = createTileLayers();
-  let currentLayer = baseMaps["OpenStreet"];
-  map.addLayer(currentLayer);
+    // --- Layer switcher ---
+    const baseMaps = createTileLayers();
+    let currentLayer = baseMaps["OpenStreet"];
+    map.addLayer(currentLayer);
 
-  const makeBtn = (iconSrc, title, switchFn) => {
-    const btn = L.DomUtil.create("button");
-    btn.innerHTML = `<img src="${iconSrc}" alt="${title}" title="${title}" style="width:24px;height:24px"/>`;
-    btn.style.cssText = "background:none;border:none;cursor:pointer;margin:0 2px;";
-    btn.onclick = switchFn;
-    return btn;
-  };
+    const makeBtn = (iconSrc, title, switchFn) => {
+      const btn = L.DomUtil.create("button");
+      btn.innerHTML = `<img src="${iconSrc}" alt="${title}" title="${title}" style="width:24px;height:24px"/>`;
+      btn.style.cssText = "background:none;border:none;cursor:pointer;margin:0 2px;";
+      btn.onclick = switchFn;
+      return btn;
+    };
 
-  const switchTo = (name) => {
-    const layer = baseMaps[name];
-    if (!layer) return;
-    if (currentLayer && map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
-    layer.addTo(map);
-    currentLayer = layer;
-  };
+    const switchTo = (name) => {
+      const layer = baseMaps[name];
+      if (!layer) return;
+      if (currentLayer && map.hasLayer(currentLayer)) map.removeLayer(currentLayer);
+      layer.addTo(map);
+      currentLayer = layer;
+    };
 
-  const switcherContainer = L.DomUtil.create("div");
-  switcherContainer.style.cssText =
-    "display:flex;gap:8px;background:#fff;padding:4px 8px;" +
-    "border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);margin-bottom:8px;";
+    const switcherContainer = L.DomUtil.create("div");
+    switcherContainer.style.cssText =
+      "display:flex;gap:8px;background:#fff;padding:4px 8px;" +
+      "border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);margin-bottom:8px;";
 
-  switcherContainer.appendChild(
-    makeBtn(
-      "https://cdn-icons-png.flaticon.com/512/854/854929.png",
-      "OpenStreet",
-      () => switchTo("OpenStreet")
-    )
-  );
-  switcherContainer.appendChild(
-    makeBtn(
-      "https://cdn-icons-png.flaticon.com/512/1865/1865083.png",
-      "MapBox Dark",
-      () => switchTo("MapBoxDark")
-    )
-  );
-  switcherContainer.appendChild(
-    makeBtn(
-      "https://cdn-icons-png.flaticon.com/512/1865/1865269.png",
-      "Google Satellite",
-      () => switchTo("GoogleSatellite")
-    )
-  );
+    switcherContainer.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/854/854929.png", "OpenStreet", () =>
+        switchTo("OpenStreet")
+      )
+    );
+    switcherContainer.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865083.png", "MapBox Dark", () =>
+        switchTo("MapBoxDark")
+      )
+    );
+    switcherContainer.appendChild(
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865269.png", "Google Satellite", () =>
+        switchTo("GoogleSatellite")
+      )
+    );
 
-  map.addControl(
-    new (L.Control.extend({
-      onAdd: () => switcherContainer,
-    }))({ position: "bottomleft" })
-  );
+    map.addControl(
+      new (L.Control.extend({
+        onAdd: () => switcherContainer,
+      }))({ position: "bottomleft" })
+    );
 
-  map.on("zoomend", () => {
-    if (zoomDivRef.current) {
-      zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
-    }
-  });
+    map.on("zoomend", () => {
+      if (zoomDivRef.current) {
+        zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
+      }
+    });
 
-  return () => {
-    map.remove();
-    mapRef.current = null;
-  };
-}, []);
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
   // -----------------------------
   // Data Fetching (depends on selectedAccountId from context)
@@ -341,22 +332,38 @@ const MapView = () => {
   // -----------------------------
   // Filtered Vehicles (sidebar)
   // -----------------------------
-  const filteredVehicles = useMemo(
-    () =>
-      vehicleList.filter((veh) => {
-        const matchesSearch = veh.vehnum
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        const matchesFilter =
-          filter === "All" ||
-          (filter === "Motion" && veh.status === "MOTION") ||
-          (filter === "Idle" && veh.status === "IDLE") ||
-          (filter === "Stop" && veh.status === "STOP") ||
-          (filter === "Lock" && veh.lock === "1");
-        return matchesSearch && matchesFilter;
-      }),
-    [vehicleList, filter, searchTerm]
-  );
+  const filteredVehicles = useMemo(() => {
+    // .trim() removes accidental spaces at the start/end of the search
+    const term = searchTerm.toLowerCase().trim();
+
+    const filtered = vehicleList.filter((veh) => {
+      // 1. Normalize the vehicle number for comparison
+      const vehNum = (veh.vehnum || "").toString().toLowerCase().trim();
+      const matchesSearch = vehNum.includes(term);
+
+      // 2. Check the Status Filter
+      const matchesFilter =
+        filter === "All" ||
+        (filter === "Motion" && veh.status === "MOTION") ||
+        (filter === "Idle" && veh.status === "IDLE") ||
+        (filter === "Stop" && veh.status === "STOP") ||
+        (filter === "Lock" && veh.lock === "1");
+
+      return matchesSearch && matchesFilter;
+    });
+
+    // 3. Sort: Exact matches first, then "starts with", then "includes"
+    return [...filtered].sort((a, b) => {
+      const aNum = a.vehnum.toLowerCase().trim();
+      const bNum = b.vehnum.toLowerCase().trim();
+
+      if (aNum === term && bNum !== term) return -1;
+      if (bNum === term && aNum !== term) return 1;
+      if (aNum.startsWith(term) && !bNum.startsWith(term)) return -1;
+      if (bNum.startsWith(term) && !aNum.startsWith(term)) return 1;
+      return 0;
+    });
+  }, [vehicleList, filter, searchTerm]);
 
   // -----------------------------
   // Overlay Panel Style
@@ -423,7 +430,13 @@ const MapView = () => {
                   placeholder="Search vehicle..."
                   fullWidth
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    // Automatically switch to "All" when searching so no vehicles are hidden by status
+                    if (e.target.value.length > 0 && filter !== "All") {
+                      setFilter("All");
+                    }
+                  }}
                   sx={{ mb: 2 }}
                   InputProps={{
                     startAdornment: <Icon sx={{ mr: 1 }}>search</Icon>,
@@ -439,10 +452,8 @@ const MapView = () => {
                         px: 2,
                         py: 1,
                         borderRadius: 2,
-                        backgroundColor:
-                          filter === tab ? "#e3f2fd" : "#f5f5f5",
-                        color:
-                          filter === tab ? "primary.main" : "text.secondary",
+                        backgroundColor: filter === tab ? "#e3f2fd" : "#f5f5f5",
+                        color: filter === tab ? "primary.main" : "text.secondary",
                         fontWeight: "medium",
                         cursor: "pointer",
                         fontSize: "0.875rem",
@@ -471,36 +482,50 @@ const MapView = () => {
 
                 <MDBox sx={{ maxHeight: "50vh", overflow: "auto" }}>
                   {filteredVehicles.length === 0 ? (
-                    <MDTypography
-                      variant="body2"
-                      color="text.secondary"
-                      textAlign="center"
-                      py={4}
-                    >
+                    <MDTypography variant="body2" color="text.secondary" textAlign="center" py={4}>
                       No vehicles found
                     </MDTypography>
                   ) : (
-                    filteredVehicles.map((veh) => (
+                    filteredVehicles.map((veh, index) => (
                       <MDBox
-                        key={veh.vehnum}
+                        key={`${veh.vehnum}-${index}`}
                         onClick={() => handleVehicleClick(veh)}
                         sx={{
                           position: "relative",
                           p: 2,
                           mb: 1,
                           borderRadius: 2,
-                          backgroundColor:
-                            highlightedVeh === veh.vehnum
-                              ? "#e3f2fd"
-                              : "#fafafa",
-                          border: `2px solid ${
-                            highlightedVeh === veh.vehnum
-                              ? "#1976d2"
-                              : "transparent"
-                          }`,
                           cursor: "pointer",
                           transition: "all 0.2s",
-                          "&:hover": { backgroundColor: "#f0f7ff" },
+
+                          // --- Dynamic Background Logic ---
+                          backgroundColor: (() => {
+                            if (highlightedVeh === veh.vehnum) return "#e3f2fd"; // Selected/Clicked
+                            // If user is searching and this is the first result, give it a "soft highlight"
+                            if (searchTerm && filteredVehicles[0]?.vehnum === veh.vehnum)
+                              return "#fffde7";
+                            return "#fafafa"; // Default
+                          })(),
+
+                          // --- Dynamic Border Logic ---
+                          border: `2px solid ${
+                            highlightedVeh === veh.vehnum
+                              ? "#1976d2" // Solid blue for selected
+                              : searchTerm && filteredVehicles[0]?.vehnum === veh.vehnum
+                                ? "#fbc02d" // Yellow border for the top search result
+                                : "transparent"
+                          }`,
+
+                          // --- Elevation effect for the top match ---
+                          boxShadow:
+                            searchTerm && filteredVehicles[0]?.vehnum === veh.vehnum
+                              ? "0px 4px 12px rgba(0,0,0,0.1)"
+                              : "none",
+
+                          "&:hover": {
+                            backgroundColor: "#f0f7ff",
+                            transform: "translateX(4px)", // Subtle slide effect on hover
+                          },
                         }}
                       >
                         <MDBox
@@ -534,11 +559,7 @@ const MapView = () => {
                           alignItems="flex-start"
                           gap={0.5}
                         >
-                          <MDTypography
-                            variant="subtitle2"
-                            fontWeight="bold"
-                            color="text.primary"
-                          >
+                          <MDTypography variant="subtitle2" fontWeight="bold" color="text.primary">
                             {veh.vehnum}
                           </MDTypography>
                         </MDBox>
