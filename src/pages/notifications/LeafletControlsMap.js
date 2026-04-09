@@ -92,7 +92,7 @@ const LeafletControlsMap = () => {
   const [showDownload, setShowDownload] = useState(false);
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState("");
-  const [speed] = useState(50); // animation speed (ms)
+  const [speed, setSpeed] = useState(1);
   const [fromMilliseconds, setFromMilliseconds] = useState("000");
   const [toMilliseconds, setToMilliseconds] = useState("000");
   // NEW STATE: Tracks if the animation is paused.
@@ -255,7 +255,7 @@ const LeafletControlsMap = () => {
     const polyline = originalPathRef.current.line;
     const points = vehicleData;
     let startTime = null;
-    const totalDuration = 30000; // 30 seconds total animation (adjustable)
+    const totalDuration = 30000 / speed;
 
     // Determine the starting progress (0 if new, based on pauseTimeRef if resuming)
     const initialProgress = pauseTimeRef.current / totalDuration;
@@ -310,7 +310,7 @@ const LeafletControlsMap = () => {
     };
 
     animationTimeoutRef.current = requestAnimationFrame(animate);
-  }, [vehicleData, isPaused, fullStopAnimation]); // Added fullStopAnimation dependency
+  }, [vehicleData, isPaused, fullStopAnimation, speed]); // Added fullStopAnimation dependency
 
   /* ---------- PAUSE / RESUME logic ---------- */
   const togglePlayPause = () => {
@@ -326,7 +326,7 @@ const LeafletControlsMap = () => {
       if (highlightedIndex !== null && vehicleData.length > 0) {
         // Simplified time update based on index (index / total_indices * total_duration)
         const totalDuration = 30000;
-        pauseTimeRef.current = (highlightedIndex / (vehicleData.length - 1)) * totalDuration;
+        pauseTimeRef.current = (highlightedIndex / (vehicleData.length - 1)) * (30000 / speed);
       }
       // callAlertConfirm("Animation paused.", "info");
     } else if (isPaused) {
@@ -963,6 +963,54 @@ const LeafletControlsMap = () => {
                   </MDBox>
                 );
               })}
+            </MDBox>
+            {/* Speed Control Slider */}
+            <MDBox mb={2}>
+              <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                <MDTypography variant="button" fontWeight="medium">
+                  Playback Speed
+                </MDTypography>
+                <MDTypography variant="caption" color="info" fontWeight="bold">
+                  {speed}x
+                </MDTypography>
+              </MDBox>
+              <MDBox px={0.5}>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={4}
+                  step={0.25}
+                  value={speed}
+                  onChange={(e) => {
+                    const newSpeed = parseFloat(e.target.value);
+                    setSpeed(newSpeed);
+                    // If animation is running, pause and restart to apply new speed
+                    if (animationTimeoutRef.current && !isPaused) {
+                      if (highlightedIndex !== null && vehicleData.length > 0) {
+                        pauseTimeRef.current =
+                          (highlightedIndex / (vehicleData.length - 1)) * (30000 / newSpeed);
+                      }
+                      cancelAnimationFrame(animationTimeoutRef.current);
+                      animationTimeoutRef.current = null;
+                    }
+                  }}
+                  style={{ width: "100%", accentColor: "#1A73E8" }}
+                />
+                <MDBox display="flex" justifyContent="space-between">
+                  <MDTypography variant="caption" color="secondary">
+                    0.25x
+                  </MDTypography>
+                  <MDTypography variant="caption" color="secondary">
+                    1x
+                  </MDTypography>
+                  <MDTypography variant="caption" color="secondary">
+                    2x
+                  </MDTypography>
+                  <MDTypography variant="caption" color="secondary">
+                    4x
+                  </MDTypography>
+                </MDBox>
+              </MDBox>
             </MDBox>
             {/* Play / Pause / Stop Buttons - Improved Spacing & Icons */}
             <MDBox display="flex" gap={2} justifyContent="space-between" mb={3}>
