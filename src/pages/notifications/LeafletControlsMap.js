@@ -98,6 +98,7 @@ const LeafletControlsMap = () => {
   // NEW STATE: Tracks if the animation is paused.
   const [isPaused, setIsPaused] = useState(false);
   const [selectedQuickRange, setSelectedQuickRange] = useState(null);
+  const [currentPlaybackInfo, setCurrentPlaybackInfo] = useState(null);
   const SIDEBAR_WIDTH = "300px";
 
   /* ---------- fetch vehicle list (IMEI) ---------- */
@@ -156,6 +157,14 @@ const LeafletControlsMap = () => {
     setIsPaused(false); // Reset pause state
     setHighlightedIndex(null);
   }, []);
+
+  useEffect(() => {
+    if (highlightedIndex !== null && vehicleData[highlightedIndex]) {
+      setCurrentPlaybackInfo(vehicleData[highlightedIndex]);
+    } else if (highlightedIndex === null) {
+      setCurrentPlaybackInfo(null);
+    }
+  }, [highlightedIndex, vehicleData]);
 
   // const filteredData = useMemo(() => {
   //   return vehicleData.filter((r) => {
@@ -1087,6 +1096,300 @@ const LeafletControlsMap = () => {
           </>
         )}
       </MDBox>
+      {/* =============================================
+        RIGHT INFO PANEL — NEW
+    ============================================= */}
+      {showHistory && filteredData.length > 0 && (
+        <MDBox
+          sx={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            width: 300,
+            maxHeight: "calc(100vh - 48px)",
+            overflowY: "auto",
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+            pointerEvents: "auto",
+          }}
+        >
+          {/* Vehicle header card */}
+          <MDBox
+            sx={{
+              background: "#fff",
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              p: 1.5,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+            }}
+          >
+            <MDBox
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg,#1976d2,#42a5f5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon sx={{ color: "#fff", fontSize: 20 }}>local_shipping</Icon>
+            </MDBox>
+            <MDBox>
+              <MDTypography
+                variant="caption"
+                fontWeight="bold"
+                sx={{ fontSize: "0.75rem", display: "block" }}
+              >
+                {selectedVehicle?.label || "—"}
+              </MDTypography>
+              <MDTypography
+                variant="caption"
+                color="text"
+                sx={{ fontSize: "0.65rem", opacity: 0.6 }}
+              >
+                {filteredData.length} points loaded
+              </MDTypography>
+            </MDBox>
+          </MDBox>
+
+          {/* Trip summary card */}
+          <MDBox
+            sx={{
+              background: "#fff",
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              p: 1.5,
+            }}
+          >
+            <MDTypography
+              variant="caption"
+              fontWeight="bold"
+              sx={{
+                fontSize: "0.65rem",
+                opacity: 0.5,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                display: "block",
+                mb: 0.5,
+              }}
+            >
+              Trip Summary
+            </MDTypography>
+            {[
+              {
+                label: "From",
+                value: fromDate ? new Date(fromDate).toLocaleString() : "—",
+                icon: "schedule",
+              },
+              {
+                label: "To",
+                value: toDate ? new Date(toDate).toLocaleString() : "—",
+                icon: "flag",
+              },
+              {
+                label: "Points",
+                value: `${filteredData.length} / ${vehicleData.length}`,
+                icon: "pin_drop",
+              },
+            ].map(({ label, value, icon }) => (
+              <MDBox
+                key={label}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  py: 0.4,
+                  borderBottom: "0.5px solid #f0f0f0",
+                }}
+              >
+                <MDBox sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Icon sx={{ fontSize: 13, color: "info.main" }}>{icon}</Icon>
+                  <MDTypography
+                    variant="caption"
+                    color="text"
+                    sx={{ fontSize: "0.65rem", opacity: 0.6 }}
+                  >
+                    {label}
+                  </MDTypography>
+                </MDBox>
+                <MDTypography variant="caption" fontWeight="bold" sx={{ fontSize: "0.68rem" }}>
+                  {value}
+                </MDTypography>
+              </MDBox>
+            ))}
+          </MDBox>
+
+          {/* Live playback card */}
+          <MDBox
+            sx={{
+              background: "#fff",
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              p: 1.5,
+            }}
+          >
+            {/* Header row with live dot */}
+            <MDBox sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 1 }}>
+              <MDBox
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: animationTimeoutRef.current && !isPaused ? "#4caf50" : "#bdbdbd",
+                  transition: "background 0.3s",
+                }}
+              />
+              <MDTypography
+                variant="caption"
+                fontWeight="bold"
+                sx={{
+                  fontSize: "0.65rem",
+                  opacity: 0.5,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                {animationTimeoutRef.current && !isPaused
+                  ? "Live Playback"
+                  : isPaused
+                    ? "Paused"
+                    : "Playback"}
+              </MDTypography>
+            </MDBox>
+
+            {/* Speed + Status grid */}
+            <MDBox sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0.8, mb: 1 }}>
+              <MDBox sx={{ background: "#f5f5f5", borderRadius: 1.5, p: 1 }}>
+                <MDTypography
+                  variant="caption"
+                  sx={{ fontSize: "0.6rem", opacity: 0.5, display: "block" }}
+                >
+                  Speed
+                </MDTypography>
+                <MDTypography variant="caption" fontWeight="bold" sx={{ fontSize: "1rem" }}>
+                  {currentPlaybackInfo?.speed ?? vehicleData[0]?.speed ?? "—"}
+                  <span style={{ fontSize: "0.6rem", fontWeight: 400, marginLeft: 2 }}>km/h</span>
+                </MDTypography>
+              </MDBox>
+              <MDBox sx={{ background: "#f5f5f5", borderRadius: 1.5, p: 1 }}>
+                <MDTypography
+                  variant="caption"
+                  sx={{ fontSize: "0.6rem", opacity: 0.5, display: "block" }}
+                >
+                  Status
+                </MDTypography>
+                <MDBox
+                  sx={{
+                    display: "inline-block",
+                    mt: 0.3,
+                    px: 0.8,
+                    py: 0.2,
+                    borderRadius: 10,
+                    fontSize: "0.6rem",
+                    fontWeight: 700,
+                    background:
+                      (currentPlaybackInfo?.status || vehicleData[0]?.status) === "MOTION"
+                        ? "#e8f5e9"
+                        : (currentPlaybackInfo?.status || vehicleData[0]?.status) === "STOP"
+                          ? "#ffebee"
+                          : "#fff8e1",
+                    color:
+                      (currentPlaybackInfo?.status || vehicleData[0]?.status) === "MOTION"
+                        ? "#2e7d32"
+                        : (currentPlaybackInfo?.status || vehicleData[0]?.status) === "STOP"
+                          ? "#c62828"
+                          : "#f57f17",
+                  }}
+                >
+                  {currentPlaybackInfo?.status ?? vehicleData[0]?.status ?? "—"}
+                </MDBox>
+              </MDBox>
+            </MDBox>
+
+            {/* Detail rows */}
+            {[
+              {
+                label: "Timestamp",
+                value: currentPlaybackInfo?.ts ? formatTimestamp(currentPlaybackInfo.ts) : "—",
+                icon: "access_time",
+              },
+              {
+                label: "Latitude",
+                value: currentPlaybackInfo?.lat ? (+currentPlaybackInfo.lat).toFixed(5) : "—",
+                icon: "my_location",
+              },
+              {
+                label: "Longitude",
+                value: currentPlaybackInfo?.lng ? (+currentPlaybackInfo.lng).toFixed(5) : "—",
+                icon: "my_location",
+              },
+            ].map(({ label, value, icon }) => (
+              <MDBox
+                key={label}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  py: 0.4,
+                  borderBottom: "0.5px solid #f0f0f0",
+                }}
+              >
+                <MDBox sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Icon sx={{ fontSize: 13, color: "info.main" }}>{icon}</Icon>
+                  <MDTypography
+                    variant="caption"
+                    color="text"
+                    sx={{ fontSize: "0.65rem", opacity: 0.6 }}
+                  >
+                    {label}
+                  </MDTypography>
+                </MDBox>
+                <MDTypography variant="caption" fontWeight="bold" sx={{ fontSize: "0.68rem" }}>
+                  {value}
+                </MDTypography>
+              </MDBox>
+            ))}
+
+            {/* Progress bar */}
+            {vehicleData.length > 0 && (
+              <MDBox sx={{ mt: 1 }}>
+                <MDBox sx={{ display: "flex", justifyContent: "space-between", mb: 0.3 }}>
+                  <MDTypography variant="caption" sx={{ fontSize: "0.6rem", opacity: 0.5 }}>
+                    Progress
+                  </MDTypography>
+                  <MDTypography variant="caption" sx={{ fontSize: "0.6rem", opacity: 0.5 }}>
+                    {highlightedIndex !== null
+                      ? `${Math.round((highlightedIndex / (vehicleData.length - 1)) * 100)}%`
+                      : "0%"}
+                  </MDTypography>
+                </MDBox>
+                <MDBox
+                  sx={{ height: 5, background: "#eeeeee", borderRadius: 3, overflow: "hidden" }}
+                >
+                  <MDBox
+                    sx={{
+                      height: "100%",
+                      width:
+                        highlightedIndex !== null
+                          ? `${(highlightedIndex / (vehicleData.length - 1)) * 100}%`
+                          : "0%",
+                      background: "linear-gradient(90deg,#1976d2,#42a5f5)",
+                      borderRadius: 3,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </MDBox>
+              </MDBox>
+            )}
+          </MDBox>
+        </MDBox>
+      )}
     </MDBox>
   );
 };
