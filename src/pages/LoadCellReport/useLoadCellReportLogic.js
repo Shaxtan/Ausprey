@@ -65,7 +65,7 @@ export default function useLoadCellReportLogic() {
 
   // --- FETCH IMEIs ON MOUNT ---
   useEffect(() => {
-    ApiService.getImeiDropdown(1, true)
+    ApiService.getImeiDropdown()
       .then((res) => {
         const vehicles = res?.data?.response?.vehicles || [];
 
@@ -109,8 +109,10 @@ export default function useLoadCellReportLogic() {
     setDateRange(
       `Data from: ${formatDateTimeDisplay(startTime)} to ${formatDateTimeDisplay(endTime)}`
     );
+   
 
     const payload = {
+      
       imei: imeiValue,
       startDate: toLocalString(startTime),
       endDate: toLocalString(endTime),

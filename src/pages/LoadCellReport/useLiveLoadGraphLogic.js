@@ -67,7 +67,7 @@ export default function useLiveLoadGraphLogic() {
 
   // --- FETCH IMEIs ON MOUNT ---
   useEffect(() => {
-    ApiService.getImeiDropdown(1, true)
+    ApiService.getImeiDropdown()
       .then((res) => {
         const vehicles = res?.data?.response?.vehicles || [];
 

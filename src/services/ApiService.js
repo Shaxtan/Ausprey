@@ -239,21 +239,34 @@ class ApiService {
         throw error;
       });
   }
-  getImeiDropdown(accid = 1, header = true) {
+  // Inside ApiService class
+  getImeiDropdown(accid = null, header = true) {
+    let targetId = accid;
+
+    if (!targetId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+
+        // Look for accountId (from your JSON) or accid as a fallback
+        targetId = user?.accountId || user?.accid || 1;
+
+        console.log("Fetching for account:", targetId);
+      } catch (e) {
+        targetId = 1;
+      }
+    }
+
     return this.getRequest(
-      `/reports/report/dropdown?accid=${accid}`,
+      `/reports/report/dropdown?accid=${targetId}`, // The API parameter stays 'accid'
       null,
       header,
       SERVICES.dashboard
     )
       .then((res) => {
-        // FIX: Access the data directly from the API structure you shared
         const list = res?.data?.data?.imeiVehnumList || [];
-
         return {
           ...res,
           data: {
-            // Keep this structure if your Dashboard expect 'response.vehicles'
             response: {
               vehicles: list.map((item) => ({
                 imei: item.imei,

@@ -66,6 +66,9 @@ const formatTimestamp = (input) => {
    COMPONENT
 ------------------------------------------------- */
 const LeafletControlsMap = () => {
+  // Get current user ID
+  const userDetails = JSON.parse(localStorage.getItem("userDetails") || "{}");
+  const currentAccId = userDetails?.accid || 1;
   /* ---------- refs ---------- */
   const mapRef = useRef(null);
   const vehicleLayerRef = useRef(null);
@@ -107,7 +110,7 @@ const LeafletControlsMap = () => {
     const fetchVehicles = async () => {
       setIsLoading(true);
       try {
-        const res = await ApiService.getImeiDropdown(1, true);
+        const res = await ApiService.getImeiDropdown();
         const vehicles = res?.data?.response?.vehicles || [];
 
         const options = vehicles.map((v) => ({
