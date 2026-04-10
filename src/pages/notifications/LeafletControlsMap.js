@@ -149,15 +149,15 @@ const LeafletControlsMap = () => {
   /* ---------- FULL STOP (used on form submit) ---------- */
   const fullStopAnimation = useCallback(() => {
     if (animationTimeoutRef.current) {
-      cancelAnimationFrame(animationTimeoutRef.current);
+      clearTimeout(animationTimeoutRef.current); // ← clearTimeout instead of cancelAnimationFrame
       animationTimeoutRef.current = null;
     }
     if (animatedMarkerRef.current) {
       animatedMarkerRef.current.remove();
       animatedMarkerRef.current = null;
     }
-    pauseTimeRef.current = 0; // Reset time offset
-    setIsPaused(false); // Reset pause state
+    pauseTimeRef.current = 0;
+    setIsPaused(false);
     setHighlightedIndex(null);
   }, []);
 
@@ -230,47 +230,46 @@ const LeafletControlsMap = () => {
   // Inside the component:
 
   // Renamed simulateMovement to startAnimation for clarity
+  /* ---------- animation (track play) – moves only on actual lat/lng changes ---------- */
   const startAnimation = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
 
-    // Check if the path data is ready
     if (!map || !originalPathRef.current.line || vehicleData.length < 2) {
       return callAlert("Track data not ready or insufficient points for animation.", "warning");
     }
 
-    // If currently animating, do nothing (or explicitly handle resume/restart logic)
     if (animationTimeoutRef.current && !isPaused) return;
 
-    // Stop any existing animation frame request (but keep marker and path if paused)
     if (animationTimeoutRef.current) {
-      cancelAnimationFrame(animationTimeoutRef.current);
+      clearTimeout(animationTimeoutRef.current);
       animationTimeoutRef.current = null;
     }
 
-    // Resume logic: Clear the pause state
     setIsPaused(false);
 
     layer.clearLayers();
     originalPathRef.current.line.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
+    originalPathRef.current.startMarker?.addTo(layer);
+    originalPathRef.current.endMarker?.addTo(layer);
 
-    const polyline = originalPathRef.current.line;
-    const points = vehicleData;
-    let startTime = null;
-    const totalDuration = 30000 / speed;
+    const points = vehicleData; // full original array
+    const totalPoints = points.length;
 
-    // Determine the starting progress (0 if new, based on pauseTimeRef if resuming)
-    const initialProgress = pauseTimeRef.current / totalDuration;
+    // Start from paused index if resuming
+    const startIndex =
+      isPaused && pauseTimeRef.current > 0
+        ? Math.min(Math.floor(pauseTimeRef.current), totalPoints - 1)
+        : 0;
 
+    let currentIndex = startIndex;
+
+    // Place marker at starting point
     let marker = animatedMarkerRef.current;
-
-    // Initialize marker if it doesn't exist (i.e., new animation)
     if (!marker) {
-      // Calculate initial position based on initialProgress
-      const initialPosition = L.GeometryUtil.interpolateOnLine(map, polyline, initialProgress);
-
-      marker = L.marker(initialPosition.latLng, {
+      const firstPoint = points[startIndex];
+      marker = L.marker([+firstPoint.lat, +firstPoint.lng], {
         icon: L.icon({
           iconUrl: "/iconss/vehiclemarker.png",
           iconSize: [32, 32],
@@ -279,67 +278,71 @@ const LeafletControlsMap = () => {
         rotationAngle: 0,
         rotationOrigin: "center center",
       }).addTo(layer);
-
       animatedMarkerRef.current = marker;
     } else {
-      // If marker exists (i.e., resuming), just ensure it's on the layer
       marker.addTo(layer);
     }
 
-    const animate = (timestamp) => {
-      if (!startTime) startTime = timestamp;
+    // Interval per point based on speed
+    const baseInterval = 30000 / speed / totalPoints;
 
-      // Elapsed time is the current time minus the start time, plus the pause offset
-      const elapsed = timestamp - startTime + pauseTimeRef.current;
-      const progress = Math.min(elapsed / totalDuration, 1);
-
-      const position = L.GeometryUtil.interpolateOnLine(map, polyline, progress);
-      marker.setLatLng(position.latLng); // Update rotation
-
-      if (position.predecessor) {
-        const bearing = L.GeometryUtil.bearing(position.predecessor, position.latLng);
-        marker.setRotationAngle(bearing);
-      } // Update highlighted index
-
-      const pointIndex = Math.floor(progress * (points.length - 1));
-      setHighlightedIndex(pointIndex);
-
-      if (progress < 1) {
-        animationTimeoutRef.current = requestAnimationFrame(animate);
-      } else {
+    const stepToNext = () => {
+      if (currentIndex >= totalPoints) {
         callAlert("Track play finished.", "info");
-        fullStopAnimation(); // Call the unified stop function
+        fullStopAnimation();
+        return;
       }
+
+      const point = points[currentIndex];
+      const lat = +point.lat;
+      const lng = +point.lng;
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const prevPoint = currentIndex > 0 ? points[currentIndex - 1] : null;
+        const latChanged = !prevPoint || lat !== +prevPoint.lat;
+        const lngChanged = !prevPoint || lng !== +prevPoint.lng;
+
+        // Only move marker if lat/lng actually changed
+        if (latChanged || lngChanged) {
+          if (prevPoint) {
+            const bearing = L.GeometryUtil.bearing(
+              L.latLng(+prevPoint.lat, +prevPoint.lng),
+              L.latLng(lat, lng)
+            );
+            marker.setRotationAngle(bearing);
+          }
+          marker.setLatLng([lat, lng]);
+        }
+
+        // ✅ Always update highlighted index using original array index
+        // so progress bar increments smoothly across ALL points
+        setHighlightedIndex(currentIndex);
+
+        // Store for pause/resume
+        pauseTimeRef.current = currentIndex;
+      }
+
+      currentIndex++;
+      animationTimeoutRef.current = setTimeout(stepToNext, baseInterval);
     };
 
-    animationTimeoutRef.current = requestAnimationFrame(animate);
-  }, [vehicleData, isPaused, fullStopAnimation, speed]); // Added fullStopAnimation dependency
+    stepToNext();
+  }, [vehicleData, isPaused, fullStopAnimation, speed]);
 
   /* ---------- PAUSE / RESUME logic ---------- */
   const togglePlayPause = () => {
-    // If animation is running (animationTimeoutRef.current is set and not paused)
     if (animationTimeoutRef.current && !isPaused) {
       // PAUSE
-      cancelAnimationFrame(animationTimeoutRef.current);
+      clearTimeout(animationTimeoutRef.current); // ← clearTimeout instead of cancelAnimationFrame
       animationTimeoutRef.current = null;
       setIsPaused(true);
-      // Crucially, calculate the current progress time to resume from
-      // We use the current highlighted index to approximate the time elapsed,
-      // or a more accurate position calculation if needed.
-      if (highlightedIndex !== null && vehicleData.length > 0) {
-        // Simplified time update based on index (index / total_indices * total_duration)
-        const totalDuration = 30000;
-        pauseTimeRef.current = (highlightedIndex / (vehicleData.length - 1)) * (30000 / speed);
-      }
-      // callAlertConfirm("Animation paused.", "info");
+      // pauseTimeRef.current is already being updated inside stepToNext
     } else if (isPaused) {
       // RESUME
-      // The marker is already on the map, and pauseTimeRef.current holds the offset
       startAnimation();
-      // callAlert("Animation resumed.", "info");
     } else {
-      // START NEW PLAYBACK
-      pauseTimeRef.current = 0; // Reset offset to 0 for a new run
+      // START NEW
+      pauseTimeRef.current = 0;
       startAnimation();
     }
   }; /* ---------- marker icons ---------- */
@@ -987,13 +990,8 @@ const LeafletControlsMap = () => {
                   onChange={(e) => {
                     const newSpeed = parseFloat(e.target.value);
                     setSpeed(newSpeed);
-                    // If animation is running, pause and restart to apply new speed
                     if (animationTimeoutRef.current && !isPaused) {
-                      if (highlightedIndex !== null && vehicleData.length > 0) {
-                        pauseTimeRef.current =
-                          (highlightedIndex / (vehicleData.length - 1)) * (30000 / newSpeed);
-                      }
-                      cancelAnimationFrame(animationTimeoutRef.current);
+                      clearTimeout(animationTimeoutRef.current); // ← here too
                       animationTimeoutRef.current = null;
                     }
                   }}
