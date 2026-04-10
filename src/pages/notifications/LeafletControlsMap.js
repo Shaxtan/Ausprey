@@ -1,5 +1,6 @@
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css"; // Don't forget the CSS!
+import { getRotatingTruckHtml } from "../../../src/pages/LiveTrack/LiveTrack.styles";
 
 import TextField from "@mui/material/TextField"; // The replacement input
 import Grid from "@mui/material/Grid";
@@ -266,17 +267,17 @@ const LeafletControlsMap = () => {
     let currentIndex = startIndex;
 
     // Place marker at starting point
+    // Inside startAnimation
     let marker = animatedMarkerRef.current;
     if (!marker) {
       const firstPoint = points[startIndex];
       marker = L.marker([+firstPoint.lat, +firstPoint.lng], {
-        icon: L.icon({
-          iconUrl: "/iconss/vehiclemarker.png",
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
+        icon: L.divIcon({
+          className: "rotating-truck-container",
+          html: getRotatingTruckHtml(firstPoint.status, 0), // Initial bearing 0
+          iconSize: [40, 40],
+          iconAnchor: [20, 20], // Center anchor for rotation
         }),
-        rotationAngle: 0,
-        rotationOrigin: "center center",
       }).addTo(layer);
       animatedMarkerRef.current = marker;
     } else {
@@ -299,26 +300,31 @@ const LeafletControlsMap = () => {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         const prevPoint = currentIndex > 0 ? points[currentIndex - 1] : null;
-        const latChanged = !prevPoint || lat !== +prevPoint.lat;
-        const lngChanged = !prevPoint || lng !== +prevPoint.lng;
+        let bearing = 0;
 
-        // Only move marker if lat/lng actually changed
-        if (latChanged || lngChanged) {
-          if (prevPoint) {
-            const bearing = L.GeometryUtil.bearing(
-              L.latLng(+prevPoint.lat, +prevPoint.lng),
-              L.latLng(lat, lng)
-            );
-            marker.setRotationAngle(bearing);
-          }
-          marker.setLatLng([lat, lng]);
+        if (prevPoint) {
+          // Calculate bearing from previous point to current
+          bearing = L.GeometryUtil.bearing(
+            L.latLng(+prevPoint.lat, +prevPoint.lng),
+            L.latLng(lat, lng)
+          );
         }
 
-        // ✅ Always update highlighted index using original array index
-        // so progress bar increments smoothly across ALL points
-        setHighlightedIndex(currentIndex);
+        // Set position
+        marker.setLatLng([lat, lng]);
 
-        // Store for pause/resume
+        // Update the HTML Icon for rotation and status color
+        // We use bearing - 90 because the truck image in your styles faces right by default
+        marker.setIcon(
+          L.divIcon({
+            className: "rotating-truck-container",
+            html: getRotatingTruckHtml(point.status, bearing - 90),
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+          })
+        );
+
+        setHighlightedIndex(currentIndex);
         pauseTimeRef.current = currentIndex;
       }
 
