@@ -360,16 +360,19 @@ function LayerSwitcher() {
       "border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);";
 
     container.appendChild(
-      makeBtn("https://cdn-icons-png.flaticon.com/512/854/854929.png",
-        "OpenStreet", () => switchTo("OpenStreet"))
+      makeBtn("https://cdn-icons-png.flaticon.com/512/854/854929.png", "OpenStreet", () =>
+        switchTo("OpenStreet")
+      )
     );
     container.appendChild(
-      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865083.png",
-        "MapBox Dark", () => switchTo("MapBoxDark"))
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865083.png", "MapBox Dark", () =>
+        switchTo("MapBoxDark")
+      )
     );
     container.appendChild(
-      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865269.png",
-        "Google Satellite", () => switchTo("GoogleSatellite"))
+      makeBtn("https://cdn-icons-png.flaticon.com/512/1865/1865269.png", "Google Satellite", () =>
+        switchTo("GoogleSatellite")
+      )
     );
 
     const SwitcherControl = L.Control.extend({ onAdd: () => container });
@@ -518,6 +521,7 @@ export default function LiveTrack() {
                   ignition: ign === "Y",
                   battery: Number(batteryPercent),
                   odometer: Number(odometerValue),
+                  distance: rawData.distance ?? 0,
                   address: addressString,
                   lastUpdate: formatDevTimestamp(rawData.devTs),
                   address: rawData.address ?? "Address not available",
@@ -584,6 +588,7 @@ export default function LiveTrack() {
       id: liveData.tripId,
       vehicle: liveData.name,
       driverName: liveData.driverName,
+      totalDistance: liveData.distance != null ? `${liveData.distance} km` : "N/A",
       currentSpeed: `${liveData.speed} km/h`,
       signalLevel: liveData.battery > 50 ? "High" : "Low",
       currentLocation: liveData.route?.length
