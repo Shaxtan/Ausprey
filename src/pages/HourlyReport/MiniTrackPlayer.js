@@ -9,6 +9,7 @@ import { getRotatingTruckHtml } from "../LiveTrack/LiveTrack.styles";
 import MDBox from "../../assets/components/MDBox";
 import CircularProgress from "@mui/material/CircularProgress";
 import MDTypography from "../../assets/components/MDTypography";
+import PropTypes from "prop-types";
 
 const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
   const mapRef = useRef(null);
@@ -38,7 +39,7 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
   useEffect(() => {
     const fetchAndDraw = async () => {
       if (!imei || !fromDate || !toDate) return;
-      
+
       setIsLoading(true);
       if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
       layerRef.current.clearLayers();
@@ -51,7 +52,7 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
         if (points.length < 2) return;
 
         // Draw Polyline
-        const latLngs = points.map(p => [+p.lat, +p.lng]);
+        const latLngs = points.map((p) => [+p.lat, +p.lng]);
         const line = L.polyline(latLngs, { color: "#3388ff", weight: 4 }).addTo(layerRef.current);
         mapRef.current.fitBounds(line.getBounds(), { padding: [30, 30] });
 
@@ -82,21 +83,23 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
       if (idx >= points.length) return;
       const p = points[idx];
       marker.setLatLng([+p.lat, +p.lng]);
-      
+
       // Calculate bearing for rotation if not first point
       if (idx > 0) {
         const bearing = L.GeometryUtil.bearing(
-          L.latLng(+points[idx-1].lat, +points[idx-1].lng),
+          L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
           L.latLng(+p.lat, +p.lng)
         );
-        marker.setIcon(L.divIcon({
-          className: "rotating-truck-container",
-          html: getRotatingTruckHtml(p.status, bearing - 90),
-          iconSize: [30, 30],
-          iconAnchor: [15, 15],
-        }));
+        marker.setIcon(
+          L.divIcon({
+            className: "rotating-truck-container",
+            html: getRotatingTruckHtml(p.status, bearing - 90),
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          })
+        );
       }
-      
+
       idx++;
       animationTimerRef.current = setTimeout(step, 100); // 100ms interval
     };
@@ -113,6 +116,11 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
       <div id={mapId.current} style={{ height: "100%", width: "100%", borderRadius: "8px" }} />
     </MDBox>
   );
+};
+MiniTrackPlayer.propTypes = {
+  imei: PropTypes.string.isRequired,
+  fromDate: PropTypes.string.isRequired,
+  toDate: PropTypes.string.isRequired,
 };
 
 export default MiniTrackPlayer;

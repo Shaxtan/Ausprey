@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import PropTypes from "prop-types";
 import Autocomplete from "@mui/material/Autocomplete";
-import MenuItem from "@mui/material/MenuItem";
 
 import Card from "@mui/material/Card";
 import Grid from "@mui/material/Grid";
@@ -20,7 +19,6 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TablePagination from "@mui/material/TablePagination";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 
 import MDBox from "../../assets/components/MDBox";
@@ -28,35 +26,30 @@ import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
 import ApiService from "../../services/ApiService";
 
-// ─── Leaflet CDN ───────────────────────────────────────────────────────────────
-const LEAFLET_CSS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css";
-const LEAFLET_JS = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+// Import the new MiniTrackPlayer component
+import MiniTrackPlayer from "./MiniTrackPlayer";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Parse "(lat,lng)" from location strings like "Some Address (22.34,73.17)" */
-const parseLatLng = (locationStr) => {
-  if (!locationStr) return null;
-  const match = locationStr.match(/\((-?\d+\.?\d*),\s*(-?\d+\.?\d*)\)/);
-  if (!match) return null;
-  return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-};
-
-/** Convert epoch seconds → readable date-time */
-const epochToTime = (epochSeconds) => {
-  if (!epochSeconds) return "—";
-  // The API returns seconds since midnight (duration style), not unix epoch.
-  // Total seconds in day context: convert to HH:MM:SS
-  const h = Math.floor(epochSeconds / 3600) % 24;
-  const m = Math.floor((epochSeconds % 3600) / 60);
-  const s = epochSeconds % 60;
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+/** Convert ISO String or Epoch → readable date-time */
+const formatTimeDisplay = (timeInput) => {
+  if (!timeInput) return "—";
+  const date = new Date(timeInput);
+  if (isNaN(date.getTime())) return timeInput;
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 };
 
 /** Format minutes into "Xh Ym" */
-const formatDuration = (minutes) => {
-  if (minutes == null) return "—";
+const formatDuration = (durationStr) => {
+  if (!durationStr) return "—";
+  // If already "HH:mm" format from API, just return it
+  if (typeof durationStr === "string" && durationStr.includes(":")) return durationStr;
+  const minutes = parseInt(durationStr);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -88,255 +81,9 @@ const tableBodySx = {
   },
 };
 
-// ─── SessionMap: embedded Leaflet map with animated vehicle ───────────────────
-const SessionMap = ({ session, vehNum, imei }) => {
-  const mapDivRef = useRef(null);
-  const mapRef = useRef(null);
-  const markerRef = useRef(null);
-  const animTimerRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0); // 0–100
-  const [leafletReady, setLeafletReady] = useState(typeof window.L !== "undefined");
-
-  const startPt = parseLatLng(session.startLocation);
-  const endPt = parseLatLng(session.endLocation);
-
-  // Build interpolated route between start & end (10 steps)
-  const routePoints = useMemo(() => {
-    if (!startPt || !endPt) return [];
-    const steps = 20;
-    return Array.from({ length: steps + 1 }, (_, i) => ({
-      lat: startPt.lat + ((endPt.lat - startPt.lat) * i) / steps,
-      lng: startPt.lng + ((endPt.lng - startPt.lng) * i) / steps,
-    }));
-  }, [session.startLocation, session.endLocation]);
-
-  // Load Leaflet if not already available
-  useEffect(() => {
-    if (typeof window.L !== "undefined") {
-      setLeafletReady(true);
-      return;
-    }
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = LEAFLET_CSS;
-    document.head.appendChild(link);
-    const script = document.createElement("script");
-    script.src = LEAFLET_JS;
-    script.async = true;
-    script.onload = () => setLeafletReady(true);
-    document.head.appendChild(script);
-  }, []);
-
-  // Init map
-  useEffect(() => {
-    if (!leafletReady || !mapDivRef.current || routePoints.length < 2) return;
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    const L = window.L;
-    const center = routePoints[0];
-    const map = L.map(mapDivRef.current, { zoomControl: true }).setView(
-      [center.lat, center.lng],
-      13
-    );
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-      maxZoom: 19,
-    }).addTo(map);
-
-    // Draw polyline
-    const latLngs = routePoints.map((p) => [p.lat, p.lng]);
-    const poly = L.polyline(latLngs, { color: "#1976d2", weight: 4, opacity: 0.85 }).addTo(map);
-    map.fitBounds(poly.getBounds(), { padding: [30, 30] });
-
-    // Start marker (green)
-    L.marker([routePoints[0].lat, routePoints[0].lng], {
-      icon: L.divIcon({
-        html: `<div style="background:#4caf50;color:#fff;padding:3px 7px;border-radius:10px;font-size:11px;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,0.25);">START</div>`,
-        className: "",
-        iconSize: [55, 24],
-        iconAnchor: [27, 24],
-      }),
-    }).addTo(map);
-
-    // End marker (red)
-    L.marker([routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng], {
-      icon: L.divIcon({
-        html: `<div style="background:#f44336;color:#fff;padding:3px 7px;border-radius:10px;font-size:11px;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,0.25);">END</div>`,
-        className: "",
-        iconSize: [50, 24],
-        iconAnchor: [25, 24],
-      }),
-    }).addTo(map);
-
-    // Vehicle marker
-    const vehicleIcon = L.divIcon({
-      html: `<div style="width:28px;height:28px;background:linear-gradient(135deg,#1976d2,#42a5f5);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(25,118,210,0.5);border:2px solid #fff;">
-               <span style="font-size:15px;">🚛</span>
-             </div>`,
-      className: "",
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-    });
-    markerRef.current = L.marker([center.lat, center.lng], { icon: vehicleIcon }).addTo(map);
-    markerRef.current.bindPopup(`<b>${vehNum}</b><br>IMEI: ${imei}`);
-
-    mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 300);
-
-    return () => {
-      if (animTimerRef.current) clearInterval(animTimerRef.current);
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [leafletReady, routePoints, vehNum, imei]);
-
-  // Animation control
-  const startAnimation = useCallback(() => {
-    if (!markerRef.current || routePoints.length < 2) return;
-    if (animTimerRef.current) clearInterval(animTimerRef.current);
-
-    const L = window.L;
-    let idx = 0;
-    setProgress(0);
-    setIsPlaying(true);
-
-    // Speed: cover all points in ~8 seconds
-    const intervalMs = Math.max(200, 8000 / routePoints.length);
-
-    animTimerRef.current = setInterval(() => {
-      if (idx >= routePoints.length) {
-        clearInterval(animTimerRef.current);
-        setIsPlaying(false);
-        setProgress(100);
-        return;
-      }
-      const pt = routePoints[idx];
-      markerRef.current.setLatLng([pt.lat, pt.lng]);
-      mapRef.current?.panTo([pt.lat, pt.lng], { animate: true, duration: 0.3 });
-      setProgress(Math.round((idx / (routePoints.length - 1)) * 100));
-      idx++;
-    }, intervalMs);
-  }, [routePoints]);
-
-  const stopAnimation = useCallback(() => {
-    if (animTimerRef.current) clearInterval(animTimerRef.current);
-    setIsPlaying(false);
-    setProgress(0);
-    // Reset marker to start
-    if (markerRef.current && routePoints.length > 0) {
-      markerRef.current.setLatLng([routePoints[0].lat, routePoints[0].lng]);
-      mapRef.current?.panTo([routePoints[0].lat, routePoints[0].lng]);
-    }
-  }, [routePoints]);
-
-  if (!startPt || !endPt) {
-    return (
-      <Box
-        sx={{
-          height: 300,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#f5f5f5",
-          borderRadius: 2,
-        }}
-      >
-        <MDTypography variant="caption" color="text">
-          Location data unavailable for map
-        </MDTypography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box>
-      {/* Map controls */}
-      <Box display="flex" alignItems="center" gap={1} mb={1}>
-        <Button
-          size="small"
-          variant="contained"
-          color="success"
-          startIcon={<Icon>play_arrow</Icon>}
-          onClick={startAnimation}
-          disabled={isPlaying}
-        >
-          Simulate
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          color="inherit"
-          startIcon={<Icon>stop</Icon>}
-          onClick={stopAnimation}
-          disabled={!isPlaying && progress === 0}
-        >
-          Reset
-        </Button>
-        <Box flex={1} sx={{ ml: 1 }}>
-          <Box sx={{ height: 6, background: "#e0e0e0", borderRadius: 3, overflow: "hidden" }}>
-            <Box
-              sx={{
-                height: "100%",
-                width: `${progress}%`,
-                background: "linear-gradient(90deg,#1976d2,#42a5f5)",
-                borderRadius: 3,
-                transition: "width 0.2s ease",
-              }}
-            />
-          </Box>
-        </Box>
-        <MDTypography variant="caption" color="info" fontWeight="bold" sx={{ minWidth: 36 }}>
-          {progress}%
-        </MDTypography>
-      </Box>
-
-      {/* Leaflet map container */}
-      {leafletReady ? (
-        <div
-          ref={mapDivRef}
-          style={{
-            width: "100%",
-            height: 340,
-            borderRadius: 8,
-            zIndex: 1,
-            border: "1px solid #e0e0e0",
-          }}
-        />
-      ) : (
-        <Box
-          height={340}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          bgcolor="#f5f5f5"
-          borderRadius={2}
-        >
-          <CircularProgress size={28} />
-          <MDTypography variant="caption" sx={{ ml: 1 }}>
-            Loading map…
-          </MDTypography>
-        </Box>
-      )}
-    </Box>
-  );
-};
-
-SessionMap.propTypes = {
-  session: PropTypes.object.isRequired,
-  vehNum: PropTypes.string.isRequired,
-  imei: PropTypes.string.isRequired,
-};
-
 // ─── Session Detail Panel (expanded row content) ──────────────────────────────
 const SessionDetailPanel = ({ record }) => {
   const [activeSession, setActiveSession] = useState(0);
-
   const session = record.sessions[activeSession];
 
   return (
@@ -364,9 +111,9 @@ const SessionDetailPanel = ({ record }) => {
 
           {/* Session stats */}
           {[
-            { label: "Start Time", value: epochToTime(session.startTime), icon: "schedule" },
-            { label: "End Time", value: epochToTime(session.endTime), icon: "flag" },
-            { label: "Duration", value: `${session.duration} min`, icon: "timer" },
+            { label: "Start Time", value: formatTimeDisplay(session.startTime), icon: "schedule" },
+            { label: "End Time", value: formatTimeDisplay(session.endTime), icon: "flag" },
+            { label: "Duration", value: formatDuration(session.duration), icon: "timer" },
             { label: "Distance", value: `${session.distance} km`, icon: "straighten" },
             { label: "GPS Distance", value: `${session.gpsDistance} km`, icon: "gps_fixed" },
             { label: "Avg Speed", value: `${session.avgSpeed} km/h`, icon: "speed" },
@@ -441,52 +188,23 @@ const SessionDetailPanel = ({ record }) => {
               {session.endLocation || "—"}
             </MDTypography>
           </Box>
-
-          {/* Trip summary */}
-          <Box mt={2} p={1.5} sx={{ background: "#f5f8ff", borderRadius: 2 }}>
-            <MDTypography
-              variant="caption"
-              fontWeight="bold"
-              sx={{
-                fontSize: "0.65rem",
-                opacity: 0.5,
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                display: "block",
-                mb: 0.5,
-              }}
-            >
-              Daily Summary
-            </MDTypography>
-            {[
-              { label: "Total Distance", value: `${record.totalDistance} km` },
-              { label: "Total Duration", value: formatDuration(record.totalDuration) },
-              { label: "Date", value: record.repDate },
-              { label: "Vehicle", value: record.vehNum },
-            ].map(({ label, value }) => (
-              <Box key={label} display="flex" justifyContent="space-between" py={0.3}>
-                <MDTypography variant="caption" sx={{ fontSize: "0.68rem", opacity: 0.6 }}>
-                  {label}
-                </MDTypography>
-                <MDTypography variant="caption" fontWeight="bold" sx={{ fontSize: "0.68rem" }}>
-                  {value}
-                </MDTypography>
-              </Box>
-            ))}
-          </Box>
         </Grid>
 
-        {/* Right: map */}
+        {/* Right: The Advanced MiniTrackPlayer */}
         <Grid item xs={12} md={8}>
           <MDTypography variant="h6" gutterBottom>
-            Vehicle Movement — Session {activeSession + 1}
+            Playback — Session {activeSession + 1}
           </MDTypography>
-          <SessionMap
-            key={`${record.imei}-${activeSession}`}
-            session={session}
-            vehNum={record.vehNum}
-            imei={record.imei}
-          />
+          <MDBox
+            sx={{ height: 400, borderRadius: 2, overflow: "hidden", border: "1px solid #e0e0e0" }}
+          >
+            <MiniTrackPlayer
+              key={`${record.imei}-${activeSession}`} // Forces component reset on session change
+              imei={record.imei}
+              fromDate={session.startTime}
+              toDate={session.endTime}
+            />
+          </MDBox>
         </Grid>
       </Grid>
     </Box>
@@ -507,8 +225,8 @@ const DateFilterBar = ({
   onImei,
   onFetch,
   isLoading,
-  imeiList, // New Prop
-  imeiLoading, // New Prop
+  imeiList,
+  imeiLoading,
 }) => (
   <Box
     display="flex"
@@ -524,7 +242,6 @@ const DateFilterBar = ({
       getOptionLabel={(option) =>
         option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
       }
-      // Match the current string imei to the object in the list
       value={imeiList.find((item) => item.imei === imei) || null}
       onChange={(event, newValue) => {
         onImei(newValue ? newValue.imei : "");
@@ -594,11 +311,11 @@ function HourlyReport({ accountId }) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  const [imei, setImei] = useState("869356078380744");
+  const [imei, setImei] = useState("");
   const [startDate, setStartDate] = useState(yesterday);
   const [endDate, setEndDate] = useState(today);
 
-  const [records, setRecords] = useState([]); // array of daily records from API
+  const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -606,21 +323,16 @@ function HourlyReport({ accountId }) {
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [imeiList, setImeiList] = useState([]); // List for dropdown
+  const [imeiList, setImeiList] = useState([]);
   const [imeiLoading, setImeiLoading] = useState(false);
 
   useEffect(() => {
     const fetchImeis = async () => {
       setImeiLoading(true);
       try {
-        // accountId is passed as a prop to HourlyReport
         const res = await ApiService.getImeiDropdown(accountId);
-
-        // Based on your ApiService.js, the data is at: res.data.response.vehicles
         const vehicles = res?.data?.response?.vehicles || [];
         setImeiList(vehicles);
-
-        // Optional: Set the first IMEI as default if none selected
         if (vehicles.length > 0 && !imei) {
           setImei(vehicles[0].imei);
         }
@@ -630,11 +342,9 @@ function HourlyReport({ accountId }) {
         setImeiLoading(false);
       }
     };
-
     fetchImeis();
   }, [accountId]);
 
-  // Format date for API: "DD/MM/YYYY"
   const formatDateForApi = (isoDate) => {
     if (!isoDate) return "";
     const [y, m, d] = isoDate.split("-");
@@ -645,7 +355,6 @@ function HourlyReport({ accountId }) {
     if (!imei || !startDate || !endDate) return;
     setIsLoading(true);
     setError(null);
-    setRecords([]);
     setExpandedId(null);
 
     try {
@@ -660,6 +369,7 @@ function HourlyReport({ accountId }) {
 
       if (!data.length) {
         setError("No data found for the selected filters.");
+        setRecords([]);
       } else {
         setRecords(data);
       }
@@ -671,12 +381,10 @@ function HourlyReport({ accountId }) {
     }
   };
 
-  // Auto-fetch on mount
   useEffect(() => {
     fetchReport();
   }, []);
 
-  // Filter records by search
   const filteredRecords = useMemo(() => {
     if (!searchTerm) return records;
     const term = searchTerm.toLowerCase();
@@ -688,8 +396,6 @@ function HourlyReport({ accountId }) {
     );
   }, [records, searchTerm]);
 
-  // Each record may have multiple sessions — flatten for table display
-  // But we show one row per record (daily), expandable to sessions
   const paginatedRecords = filteredRecords.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -700,7 +406,6 @@ function HourlyReport({ accountId }) {
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card>
-            {/* Header */}
             <MDBox
               mx={2}
               mt={-3}
@@ -726,7 +431,6 @@ function HourlyReport({ accountId }) {
             </MDBox>
 
             <MDBox p={3}>
-              {/* Date / IMEI filter */}
               <DateFilterBar
                 imei={imei}
                 onImei={setImei}
@@ -736,11 +440,10 @@ function HourlyReport({ accountId }) {
                 onEndDate={setEndDate}
                 onFetch={fetchReport}
                 isLoading={isLoading}
-                imeiList={imeiList} // Pass list
-                imeiLoading={imeiLoading} // Pass loading state
+                imeiList={imeiList}
+                imeiLoading={imeiLoading}
               />
 
-              {/* Search bar */}
               <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <MDTypography variant="button" color="text" fontWeight="regular">
                   Showing <strong>{filteredRecords.length}</strong> record(s)
@@ -761,7 +464,6 @@ function HourlyReport({ accountId }) {
                 />
               </MDBox>
 
-              {/* Error */}
               {error && (
                 <Box
                   sx={{
@@ -778,7 +480,6 @@ function HourlyReport({ accountId }) {
                 </Box>
               )}
 
-              {/* Loading */}
               {isLoading && (
                 <Box display="flex" justifyContent="center" alignItems="center" py={4}>
                   <CircularProgress size={32} />
@@ -788,7 +489,6 @@ function HourlyReport({ accountId }) {
                 </Box>
               )}
 
-              {/* Table */}
               {!isLoading && filteredRecords.length > 0 && (
                 <TableContainer
                   sx={{ boxShadow: "none", border: "1px solid #f0f2f5", borderRadius: 2 }}
@@ -820,10 +520,8 @@ function HourlyReport({ accountId }) {
                     <TableBody sx={tableBodySx}>
                       {paginatedRecords.map((record) => {
                         const isExpanded = expandedId === record.id;
-
                         return (
                           <React.Fragment key={record.id}>
-                            {/* Main row */}
                             <TableRow
                               sx={{
                                 "& > *": { borderBottom: "unset" },
@@ -861,12 +559,12 @@ function HourlyReport({ accountId }) {
                               </TableCell>
                               <TableCell align="center">
                                 <MDTypography variant="caption">
-                                  {record.repDate || "—"}
+                                  {record.repDate ? record.repDate.split("T")[0] : "—"}
                                 </MDTypography>
                               </TableCell>
                               <TableCell align="center">
                                 <Chip
-                                  label={`${record.sessions?.length ?? 0} session${record.sessions?.length !== 1 ? "s" : ""}`}
+                                  label={`${record.sessions?.length ?? 0} sessions`}
                                   size="small"
                                   color="primary"
                                   variant="outlined"
@@ -875,7 +573,7 @@ function HourlyReport({ accountId }) {
                               </TableCell>
                               <TableCell align="center">
                                 <MDTypography variant="caption" fontWeight="bold">
-                                  {record.totalDistance ?? "—"} km
+                                  {record.totalDistance ?? "0"} km
                                 </MDTypography>
                               </TableCell>
                               <TableCell align="center">
@@ -900,8 +598,6 @@ function HourlyReport({ accountId }) {
                                 />
                               </TableCell>
                             </TableRow>
-
-                            {/* Expanded row */}
                             <TableRow>
                               <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
                                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
@@ -917,7 +613,6 @@ function HourlyReport({ accountId }) {
                 </TableContainer>
               )}
 
-              {/* Pagination */}
               {!isLoading && filteredRecords.length > 0 && (
                 <TablePagination
                   rowsPerPageOptions={[10, 25, 50]}
@@ -945,4 +640,3 @@ HourlyReport.propTypes = {
 };
 
 export default HourlyReport;
-
