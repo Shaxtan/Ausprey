@@ -526,6 +526,12 @@ class ApiService {
         throw error;
       });
   }
+
+  // Inside ApiService class in ApiService.js
+  getWorkingHourReport(data) {
+    // data should contain { imei, startDate, endDate }
+    return this.postRequest("/reports/workinghourreport", data, true, SERVICES.report);
+  }
 }
 export { SERVICES };
 export default new ApiService();

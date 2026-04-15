@@ -10,6 +10,7 @@ import Alerts from "../src/pages/Alerts/Alerts";
 import LoadCellReport from "../src/pages/LoadCellReport/LoadCellReport";
 import LiveLoadGraph from "../src/pages/LoadCellReport/LiveLoadGraph";
 import DistanceReport from "pages/DistanceReport/DistanceReport";
+import HourlyReport from "pages/HourlyReport/HourlyReport";
 import DeviceConfiguration from "./pages/Alerts/DeviceConfiguration";
 import TripDashboard2 from "pages/TripDashboard/TripDashboard2";
 
@@ -169,6 +170,15 @@ const routes = [
     icon: <Icon fontSize="small">directions_car</Icon>,
     route: "/distance-report",
     component: <DistanceReport />,
+    parent: "reports",
+  },
+  {
+    type: "collapse",
+    name: "Hourly Report",
+    key: "hourly-report",
+    icon: <Icon fontSize="small">schedule</Icon>,
+    route: "/hourly-report",
+    component: <HourlyReport />,
     parent: "reports",
   },
 
