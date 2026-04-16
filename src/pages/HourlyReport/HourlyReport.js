@@ -84,16 +84,37 @@ const tableBodySx = {
 // ─── Session Detail Panel (expanded row content) ──────────────────────────────
 const SessionDetailPanel = ({ record }) => {
   const [activeSession, setActiveSession] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false); // 1. State for animation control
   const session = record.sessions[activeSession];
+
+  // Reset play state and update session index
+  const handleSessionChange = (index) => {
+    setActiveSession(index);
+    setIsPlaying(false); // Stop playback when switching sessions
+  };
 
   return (
     <Box sx={{ m: 2, p: 2, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 2 }}>
       <Grid container spacing={3}>
         {/* Left: session info */}
         <Grid item xs={12} md={4}>
-          <MDTypography variant="h6" gutterBottom>
-            Session Details
-          </MDTypography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+            <MDTypography variant="h6">
+              Session Details
+            </MDTypography>
+            
+            {/* 2. Play/Pause Toggle Button */}
+            <MDButton
+              variant="gradient"
+              color={isPlaying ? "error" : "success"}
+              size="small"
+              onClick={() => setIsPlaying(!isPlaying)}
+              sx={{ px: 2, minHeight: "32px" }}
+              startIcon={<Icon>{isPlaying ? "pause" : "play_arrow"}</Icon>}
+            >
+              {isPlaying ? "Pause" : "Play"}
+            </MDButton>
+          </Box>
 
           {/* Session tabs */}
           <Box display="flex" flexWrap="wrap" gap={0.8} mb={2}>
@@ -103,13 +124,13 @@ const SessionDetailPanel = ({ record }) => {
                 label={`Session ${i + 1}`}
                 size="small"
                 color={activeSession === i ? "info" : "default"}
-                onClick={() => setActiveSession(i)}
+                onClick={() => handleSessionChange(i)} // Use the new handler
                 sx={{ cursor: "pointer", fontWeight: activeSession === i ? 700 : 400 }}
               />
             ))}
           </Box>
 
-          {/* Session stats */}
+          {/* Session stats (Map through existing stats as you had before) */}
           {[
             { label: "Start Time", value: formatTimeDisplay(session.startTime), icon: "schedule" },
             { label: "End Time", value: formatTimeDisplay(session.endTime), icon: "flag" },
@@ -131,11 +152,7 @@ const SessionDetailPanel = ({ record }) => {
             >
               <Box display="flex" alignItems="center" gap={0.5}>
                 <Icon sx={{ fontSize: 14, color: "info.main" }}>{icon}</Icon>
-                <MDTypography
-                  variant="caption"
-                  color="text"
-                  sx={{ opacity: 0.65, fontSize: "0.7rem" }}
-                >
+                <MDTypography variant="caption" color="text" sx={{ opacity: 0.65, fontSize: "0.7rem" }}>
                   {label}
                 </MDTypography>
               </Box>
@@ -147,44 +164,18 @@ const SessionDetailPanel = ({ record }) => {
 
           {/* Locations */}
           <Box mt={1.5}>
-            <MDTypography
-              variant="caption"
-              color="text"
-              sx={{
-                opacity: 0.55,
-                fontSize: "0.65rem",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-              }}
-            >
+            <MDTypography variant="caption" color="text" sx={{ opacity: 0.55, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: 1 }}>
               Start Location
             </MDTypography>
-            <MDTypography
-              variant="caption"
-              display="block"
-              sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}
-            >
+            <MDTypography variant="caption" display="block" sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}>
               {session.startLocation || "—"}
             </MDTypography>
           </Box>
           <Box mt={1}>
-            <MDTypography
-              variant="caption"
-              color="text"
-              sx={{
-                opacity: 0.55,
-                fontSize: "0.65rem",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-              }}
-            >
+            <MDTypography variant="caption" color="text" sx={{ opacity: 0.55, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: 1 }}>
               End Location
             </MDTypography>
-            <MDTypography
-              variant="caption"
-              display="block"
-              sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}
-            >
+            <MDTypography variant="caption" display="block" sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}>
               {session.endLocation || "—"}
             </MDTypography>
           </Box>
@@ -199,10 +190,11 @@ const SessionDetailPanel = ({ record }) => {
             sx={{ height: 400, borderRadius: 2, overflow: "hidden", border: "1px solid #e0e0e0" }}
           >
             <MiniTrackPlayer
-              key={`${record.imei}-${activeSession}`} // Forces component reset on session change
+              key={`${record.imei}-${activeSession}`} 
               imei={record.imei}
               fromDate={session.startTime}
               toDate={session.endTime}
+              isPlaying={isPlaying} // 3. Pass state to child
             />
           </MDBox>
         </Grid>
@@ -227,69 +219,81 @@ const DateFilterBar = ({
   isLoading,
   imeiList,
   imeiLoading,
+  onQuickSelect, // New prop
 }) => (
   <Box
     display="flex"
-    flexWrap="wrap"
-    gap={2}
-    alignItems="center"
+    flexDirection="column" // Changed to column to stack filters and quick buttons
+    gap={1.5}
     mb={2.5}
     sx={{ p: 2, background: "#f8f9ff", borderRadius: 2, border: "1px solid #e8eaf6" }}
   >
-    <Autocomplete
-      options={imeiList}
-      loading={imeiLoading}
-      getOptionLabel={(option) =>
-        option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
-      }
-      value={imeiList.find((item) => item.imei === imei) || null}
-      onChange={(event, newValue) => {
-        onImei(newValue ? newValue.imei : "");
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Select Vehicle/IMEI"
+    {/* Main Filter Row */}
+    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
+      <Autocomplete
+        options={imeiList}
+        loading={imeiLoading}
+        getOptionLabel={(option) =>
+          option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
+        }
+        value={imeiList.find((item) => item.imei === imei) || null}
+        onChange={(event, newValue) => {
+          onImei(newValue ? newValue.imei : "");
+        }}
+        renderInput={(params) => (
+          <TextField {...params} label="Select Vehicle" size="small" sx={{ minWidth: 250 }} />
+        )}
+      />
+      <TextField
+        label="Start Date"
+        type="date"
+        size="small"
+        value={startDate}
+        onChange={(e) => onStartDate(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+      />
+      <TextField
+        label="End Date"
+        type="date"
+        size="small"
+        value={endDate}
+        onChange={(e) => onEndDate(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+      />
+      <MDButton
+        variant="gradient"
+        color="info"
+        size="small"
+        onClick={onFetch}
+        disabled={isLoading || !imei || !startDate || !endDate}
+      >
+        {isLoading ? "Fetching…" : "Get Report"}
+      </MDButton>
+    </Box>
+
+    {/* Quick Selection Buttons Row */}
+    <Box display="flex" gap={1}>
+      {[
+        { label: "Today", value: "today" },
+        { label: "Yesterday", value: "yesterday" },
+        { label: "Last 7 Days", value: "last7" },
+      ].map((btn) => (
+        <Chip
+          key={btn.value}
+          label={btn.label}
           size="small"
-          sx={{ minWidth: 250 }}
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {imeiLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
+          onClick={() => onQuickSelect(btn.value)}
+          sx={{
+            fontSize: "0.7rem",
+            height: "24px",
+            cursor: "pointer",
+            "&:hover": { backgroundColor: "#e3f2fd" },
           }}
+          variant="outlined"
+          color="info"
         />
-      )}
-    />
-    <TextField
-      label="Start Date"
-      type="date"
-      size="small"
-      value={startDate}
-      onChange={(e) => onStartDate(e.target.value)}
-      InputLabelProps={{ shrink: true }}
-    />
-    <TextField
-      label="End Date"
-      type="date"
-      size="small"
-      value={endDate}
-      onChange={(e) => onEndDate(e.target.value)}
-      InputLabelProps={{ shrink: true }}
-    />
-    <MDButton
-      variant="gradient"
-      color="info"
-      size="small"
-      onClick={onFetch}
-      disabled={isLoading || !imei || !startDate || !endDate}
-      startIcon={isLoading ? <CircularProgress size={14} color="inherit" /> : <Icon>search</Icon>}
-    >
-      {isLoading ? "Fetching…" : "Get Report"}
-    </MDButton>
+      ))}
+    </Box>
   </Box>
 );
 
@@ -304,6 +308,26 @@ DateFilterBar.propTypes = {
   isLoading: PropTypes.bool.isRequired,
   imeiList: PropTypes.array.isRequired,
   imeiLoading: PropTypes.bool.isRequired,
+  onQuickSelect: PropTypes.func.isRequired,
+};
+
+// Add this helper inside or above your HourlyReport component
+const getQuickDateRange = (type) => {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  switch (type) {
+    case "today":
+      return { start: todayStr, end: todayStr };
+    case "yesterday":
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      return { start: yesterday, end: yesterday };
+    case "last7":
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+      return { start: sevenDaysAgo, end: todayStr };
+    default:
+      return { start: todayStr, end: todayStr };
+  }
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -344,6 +368,14 @@ function HourlyReport({ accountId }) {
     };
     fetchImeis();
   }, [accountId]);
+
+  const handleQuickSelect = (type) => {
+    const { start, end } = getQuickDateRange(type);
+    setStartDate(start);
+    setEndDate(end);
+    // Optional: automatically trigger fetch after selection
+    // setTimeout(() => fetchReport(), 0);
+  };
 
   const formatDateForApi = (isoDate) => {
     if (!isoDate) return "";
@@ -442,6 +474,7 @@ function HourlyReport({ accountId }) {
                 isLoading={isLoading}
                 imeiList={imeiList}
                 imeiLoading={imeiLoading}
+                onQuickSelect={handleQuickSelect}
               />
 
               <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>

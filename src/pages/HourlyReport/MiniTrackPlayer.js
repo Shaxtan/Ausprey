@@ -11,12 +11,18 @@ import CircularProgress from "@mui/material/CircularProgress";
 import MDTypography from "../../assets/components/MDTypography";
 import PropTypes from "prop-types";
 
-const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
+const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
   const mapRef = useRef(null);
   const layerRef = useRef(null);
-  const animatedMarkerRef = useRef(null);
   const animationTimerRef = useRef(null);
   const mapId = useRef(`map-${Math.random().toString(36).substr(2, 9)}`);
+
+  // Ref to persist animation state (index and marker) between play/pause toggles
+  const playbackRef = useRef({
+    idx: 0,
+    points: [],
+    marker: null,
+  });
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,14 +41,17 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
     };
   }, []);
 
-  // 2. Fetch and Draw when dates/imei change
+  // 2. Fetch and Setup static layers when dates/imei change
   useEffect(() => {
-    const fetchAndDraw = async () => {
+    const fetchAndSetup = async () => {
       if (!imei || !fromDate || !toDate) return;
 
       setIsLoading(true);
       if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
       layerRef.current.clearLayers();
+
+      // Reset playback reference
+      playbackRef.current = { idx: 0, points: [], marker: null };
 
       try {
         const payload = { imei, startTime: fromDate, endTime: toDate };
@@ -51,13 +60,24 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
 
         if (points.length < 2) return;
 
-        // Draw Polyline
+        // Draw static Polyline
         const latLngs = points.map((p) => [+p.lat, +p.lng]);
         const line = L.polyline(latLngs, { color: "#3388ff", weight: 4 }).addTo(layerRef.current);
         mapRef.current.fitBounds(line.getBounds(), { padding: [30, 30] });
 
-        // Simple Animation Start
-        startAnimation(points);
+        // Initialize Marker at start point
+        const marker = L.marker([+points[0].lat, +points[0].lng], {
+          icon: L.divIcon({
+            className: "rotating-truck-container",
+            html: getRotatingTruckHtml(points[0].status, 0),
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          }),
+        }).addTo(layerRef.current);
+
+        // Store data in ref for the animation loop
+        playbackRef.current.points = points;
+        playbackRef.current.marker = marker;
       } catch (err) {
         console.error("MiniPlayer Error:", err);
       } finally {
@@ -65,26 +85,23 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
       }
     };
 
-    fetchAndDraw();
+    fetchAndSetup();
   }, [imei, fromDate, toDate]);
 
-  const startAnimation = (points) => {
-    let idx = 0;
-    const marker = L.marker([+points[0].lat, +points[0].lng], {
-      icon: L.divIcon({
-        className: "rotating-truck-container",
-        html: getRotatingTruckHtml(points[0].status, 0),
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
-      }),
-    }).addTo(layerRef.current);
-
+  // 3. Animation Logic triggered by isPlaying prop
+  useEffect(() => {
     const step = () => {
-      if (idx >= points.length) return;
+      const { idx, points, marker } = playbackRef.current;
+
+      if (!points || !marker || idx >= points.length) {
+        if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+        return;
+      }
+
       const p = points[idx];
       marker.setLatLng([+p.lat, +p.lng]);
 
-      // Calculate bearing for rotation if not first point
+      // Calculate bearing for rotation
       if (idx > 0) {
         const bearing = L.GeometryUtil.bearing(
           L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
@@ -100,11 +117,20 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
         );
       }
 
-      idx++;
-      animationTimerRef.current = setTimeout(step, 100); // 100ms interval
+      playbackRef.current.idx++;
+      animationTimerRef.current = setTimeout(step, 100);
     };
-    step();
-  };
+
+    if (isPlaying) {
+      step(); // Start or Resume animation
+    } else {
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current); // Pause
+    }
+
+    return () => {
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+    };
+  }, [isPlaying]);
 
   return (
     <MDBox position="relative" height="100%" width="100%">
@@ -117,10 +143,17 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate }) => {
     </MDBox>
   );
 };
+
 MiniTrackPlayer.propTypes = {
   imei: PropTypes.string.isRequired,
   fromDate: PropTypes.string.isRequired,
   toDate: PropTypes.string.isRequired,
+  isPlaying: PropTypes.bool.isRequired, // Added isPlaying validation
+};
+
+// Default prop to prevent errors if parent doesn't pass it immediately
+MiniTrackPlayer.defaultProps = {
+  isPlaying: false,
 };
 
 export default MiniTrackPlayer;
