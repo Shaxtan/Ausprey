@@ -139,13 +139,15 @@ const SessionDetailModal = ({ open, onClose, record }) => {
       open={open}
       onClose={handleClose}
       TransitionComponent={SlideTransition}
-      maxWidth="lg"
+      maxWidth="xl"
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: 3,
           overflow: "hidden",
           boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+          maxWidth: 1400,
+          width: "80%",
         },
       }}
     >
@@ -182,7 +184,7 @@ const SessionDetailModal = ({ open, onClose, record }) => {
       </DialogTitle>
 
       <DialogContent sx={{ p: 0, background: "#f7f9fc" }}>
-        <Grid container sx={{ minHeight: 520 }}>
+        <Grid container sx={{ minHeight: 650 }}>
 
           {/* ── Left Panel: Session Info ── */}
           <Grid
