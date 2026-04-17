@@ -232,51 +232,42 @@ const LeafletControlsMap = () => {
 
   // Renamed simulateMovement to startAnimation for clarity
   /* ---------- animation (track play) – moves only on actual lat/lng changes ---------- */
+  /* ---------- Updated animation with slow movement and auto-tracking ---------- */
   const startAnimation = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
 
     if (!map || !originalPathRef.current.line || vehicleData.length < 2) {
-      return callAlert("Track data not ready or insufficient points for animation.", "warning");
+      return callAlert("Track data not ready.", "warning");
     }
 
     if (animationTimeoutRef.current && !isPaused) return;
 
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-      animationTimeoutRef.current = null;
-    }
-
     setIsPaused(false);
-
     layer.clearLayers();
+
+    // Re-add static path elements
     originalPathRef.current.line.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
-    originalPathRef.current.startMarker?.addTo(layer);
-    originalPathRef.current.endMarker?.addTo(layer);
 
-    const points = vehicleData; // full original array
+    const points = vehicleData;
     const totalPoints = points.length;
-
-    // Start from paused index if resuming
     const startIndex =
       isPaused && pauseTimeRef.current > 0
         ? Math.min(Math.floor(pauseTimeRef.current), totalPoints - 1)
         : 0;
 
     let currentIndex = startIndex;
-
-    // Place marker at starting point
-    // Inside startAnimation
     let marker = animatedMarkerRef.current;
+
     if (!marker) {
       const firstPoint = points[startIndex];
       marker = L.marker([+firstPoint.lat, +firstPoint.lng], {
         icon: L.divIcon({
           className: "rotating-truck-container",
-          html: getRotatingTruckHtml(firstPoint.status, 0), // Initial bearing 0
+          html: getRotatingTruckHtml(firstPoint.status, 0),
           iconSize: [40, 40],
-          iconAnchor: [20, 20], // Center anchor for rotation
+          iconAnchor: [20, 20],
         }),
       }).addTo(layer);
       animatedMarkerRef.current = marker;
@@ -284,8 +275,11 @@ const LeafletControlsMap = () => {
       marker.addTo(layer);
     }
 
-    // Interval per point based on speed
-    const baseInterval = 30000 / speed / totalPoints;
+    /* 1. SLOWER SPEED: 
+     Increase the numerator (e.g., from 30000 to 60000 or 100000).
+     Higher number = slower movement.
+  */
+    const baseInterval = 80000 / speed / totalPoints;
 
     const stepToNext = () => {
       if (currentIndex >= totalPoints) {
@@ -301,20 +295,28 @@ const LeafletControlsMap = () => {
       if (!isNaN(lat) && !isNaN(lng)) {
         const prevPoint = currentIndex > 0 ? points[currentIndex - 1] : null;
         let bearing = 0;
-
         if (prevPoint) {
-          // Calculate bearing from previous point to current
           bearing = L.GeometryUtil.bearing(
             L.latLng(+prevPoint.lat, +prevPoint.lng),
             L.latLng(lat, lng)
           );
         }
 
-        // Set position
+        // Update Marker Position
         marker.setLatLng([lat, lng]);
 
-        // Update the HTML Icon for rotation and status color
-        // We use bearing - 90 because the truck image in your styles faces right by default
+        /* 2. AUTOMATIC PAN & ZOOM:
+         - We use setView to center the map on the truck.
+         - We zoom in (e.g., zoom level 17).
+         - animate: true makes the transition smooth.
+      */
+        map.setView([lat, lng], 17, {
+          animate: true,
+          pan: {
+            duration: baseInterval / 1000, // Sync pan duration with point interval
+          },
+        });
+
         marker.setIcon(
           L.divIcon({
             className: "rotating-truck-container",

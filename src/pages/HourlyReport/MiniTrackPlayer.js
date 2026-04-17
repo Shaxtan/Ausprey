@@ -89,23 +89,39 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
   }, [imei, fromDate, toDate]);
 
   // 3. Animation Logic triggered by isPlaying prop
+  // 3. Animation Logic triggered by isPlaying prop
+  // 3. Animation Logic triggered by isPlaying prop
   useEffect(() => {
     const step = () => {
       const { idx, points, marker } = playbackRef.current;
+      const map = mapRef.current;
 
-      if (!points || !marker || idx >= points.length) {
+      if (!points || !marker || !map || idx >= points.length) {
         if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
         return;
       }
 
       const p = points[idx];
-      marker.setLatLng([+p.lat, +p.lng]);
+      const lat = +p.lat;
+      const lng = +p.lng;
+
+      // 1. Move the marker
+      marker.setLatLng([lat, lng]);
+
+      // 2. ⭐ AUTO-PAN & ZOOM
+      // Centering map on marker and zooming in to level 16
+      map.setView([lat, lng], 16, {
+        animate: true,
+        pan: {
+          duration: 0.5, // Matches the slower 500ms interval for smooth sliding
+        },
+      });
 
       // Calculate bearing for rotation
       if (idx > 0) {
         const bearing = L.GeometryUtil.bearing(
           L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
-          L.latLng(+p.lat, +p.lng)
+          L.latLng(lat, lng)
         );
         marker.setIcon(
           L.divIcon({
@@ -118,13 +134,17 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
       }
 
       playbackRef.current.idx++;
-      animationTimerRef.current = setTimeout(step, 100);
+
+      // 3. ⭐ SLOWER SPEED
+      // Increased from 100ms to 500ms. 
+      // Higher number = Slower movement.
+      animationTimerRef.current = setTimeout(step, 500);
     };
 
     if (isPlaying) {
-      step(); // Start or Resume animation
+      step(); 
     } else {
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current); // Pause
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
     }
 
     return () => {
