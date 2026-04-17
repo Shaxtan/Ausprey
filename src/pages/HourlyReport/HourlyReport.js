@@ -147,7 +147,7 @@ const SessionDetailModal = ({ open, onClose, record }) => {
           overflow: "hidden",
           boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
           maxWidth: 1400,
-          width: "80%",
+          width: "85%",
         },
       }}
     >
