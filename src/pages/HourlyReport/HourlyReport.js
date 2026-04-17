@@ -391,70 +391,86 @@ const DateFilterBar = ({
   onFetch, isLoading,
   imeiList, imeiLoading,
   onQuickSelect,
-}) => (
-  <Box
-    display="flex"
-    flexDirection="column"
-    gap={1.5}
-    mb={2.5}
-    sx={{ p: 2, background: "#f8f9ff", borderRadius: 2, border: "1px solid #e8eaf6" }}
-  >
-    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-      <Autocomplete
-        options={imeiList}
-        loading={imeiLoading}
-        getOptionLabel={(option) =>
-          option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
-        }
-        value={imeiList.find((item) => item.imei === imei) || null}
-        onChange={(_, newValue) => onImei(newValue ? newValue.imei : "")}
-        renderInput={(params) => (
-          <TextField {...params} label="Select Vehicle" size="small" sx={{ minWidth: 250 }} />
-        )}
-      />
-      <TextField
-        label="Start Date" type="date" size="small" value={startDate}
-        onChange={(e) => onStartDate(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-      />
-      <TextField
-        label="End Date" type="date" size="small" value={endDate}
-        onChange={(e) => onEndDate(e.target.value)}
-        InputLabelProps={{ shrink: true }}
-      />
-      <MDButton
-        variant="gradient" color="info" size="small"
-        onClick={onFetch}
-        disabled={isLoading || !imei || !startDate || !endDate}
-      >
-        {isLoading ? "Fetching…" : "Get Report"}
-      </MDButton>
-    </Box>
+}) => {
+  const [selectedQuickDate, setSelectedQuickDate] = useState(null);
 
-    <Box display="flex" gap={1}>
-      {[
-        { label: "Today",       value: "today"     },
-        { label: "Yesterday",   value: "yesterday" },
-        { label: "Last 7 Days", value: "last7"     },
-      ].map((btn) => (
-        <Chip
-          key={btn.value}
-          label={btn.label}
-          size="small"
-          onClick={() => onQuickSelect(btn.value)}
-          sx={{
-            fontSize: "0.7rem",
-            height: "24px",
-            cursor: "pointer",
-            "&:hover": { backgroundColor: "#e3f2fd" },
-          }}
-          variant="outlined"
-          color="info"
+  const handleQuickDateClick = (value) => {
+    setSelectedQuickDate(value);
+    onQuickSelect(value);
+  };
+
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      gap={2.5}
+      mb={3}
+      sx={{ p: 3, background: "#f8f9ff", borderRadius: 2, border: "1px solid #e8eaf6" }}
+    >
+      <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+        <Autocomplete
+          options={imeiList}
+          loading={imeiLoading}
+          getOptionLabel={(option) =>
+            option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
+          }
+          value={imeiList.find((item) => item.imei === imei) || null}
+          onChange={(_, newValue) => onImei(newValue ? newValue.imei : "")}
+          renderInput={(params) => (
+            <TextField {...params} label="Select Vehicle" size="medium" sx={{ minWidth: 300 }} />
+          )}
         />
-      ))}
+        <TextField
+          label="Start Date" type="date" size="medium" value={startDate}
+          onChange={(e) => onStartDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+          label="End Date" type="date" size="medium" value={endDate}
+          onChange={(e) => onEndDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+        <MDButton
+          variant="gradient" color="info" size="medium"
+          onClick={onFetch}
+          disabled={isLoading || !imei || !startDate || !endDate}
+        >
+          {isLoading ? "Fetching…" : "Get Report"}
+        </MDButton>
+      </Box>
+
+      <Box display="flex" gap={1.5}>
+        {[
+          { label: "Today",       value: "today"     },
+          { label: "Yesterday",   value: "yesterday" },
+          { label: "Last 7 Days", value: "last7"     },
+        ].map((btn) => (
+          <Chip
+            key={btn.value}
+            label={btn.label}
+            size="medium"
+            onClick={() => handleQuickDateClick(btn.value)}
+            sx={{
+              fontSize: "0.85rem",
+              height: "36px",
+              cursor: "pointer",
+              padding: "0 12px",
+              backgroundColor: selectedQuickDate === btn.value ? "#1A73E8" : "transparent",
+              color: selectedQuickDate === btn.value ? "#fff" : "#1A73E8",
+              borderColor: "#1A73E8",
+              fontWeight: selectedQuickDate === btn.value ? 700 : 500,
+              "&:hover": {
+                backgroundColor: selectedQuickDate === btn.value ? "#0D47A1" : "#e3f2fd",
+              },
+            }}
+            variant="outlined"
+            color="info"
+          />
+        ))}
+      </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
 DateFilterBar.propTypes = {
   startDate:     PropTypes.string.isRequired,

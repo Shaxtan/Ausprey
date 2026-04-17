@@ -174,7 +174,7 @@ const routes = [
   },
   {
     type: "collapse",
-    name: "Hourly Report",
+    name: "Working Hour Report",
     key: "hourly-report",
     icon: <Icon fontSize="small">schedule</Icon>,
     route: "/hourly-report",
