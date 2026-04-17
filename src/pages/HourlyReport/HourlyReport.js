@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import Autocomplete from "@mui/material/Autocomplete";
 
@@ -10,7 +10,6 @@ import InputAdornment from "@mui/material/InputAdornment";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import Collapse from "@mui/material/Collapse";
 import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -20,18 +19,25 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TablePagination from "@mui/material/TablePagination";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import Divider from "@mui/material/Divider";
+import Slide from "@mui/material/Slide";
 
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
 import ApiService from "../../services/ApiService";
 
-// Import the new MiniTrackPlayer component
 import MiniTrackPlayer from "./MiniTrackPlayer";
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Modal Slide Transition ───────────────────────────────────────────────────
+const SlideTransition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
-/** Convert ISO String or Epoch → readable date-time */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatTimeDisplay = (timeInput) => {
   if (!timeInput) return "—";
   const date = new Date(timeInput);
@@ -44,10 +50,8 @@ const formatTimeDisplay = (timeInput) => {
   });
 };
 
-/** Format minutes into "Xh Ym" */
 const formatDuration = (durationStr) => {
   if (!durationStr) return "—";
-  // If already "HH:mm" format from API, just return it
   if (typeof durationStr === "string" && durationStr.includes(":")) return durationStr;
   const minutes = parseInt(durationStr);
   const h = Math.floor(minutes / 60);
@@ -55,8 +59,20 @@ const formatDuration = (durationStr) => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const COL_WIDTHS = {
+  actions:       "6%",
+  imei:          "16%",
+  vehNum:        "14%",
+  date:          "12%",
+  sessions:      "11%",
+  totalDist:     "11%",
+  totalDuration: "13%",
+  status:        "10%",
+};
+
 const tableHeadSx = {
+  display: "table-header-group",
   "& .MuiTableCell-root": {
     backgroundColor: "#f8f9fa",
     color: "#7b809a",
@@ -68,167 +84,321 @@ const tableHeadSx = {
     letterSpacing: "0.04em",
     padding: "10px 14px",
     whiteSpace: "nowrap",
+    boxSizing: "border-box",
   },
 };
 
+const tableSx = {
+  tableLayout: "fixed",
+  width: "100%",
+};
+
 const tableBodySx = {
-  "& .MuiTableRow-root:hover": { backgroundColor: "#f5f8ff" },
+  "& .MuiTableRow-root.data-row:hover": {
+    backgroundColor: "#f5f8ff",
+    cursor: "pointer",
+  },
   "& .MuiTableCell-root": {
     padding: "10px 14px",
     fontSize: "0.82rem",
     borderBottom: "1px solid #f0f2f5",
     verticalAlign: "middle",
+    boxSizing: "border-box",
   },
 };
 
-// ─── Session Detail Panel (expanded row content) ──────────────────────────────
-const SessionDetailPanel = ({ record }) => {
+// ─── Session Detail Modal ─────────────────────────────────────────────────────
+const SessionDetailModal = ({ open, onClose, record }) => {
   const [activeSession, setActiveSession] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false); // 1. State for animation control
-  const session = record.sessions[activeSession];
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Reset play state and update session index
+  // Reset state whenever the modal opens or the record changes
+  useEffect(() => {
+    if (open) {
+      setActiveSession(0);
+      setIsPlaying(false);
+    }
+  }, [open, record]);
+
+  if (!record) return null;
+  const session = record.sessions?.[activeSession];
+  if (!session) return null;
+
   const handleSessionChange = (index) => {
     setActiveSession(index);
-    setIsPlaying(false); // Stop playback when switching sessions
+    setIsPlaying(false);
+  };
+
+  const handleClose = () => {
+    setIsPlaying(false);
+    onClose();
   };
 
   return (
-    <Box sx={{ m: 2, p: 2, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 2 }}>
-      <Grid container spacing={3}>
-        {/* Left: session info */}
-        <Grid item xs={12} md={4}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <MDTypography variant="h6">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      TransitionComponent={SlideTransition}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          overflow: "hidden",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.18)",
+        },
+      }}
+    >
+      {/* ── Modal Header ── */}
+      <DialogTitle
+        sx={{
+          background: "linear-gradient(135deg, #1A73E8 0%, #0D47A1 100%)",
+          color: "#fff",
+          px: 3,
+          py: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box display="flex" alignItems="center" gap={1.5}>
+          <Icon sx={{ fontSize: 22 }}>directions_car</Icon>
+          <Box>
+            <MDTypography variant="h6" color="white" sx={{ lineHeight: 1.2 }}>
               Session Details
             </MDTypography>
-            
-            {/* 2. Play/Pause Toggle Button */}
-            <MDButton
-              variant="gradient"
-              color={isPlaying ? "error" : "success"}
-              size="small"
-              onClick={() => setIsPlaying(!isPlaying)}
-              sx={{ px: 2, minHeight: "32px" }}
-              startIcon={<Icon>{isPlaying ? "pause" : "play_arrow"}</Icon>}
+            <MDTypography
+              variant="caption"
+              sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.7rem" }}
             >
-              {isPlaying ? "Pause" : "Play"}
-            </MDButton>
+              {record.vehNum || record.imei} &nbsp;·&nbsp;{" "}
+              {record.repDate?.split("T")[0] || "—"}
+            </MDTypography>
           </Box>
+        </Box>
+        <IconButton onClick={handleClose} size="small" sx={{ color: "#fff" }}>
+          <Icon>close</Icon>
+        </IconButton>
+      </DialogTitle>
 
-          {/* Session tabs */}
-          <Box display="flex" flexWrap="wrap" gap={0.8} mb={2}>
-            {record.sessions.map((s, i) => (
-              <Chip
-                key={i}
-                label={`Session ${i + 1}`}
+      <DialogContent sx={{ p: 0, background: "#f7f9fc" }}>
+        <Grid container sx={{ minHeight: 520 }}>
+
+          {/* ── Left Panel: Session Info ── */}
+          <Grid
+            item xs={12} md={3.5}
+            sx={{
+              background: "#fff",
+              borderRight: "1px solid #e8eaf6",
+              p: 3,
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
+            }}
+          >
+            {/* Play/Pause + label */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+              <MDTypography
+                variant="button"
+                fontWeight="bold"
+                sx={{ fontSize: "0.78rem", color: "#344767" }}
+              >
+                Sessions
+              </MDTypography>
+              <MDButton
+                variant="gradient"
+                color={isPlaying ? "error" : "success"}
                 size="small"
-                color={activeSession === i ? "info" : "default"}
-                onClick={() => handleSessionChange(i)} // Use the new handler
-                sx={{ cursor: "pointer", fontWeight: activeSession === i ? 700 : 400 }}
-              />
-            ))}
-          </Box>
+                onClick={() => setIsPlaying((p) => !p)}
+                sx={{ px: 1.5, minHeight: "28px", fontSize: "0.7rem" }}
+                startIcon={
+                  <Icon sx={{ fontSize: "14px !important" }}>
+                    {isPlaying ? "pause" : "play_arrow"}
+                  </Icon>
+                }
+              >
+                {isPlaying ? "Pause" : "Play"}
+              </MDButton>
+            </Box>
 
-          {/* Session stats (Map through existing stats as you had before) */}
-          {[
-            { label: "Start Time", value: formatTimeDisplay(session.startTime), icon: "schedule" },
-            { label: "End Time", value: formatTimeDisplay(session.endTime), icon: "flag" },
-            { label: "Duration", value: formatDuration(session.duration), icon: "timer" },
-            { label: "Distance", value: `${session.distance} km`, icon: "straighten" },
-            { label: "GPS Distance", value: `${session.gpsDistance} km`, icon: "gps_fixed" },
-            { label: "Avg Speed", value: `${session.avgSpeed} km/h`, icon: "speed" },
-            { label: "Status", value: session.status, icon: "info" },
-          ].map(({ label, value, icon }) => (
-            <Box
-              key={label}
+            {/* Session tabs */}
+            <Box display="flex" flexWrap="wrap" gap={0.6} mb={1.5}>
+              {record.sessions.map((s, i) => (
+                <Chip
+                  key={i}
+                  label={`Session ${i + 1}`}
+                  size="small"
+                  color={activeSession === i ? "info" : "default"}
+                  onClick={() => handleSessionChange(i)}
+                  sx={{
+                    cursor: "pointer",
+                    fontWeight: activeSession === i ? 700 : 400,
+                    fontSize: "0.68rem",
+                  }}
+                />
+              ))}
+            </Box>
+
+            <Divider sx={{ mb: 1 }} />
+
+            <MDTypography
+              variant="caption"
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                py: 0.6,
-                borderBottom: "0.5px solid #f0f0f0",
+                opacity: 0.5,
+                fontSize: "0.62rem",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                mb: 0.5,
               }}
             >
-              <Box display="flex" alignItems="center" gap={0.5}>
-                <Icon sx={{ fontSize: 14, color: "info.main" }}>{icon}</Icon>
-                <MDTypography variant="caption" color="text" sx={{ opacity: 0.65, fontSize: "0.7rem" }}>
-                  {label}
+              Session {activeSession + 1} Stats
+            </MDTypography>
+
+            {/* Stats rows */}
+            {[
+              { label: "Start Time",   value: formatTimeDisplay(session.startTime), icon: "schedule"  },
+              { label: "End Time",     value: formatTimeDisplay(session.endTime),   icon: "flag"       },
+              { label: "Duration",     value: formatDuration(session.duration),     icon: "timer"      },
+              { label: "Distance",     value: `${session.distance} km`,             icon: "straighten" },
+              { label: "GPS Distance", value: `${session.gpsDistance} km`,          icon: "gps_fixed"  },
+              { label: "Avg Speed",    value: `${session.avgSpeed} km/h`,           icon: "speed"      },
+              { label: "Status",       value: session.status,                       icon: "info"       },
+            ].map(({ label, value, icon }) => (
+              <Box
+                key={label}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  py: 0.75,
+                  borderBottom: "0.5px solid #f0f0f0",
+                }}
+              >
+                <Box display="flex" alignItems="center" gap={0.6}>
+                  <Icon sx={{ fontSize: 13, color: "#1A73E8" }}>{icon}</Icon>
+                  <MDTypography
+                    variant="caption"
+                    color="text"
+                    sx={{ opacity: 0.65, fontSize: "0.68rem" }}
+                  >
+                    {label}
+                  </MDTypography>
+                </Box>
+                <MDTypography
+                  variant="caption"
+                  fontWeight="bold"
+                  sx={{ fontSize: "0.72rem", color: "#344767" }}
+                >
+                  {value}
                 </MDTypography>
               </Box>
-              <MDTypography variant="caption" fontWeight="bold" sx={{ fontSize: "0.75rem" }}>
-                {value}
+            ))}
+
+            {/* Locations */}
+            <Box mt={1.5}>
+              <MDTypography
+                variant="caption"
+                sx={{
+                  opacity: 0.5,
+                  fontSize: "0.62rem",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                Start Location
+              </MDTypography>
+              <MDTypography
+                variant="caption"
+                display="block"
+                sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.5, color: "#344767" }}
+              >
+                {session.startLocation || "—"}
               </MDTypography>
             </Box>
-          ))}
+            <Box mt={0.8}>
+              <MDTypography
+                variant="caption"
+                sx={{
+                  opacity: 0.5,
+                  fontSize: "0.62rem",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                End Location
+              </MDTypography>
+              <MDTypography
+                variant="caption"
+                display="block"
+                sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.5, color: "#344767" }}
+              >
+                {session.endLocation || "—"}
+              </MDTypography>
+            </Box>
+          </Grid>
 
-          {/* Locations */}
-          <Box mt={1.5}>
-            <MDTypography variant="caption" color="text" sx={{ opacity: 0.55, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: 1 }}>
-              Start Location
-            </MDTypography>
-            <MDTypography variant="caption" display="block" sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}>
-              {session.startLocation || "—"}
-            </MDTypography>
-          </Box>
-          <Box mt={1}>
-            <MDTypography variant="caption" color="text" sx={{ opacity: 0.55, fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: 1 }}>
-              End Location
-            </MDTypography>
-            <MDTypography variant="caption" display="block" sx={{ fontSize: "0.7rem", mt: 0.3, lineHeight: 1.4 }}>
-              {session.endLocation || "—"}
-            </MDTypography>
-          </Box>
-        </Grid>
-
-        {/* Right: The Advanced MiniTrackPlayer */}
-        <Grid item xs={12} md={8}>
-          <MDTypography variant="h6" gutterBottom>
-            Playback — Session {activeSession + 1}
-          </MDTypography>
-          <MDBox
-            sx={{ height: 400, borderRadius: 2, overflow: "hidden", border: "1px solid #e0e0e0" }}
+          {/* ── Right Panel: Map Playback ── */}
+          <Grid
+            item xs={12} md={8.5}
+            sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}
           >
-            <MiniTrackPlayer
-              key={`${record.imei}-${activeSession}`} 
-              imei={record.imei}
-              fromDate={session.startTime}
-              toDate={session.endTime}
-              isPlaying={isPlaying} // 3. Pass state to child
-            />
-          </MDBox>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Icon sx={{ color: "#1A73E8", fontSize: 18 }}>map</Icon>
+              <MDTypography
+                variant="button"
+                fontWeight="bold"
+                sx={{ fontSize: "0.78rem", color: "#344767" }}
+              >
+                Playback — Session {activeSession + 1}
+              </MDTypography>
+            </Box>
+
+            <MDBox
+              sx={{
+                flex: 1,
+                minHeight: 460,
+                borderRadius: 2,
+                overflow: "hidden",
+                border: "1px solid #e0e0e0",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+              }}
+            >
+              <MiniTrackPlayer
+                key={`${record.imei}-${activeSession}`}
+                imei={record.imei}
+                fromDate={session.startTime}
+                toDate={session.endTime}
+                isPlaying={isPlaying}
+              />
+            </MDBox>
+          </Grid>
         </Grid>
-      </Grid>
-    </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-SessionDetailPanel.propTypes = {
-  record: PropTypes.object.isRequired,
+SessionDetailModal.propTypes = {
+  open:    PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  record:  PropTypes.object,
 };
 
 // ─── Date Filter Bar ──────────────────────────────────────────────────────────
 const DateFilterBar = ({
-  startDate,
-  endDate,
-  imei,
-  onStartDate,
-  onEndDate,
-  onImei,
-  onFetch,
-  isLoading,
-  imeiList,
-  imeiLoading,
-  onQuickSelect, // New prop
+  startDate, endDate, imei,
+  onStartDate, onEndDate, onImei,
+  onFetch, isLoading,
+  imeiList, imeiLoading,
+  onQuickSelect,
 }) => (
   <Box
     display="flex"
-    flexDirection="column" // Changed to column to stack filters and quick buttons
+    flexDirection="column"
     gap={1.5}
     mb={2.5}
     sx={{ p: 2, background: "#f8f9ff", borderRadius: 2, border: "1px solid #e8eaf6" }}
   >
-    {/* Main Filter Row */}
     <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
       <Autocomplete
         options={imeiList}
@@ -237,33 +407,23 @@ const DateFilterBar = ({
           option.vehnum ? `${option.vehnum} (${option.imei})` : option.imei
         }
         value={imeiList.find((item) => item.imei === imei) || null}
-        onChange={(event, newValue) => {
-          onImei(newValue ? newValue.imei : "");
-        }}
+        onChange={(_, newValue) => onImei(newValue ? newValue.imei : "")}
         renderInput={(params) => (
           <TextField {...params} label="Select Vehicle" size="small" sx={{ minWidth: 250 }} />
         )}
       />
       <TextField
-        label="Start Date"
-        type="date"
-        size="small"
-        value={startDate}
+        label="Start Date" type="date" size="small" value={startDate}
         onChange={(e) => onStartDate(e.target.value)}
         InputLabelProps={{ shrink: true }}
       />
       <TextField
-        label="End Date"
-        type="date"
-        size="small"
-        value={endDate}
+        label="End Date" type="date" size="small" value={endDate}
         onChange={(e) => onEndDate(e.target.value)}
         InputLabelProps={{ shrink: true }}
       />
       <MDButton
-        variant="gradient"
-        color="info"
-        size="small"
+        variant="gradient" color="info" size="small"
         onClick={onFetch}
         disabled={isLoading || !imei || !startDate || !endDate}
       >
@@ -271,12 +431,11 @@ const DateFilterBar = ({
       </MDButton>
     </Box>
 
-    {/* Quick Selection Buttons Row */}
     <Box display="flex" gap={1}>
       {[
-        { label: "Today", value: "today" },
-        { label: "Yesterday", value: "yesterday" },
-        { label: "Last 7 Days", value: "last7" },
+        { label: "Today",       value: "today"     },
+        { label: "Yesterday",   value: "yesterday" },
+        { label: "Last 7 Days", value: "last7"     },
       ].map((btn) => (
         <Chip
           key={btn.value}
@@ -298,33 +457,34 @@ const DateFilterBar = ({
 );
 
 DateFilterBar.propTypes = {
-  startDate: PropTypes.string.isRequired,
-  endDate: PropTypes.string.isRequired,
-  imei: PropTypes.string.isRequired,
-  onStartDate: PropTypes.func.isRequired,
-  onEndDate: PropTypes.func.isRequired,
-  onImei: PropTypes.func.isRequired,
-  onFetch: PropTypes.func.isRequired,
-  isLoading: PropTypes.bool.isRequired,
-  imeiList: PropTypes.array.isRequired,
-  imeiLoading: PropTypes.bool.isRequired,
+  startDate:     PropTypes.string.isRequired,
+  endDate:       PropTypes.string.isRequired,
+  imei:          PropTypes.string.isRequired,
+  onStartDate:   PropTypes.func.isRequired,
+  onEndDate:     PropTypes.func.isRequired,
+  onImei:        PropTypes.func.isRequired,
+  onFetch:       PropTypes.func.isRequired,
+  isLoading:     PropTypes.bool.isRequired,
+  imeiList:      PropTypes.array.isRequired,
+  imeiLoading:   PropTypes.bool.isRequired,
   onQuickSelect: PropTypes.func.isRequired,
 };
 
-// Add this helper inside or above your HourlyReport component
+// ─── Quick date helper ────────────────────────────────────────────────────────
 const getQuickDateRange = (type) => {
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-
+  const todayStr = new Date().toISOString().slice(0, 10);
   switch (type) {
     case "today":
       return { start: todayStr, end: todayStr };
-    case "yesterday":
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      return { start: yesterday, end: yesterday };
+    case "yesterday": {
+      const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      return { start: y, end: y };
+    }
     case "last7":
-      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-      return { start: sevenDaysAgo, end: todayStr };
+      return {
+        start: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
+        end: todayStr,
+      };
     default:
       return { start: todayStr, end: todayStr };
   }
@@ -332,34 +492,31 @@ const getQuickDateRange = (type) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 function HourlyReport({ accountId }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today     = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  const [imei, setImei] = useState("");
-  const [startDate, setStartDate] = useState(yesterday);
-  const [endDate, setEndDate] = useState(today);
-
-  const [records, setRecords] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [expandedId, setExpandedId] = useState(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [imeiList, setImeiList] = useState([]);
-  const [imeiLoading, setImeiLoading] = useState(false);
+  const [imei,           setImei]           = useState("");
+  const [startDate,      setStartDate]      = useState(yesterday);
+  const [endDate,        setEndDate]        = useState(today);
+  const [records,        setRecords]        = useState([]);
+  const [isLoading,      setIsLoading]      = useState(false);
+  const [error,          setError]          = useState(null);
+  const [searchTerm,     setSearchTerm]     = useState("");
+  const [page,           setPage]           = useState(0);
+  const [rowsPerPage,    setRowsPerPage]    = useState(10);
+  const [imeiList,       setImeiList]       = useState([]);
+  const [imeiLoading,    setImeiLoading]    = useState(false);
+  const [modalOpen,      setModalOpen]      = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   useEffect(() => {
     const fetchImeis = async () => {
       setImeiLoading(true);
       try {
-        const res = await ApiService.getImeiDropdown(accountId);
+        const res      = await ApiService.getImeiDropdown(accountId);
         const vehicles = res?.data?.response?.vehicles || [];
         setImeiList(vehicles);
-        if (vehicles.length > 0 && !imei) {
-          setImei(vehicles[0].imei);
-        }
+        if (vehicles.length > 0 && !imei) setImei(vehicles[0].imei);
       } catch (err) {
         console.error("Failed to fetch IMEI list:", err);
       } finally {
@@ -373,8 +530,6 @@ function HourlyReport({ accountId }) {
     const { start, end } = getQuickDateRange(type);
     setStartDate(start);
     setEndDate(end);
-    // Optional: automatically trigger fetch after selection
-    // setTimeout(() => fetchReport(), 0);
   };
 
   const formatDateForApi = (isoDate) => {
@@ -387,18 +542,16 @@ function HourlyReport({ accountId }) {
     if (!imei || !startDate || !endDate) return;
     setIsLoading(true);
     setError(null);
-    setExpandedId(null);
-
+    setModalOpen(false);
+    setSelectedRecord(null);
     try {
       const payload = {
         imei,
         startDate: formatDateForApi(startDate),
-        endDate: formatDateForApi(endDate),
+        endDate:   formatDateForApi(endDate),
       };
-
-      const res = await ApiService.getWorkingHourReport(payload);
+      const res  = await ApiService.getWorkingHourReport(payload);
       const data = res?.data?.data || [];
-
       if (!data.length) {
         setError("No data found for the selected filters.");
         setRecords([]);
@@ -413,9 +566,7 @@ function HourlyReport({ accountId }) {
     }
   };
 
-  useEffect(() => {
-    fetchReport();
-  }, []);
+  useEffect(() => { fetchReport(); }, []);
 
   const filteredRecords = useMemo(() => {
     if (!searchTerm) return records;
@@ -433,29 +584,26 @@ function HourlyReport({ accountId }) {
     page * rowsPerPage + rowsPerPage
   );
 
+  const handleRowClick = (record) => {
+    setSelectedRecord(record);
+    setModalOpen(true);
+  };
+
   return (
     <MDBox pt={6} pb={3} ml={11}>
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card>
+            {/* Card header */}
             <MDBox
-              mx={2}
-              mt={-3}
-              py={3}
-              px={2}
-              variant="gradient"
-              bgColor="info"
-              borderRadius="lg"
-              coloredShadow="info"
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
+              mx={2} mt={-3} py={3} px={2}
+              variant="gradient" bgColor="info"
+              borderRadius="lg" coloredShadow="info"
+              display="flex" justifyContent="space-between" alignItems="center"
             >
               <MDBox display="flex" alignItems="center" gap={1}>
                 <Icon sx={{ color: "#fff", fontSize: 22 }}>directions_car</Icon>
-                <MDTypography variant="h6" color="white">
-                  Working Hour Report
-                </MDTypography>
+                <MDTypography variant="h6" color="white">Working Hour Report</MDTypography>
               </MDBox>
               <MDTypography variant="caption" color="white" sx={{ opacity: 0.8 }}>
                 {records.length} record{records.length !== 1 ? "s" : ""} loaded
@@ -464,16 +612,12 @@ function HourlyReport({ accountId }) {
 
             <MDBox p={3}>
               <DateFilterBar
-                imei={imei}
-                onImei={setImei}
-                startDate={startDate}
-                onStartDate={setStartDate}
-                endDate={endDate}
-                onEndDate={setEndDate}
+                imei={imei}           onImei={setImei}
+                startDate={startDate} onStartDate={setStartDate}
+                endDate={endDate}     onEndDate={setEndDate}
                 onFetch={fetchReport}
                 isLoading={isLoading}
-                imeiList={imeiList}
-                imeiLoading={imeiLoading}
+                imeiList={imeiList}   imeiLoading={imeiLoading}
                 onQuickSelect={handleQuickSelect}
               />
 
@@ -488,9 +632,7 @@ function HourlyReport({ accountId }) {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <Icon>search</Icon>
-                      </InputAdornment>
+                      <InputAdornment position="start"><Icon>search</Icon></InputAdornment>
                     ),
                   }}
                   sx={{ minWidth: 260 }}
@@ -500,25 +642,20 @@ function HourlyReport({ accountId }) {
               {error && (
                 <Box
                   sx={{
-                    p: 2,
-                    mb: 2,
+                    p: 2, mb: 2,
                     background: "#fff3e0",
                     borderRadius: 2,
                     border: "1px solid #ffe0b2",
                   }}
                 >
-                  <MDTypography variant="caption" color="warning">
-                    {error}
-                  </MDTypography>
+                  <MDTypography variant="caption" color="warning">{error}</MDTypography>
                 </Box>
               )}
 
               {isLoading && (
                 <Box display="flex" justifyContent="center" alignItems="center" py={4}>
                   <CircularProgress size={32} />
-                  <MDTypography variant="button" sx={{ ml: 2 }}>
-                    Fetching report…
-                  </MDTypography>
+                  <MDTypography variant="button" sx={{ ml: 2 }}>Fetching report…</MDTypography>
                 </Box>
               )}
 
@@ -526,20 +663,21 @@ function HourlyReport({ accountId }) {
                 <TableContainer
                   sx={{ boxShadow: "none", border: "1px solid #f0f2f5", borderRadius: 2 }}
                 >
-                  <Table sx={{ tableLayout: "fixed", width: "100%" }}>
+                  <Table sx={tableSx}>
                     <colgroup>
-                      <col style={{ width: "10%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "8%" }} />
+                      <col style={{ width: COL_WIDTHS.actions       }} />
+                      <col style={{ width: COL_WIDTHS.imei          }} />
+                      <col style={{ width: COL_WIDTHS.vehNum        }} />
+                      <col style={{ width: COL_WIDTHS.date          }} />
+                      <col style={{ width: COL_WIDTHS.sessions      }} />
+                      <col style={{ width: COL_WIDTHS.totalDist     }} />
+                      <col style={{ width: COL_WIDTHS.totalDuration }} />
+                      <col style={{ width: COL_WIDTHS.status        }} />
                     </colgroup>
+
                     <TableHead sx={tableHeadSx}>
                       <TableRow>
-                        <TableCell align="center">Actions</TableCell>
+                        <TableCell align="center" />
                         <TableCell>IMEI</TableCell>
                         <TableCell>Vehicle No.</TableCell>
                         <TableCell align="center">Date</TableCell>
@@ -551,96 +689,91 @@ function HourlyReport({ accountId }) {
                     </TableHead>
 
                     <TableBody sx={tableBodySx}>
-                      {paginatedRecords.map((record) => {
-                        const isExpanded = expandedId === record.id;
-                        return (
-                          <React.Fragment key={record.id}>
-                            <TableRow
-                              sx={{
-                                "& > *": { borderBottom: "unset" },
-                                backgroundColor: isExpanded ? "#f1f8ff" : "inherit",
-                              }}
+                      {paginatedRecords.map((record) => (
+                        <TableRow
+                          key={record.id}
+                          className="data-row"
+                          onClick={() => handleRowClick(record)}
+                          sx={{
+                            cursor: "pointer",
+                            userSelect: "none",
+                            "&:hover": { backgroundColor: "#f5f8ff" },
+                          }}
+                        >
+                          {/* Icon — stopPropagation so clicking the button alone still works */}
+                          <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip title="View Sessions & Map">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRowClick(record)}
+                              >
+                                <Icon sx={{ fontSize: 18 }}>open_in_new</Icon>
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+
+                          <TableCell>
+                            <MDTypography
+                              variant="caption"
+                              fontWeight="medium"
+                              sx={{ fontFamily: "monospace", fontSize: "0.75rem" }}
                             >
-                              <TableCell align="center">
-                                <Tooltip title={isExpanded ? "Collapse" : "View Sessions & Map"}>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      setExpandedId((prev) =>
-                                        prev === record.id ? null : record.id
-                                      )
-                                    }
-                                    color={isExpanded ? "info" : "default"}
-                                  >
-                                    <Icon>{isExpanded ? "expand_less" : "expand_more"}</Icon>
-                                  </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                              <TableCell>
-                                <MDTypography
-                                  variant="caption"
-                                  fontWeight="medium"
-                                  sx={{ fontFamily: "monospace", fontSize: "0.75rem" }}
-                                >
-                                  {record.imei}
-                                </MDTypography>
-                              </TableCell>
-                              <TableCell>
-                                <MDTypography variant="caption" fontWeight="bold" color="info">
-                                  {record.vehNum || "—"}
-                                </MDTypography>
-                              </TableCell>
-                              <TableCell align="center">
-                                <MDTypography variant="caption">
-                                  {record.repDate ? record.repDate.split("T")[0] : "—"}
-                                </MDTypography>
-                              </TableCell>
-                              <TableCell align="center">
-                                <Chip
-                                  label={`${record.sessions?.length ?? 0} sessions`}
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                  sx={{ fontSize: "0.68rem" }}
-                                />
-                              </TableCell>
-                              <TableCell align="center">
-                                <MDTypography variant="caption" fontWeight="bold">
-                                  {record.totalDistance ?? "0"} km
-                                </MDTypography>
-                              </TableCell>
-                              <TableCell align="center">
-                                <MDTypography variant="caption">
-                                  {formatDuration(record.totalDuration)}
-                                </MDTypography>
-                              </TableCell>
-                              <TableCell align="center">
-                                <Chip
-                                  label={
-                                    record.sessions?.every((s) => s.status === "COMPLETE")
-                                      ? "Complete"
-                                      : "Partial"
-                                  }
-                                  size="small"
-                                  color={
-                                    record.sessions?.every((s) => s.status === "COMPLETE")
-                                      ? "success"
-                                      : "warning"
-                                  }
-                                  sx={{ fontSize: "0.65rem" }}
-                                />
-                              </TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
-                                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                                  <SessionDetailPanel record={record} />
-                                </Collapse>
-                              </TableCell>
-                            </TableRow>
-                          </React.Fragment>
-                        );
-                      })}
+                              {record.imei}
+                            </MDTypography>
+                          </TableCell>
+
+                          <TableCell>
+                            <MDTypography variant="caption" fontWeight="bold" color="info">
+                              {record.vehNum || "—"}
+                            </MDTypography>
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <MDTypography variant="caption">
+                              {record.repDate ? record.repDate.split("T")[0] : "—"}
+                            </MDTypography>
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <Chip
+                              label={`${record.sessions?.length ?? 0} sessions`}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontSize: "0.68rem" }}
+                            />
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <MDTypography variant="caption" fontWeight="bold">
+                              {record.totalDistance ?? "0"} km
+                            </MDTypography>
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <MDTypography variant="caption">
+                              {formatDuration(record.totalDuration)}
+                            </MDTypography>
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <Chip
+                              label={
+                                record.sessions?.every((s) => s.status === "COMPLETE")
+                                  ? "Complete"
+                                  : "Partial"
+                              }
+                              size="small"
+                              color={
+                                record.sessions?.every((s) => s.status === "COMPLETE")
+                                  ? "success"
+                                  : "warning"
+                              }
+                              sx={{ fontSize: "0.65rem" }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -664,6 +797,13 @@ function HourlyReport({ accountId }) {
           </Card>
         </Grid>
       </Grid>
+
+      {/* ── Session Detail Modal (rendered outside the Card) ── */}
+      <SessionDetailModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        record={selectedRecord}
+      />
     </MDBox>
   );
 }
