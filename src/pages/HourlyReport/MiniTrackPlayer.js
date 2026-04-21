@@ -25,12 +25,22 @@ const formatTimestamp = (input) => {
 };
 
 /* -------------------------------------------------
+   SMOOTH ANIMATION HELPERS
+------------------------------------------------- */
+const lerp = (a, b, t) => a + (b - a) * t;
+
+const lerpAngle = (a, b, t) => {
+  const diff = ((b - a + 540) % 360) - 180;
+  return a + diff * t;
+};
+
+/* -------------------------------------------------
    COMPONENT
 ------------------------------------------------- */
 const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
   const mapRef = useRef(null);
   const layerRef = useRef(null);
-  const animationTimerRef = useRef(null);
+  const rafRef = useRef(null);
   const mapId = useRef(`map-${Math.random().toString(36).substr(2, 9)}`);
 
   // Ref to persist animation state (index and marker) between play/pause toggles
@@ -42,10 +52,8 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
-
-  // ─── NEW: live playback info state ───────────────────────────────────────────
-  const [currentInfo, setCurrentInfo] = useState(null); // current GPS record
-  const [currentIdx, setCurrentIdx] = useState(0); // current index for progress bar
+  const [currentInfo, setCurrentInfo] = useState(null);
+  const [currentIdx, setCurrentIdx] = useState(0);
 
   // 1. Initialize Map
   useEffect(() => {
@@ -57,7 +65,7 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
     }
 
     return () => {
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (mapRef.current) mapRef.current.remove();
     };
   }, []);
@@ -68,7 +76,9 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
       if (!imei || !fromDate || !toDate) return;
 
       setIsLoading(true);
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+
+      // Cancel any running animation
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       layerRef.current.clearLayers();
 
       // Reset playback reference and panel state
@@ -117,63 +127,100 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
     fetchAndSetup();
   }, [imei, fromDate, toDate]);
 
-  // 3. Animation Logic triggered by isPlaying prop
+  // 3. Smooth Animation Logic triggered by isPlaying prop
   useEffect(() => {
-    const step = () => {
-      const { idx, points, marker } = playbackRef.current;
-      const map = mapRef.current;
+    // Duration (ms) to travel between two consecutive GPS points
+    const SEGMENT_DURATION = 800;
 
-      if (!points || !marker || !map || idx >= points.length) {
-        if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
-        return;
-      }
+    const animateSegment = (fromPt, toPt, fromBearing, toBearing, onDone) => {
+      const startTime = performance.now();
+      const fromLat = +fromPt.lat;
+      const fromLng = +fromPt.lng;
+      const toLat = +toPt.lat;
+      const toLng = +toPt.lng;
 
-      const p = points[idx];
-      const lat = +p.lat;
-      const lng = +p.lng;
+      const frame = (now) => {
+        const { marker } = playbackRef.current;
+        const map = mapRef.current;
+        if (!marker || !map) return;
 
-      // 1. Move the marker
-      marker.setLatLng([lat, lng]);
+        const t = Math.min((now - startTime) / SEGMENT_DURATION, 1);
+        // Ease-in-out for natural acceleration/deceleration
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
-      // 2. Auto-pan & zoom
-      map.setView([lat, lng], 16, {
-        animate: true,
-        pan: { duration: 0.5 },
-      });
+        const lat = lerp(fromLat, toLat, ease);
+        const lng = lerp(fromLng, toLng, ease);
+        const bearing = lerpAngle(fromBearing, toBearing, ease);
 
-      // Calculate bearing for rotation
-      if (idx > 0) {
-        const bearing = L.GeometryUtil.bearing(
-          L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
-          L.latLng(lat, lng)
-        );
+        // Move marker smoothly
+        marker.setLatLng([lat, lng]);
         marker.setIcon(
           L.divIcon({
             className: "rotating-truck-container",
-            html: getRotatingTruckHtml(p.status, bearing - 90),
+            html: getRotatingTruckHtml(toPt.status, bearing - 90),
             iconSize: [30, 30],
             iconAnchor: [15, 15],
           })
         );
-      }
 
-      // ─── NEW: update panel state ────────────────────────────────────────────
-      setCurrentInfo(p);
-      setCurrentIdx(idx);
-      // ────────────────────────────────────────────────────────────────────────
+        // Pan map only when vehicle approaches the edge — avoids jerky re-centering
+        const mapBounds = map.getBounds().pad(-0.15);
+        if (!mapBounds.contains([lat, lng])) {
+          map.panTo([lat, lng], { animate: true, duration: 0.4 });
+        }
 
-      playbackRef.current.idx++;
-      animationTimerRef.current = setTimeout(step, 500);
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(frame);
+        } else {
+          onDone();
+        }
+      };
+
+      rafRef.current = requestAnimationFrame(frame);
+    };
+
+    const advanceToNext = () => {
+      const { idx, points, marker } = playbackRef.current;
+      if (!points.length || !marker || idx >= points.length - 1) return;
+
+      const fromPt = points[idx];
+      const toPt = points[idx + 1];
+
+      // Bearing from the previous segment (or 0 at the very first step)
+      const fromBearing =
+        idx > 0
+          ? L.GeometryUtil.bearing(
+              L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
+              L.latLng(+fromPt.lat, +fromPt.lng)
+            )
+          : 0;
+
+      const toBearing = L.GeometryUtil.bearing(
+        L.latLng(+fromPt.lat, +fromPt.lng),
+        L.latLng(+toPt.lat, +toPt.lng)
+      );
+
+      // Update info panel at the start of each segment
+      setCurrentInfo(toPt);
+      setCurrentIdx(idx + 1);
+
+      animateSegment(fromPt, toPt, fromBearing, toBearing, () => {
+        playbackRef.current.idx++;
+        // Chain immediately to the next segment
+        if (playbackRef.current.idx < playbackRef.current.points.length - 1) {
+          advanceToNext();
+        }
+      });
     };
 
     if (isPlaying) {
-      step();
+      advanceToNext();
     } else {
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     }
 
     return () => {
-      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isPlaying]);
 
@@ -209,7 +256,6 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
       </MDTypography>
     </MDBox>
   );
-  // props
 
   InfoRow.propTypes = {
     icon: PropTypes.string.isRequired,
@@ -250,7 +296,7 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
             display: "flex",
             flexDirection: "column",
             gap: 1,
-            pointerEvents: "none", // allow map interaction through the panel
+            pointerEvents: "none",
           }}
         >
           {/* ── Trip summary card ── */}
@@ -309,7 +355,6 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
                   borderRadius: "50%",
                   background: isPlaying ? "#4caf50" : "#bdbdbd",
                   transition: "background 0.3s",
-                  // pulsing when playing
                   animation: isPlaying ? "pulse 1.2s ease-in-out infinite" : "none",
                   "@keyframes pulse": {
                     "0%, 100%": { opacity: 1 },
