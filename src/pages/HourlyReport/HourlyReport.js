@@ -53,7 +53,7 @@ const formatTimeDisplay = (timeInput) => {
 const formatDuration = (durationStr) => {
   if (!durationStr) return "—";
   if (typeof durationStr === "string" && durationStr.includes(":")) return durationStr;
-  const minutes = parseInt(durationStr);
+  const minutes = parseInt(durationStr, 10);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -61,14 +61,14 @@ const formatDuration = (durationStr) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const COL_WIDTHS = {
-  actions:       "6%",
-  imei:          "16%",
-  vehNum:        "14%",
-  date:          "12%",
-  sessions:      "11%",
-  totalDist:     "11%",
+  actions: "6%",
+  imei: "16%",
+  vehNum: "14%",
+  date: "12%",
+  sessions: "11%",
+  totalDist: "11%",
   totalDuration: "13%",
-  status:        "10%",
+  status: "10%",
 };
 
 const tableHeadSx = {
@@ -112,7 +112,6 @@ const SessionDetailModal = ({ open, onClose, record }) => {
   const [activeSession, setActiveSession] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Reset state whenever the modal opens or the record changes
   useEffect(() => {
     if (open) {
       setActiveSession(0);
@@ -151,7 +150,6 @@ const SessionDetailModal = ({ open, onClose, record }) => {
         },
       }}
     >
-      {/* ── Modal Header ── */}
       <DialogTitle
         sx={{
           background: "linear-gradient(135deg, #1A73E8 0%, #0D47A1 100%)",
@@ -173,8 +171,7 @@ const SessionDetailModal = ({ open, onClose, record }) => {
               variant="caption"
               sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.7rem" }}
             >
-              {record.vehNum || record.imei} &nbsp;·&nbsp;{" "}
-              {record.repDate?.split("T")[0] || "—"}
+              {record.vehNum || record.imei} &nbsp;·&nbsp; {record.repDate?.split("T")[0] || "—"}
             </MDTypography>
           </Box>
         </Box>
@@ -185,10 +182,10 @@ const SessionDetailModal = ({ open, onClose, record }) => {
 
       <DialogContent sx={{ p: 0, background: "#f7f9fc" }}>
         <Grid container sx={{ minHeight: 650 }}>
-
-          {/* ── Left Panel: Session Info ── */}
           <Grid
-            item xs={12} md={3.5}
+            item
+            xs={12}
+            md={3.5}
             sx={{
               background: "#fff",
               borderRight: "1px solid #e8eaf6",
@@ -198,7 +195,6 @@ const SessionDetailModal = ({ open, onClose, record }) => {
               gap: 1,
             }}
           >
-            {/* Play/Pause + label */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
               <MDTypography
                 variant="button"
@@ -223,7 +219,6 @@ const SessionDetailModal = ({ open, onClose, record }) => {
               </MDButton>
             </Box>
 
-            {/* Session tabs */}
             <Box display="flex" flexWrap="wrap" gap={0.6} mb={1.5}>
               {record.sessions.map((s, i) => (
                 <Chip
@@ -256,15 +251,14 @@ const SessionDetailModal = ({ open, onClose, record }) => {
               Session {activeSession + 1} Stats
             </MDTypography>
 
-            {/* Stats rows */}
             {[
-              { label: "Start Time",   value: formatTimeDisplay(session.startTime), icon: "schedule"  },
-              { label: "End Time",     value: formatTimeDisplay(session.endTime),   icon: "flag"       },
-              { label: "Duration",     value: formatDuration(session.duration),     icon: "timer"      },
-              { label: "Distance",     value: `${session.distance} km`,             icon: "straighten" },
-              { label: "GPS Distance", value: `${session.gpsDistance} km`,          icon: "gps_fixed"  },
-              { label: "Avg Speed",    value: `${session.avgSpeed} km/h`,           icon: "speed"      },
-              { label: "Status",       value: session.status,                       icon: "info"       },
+              { label: "Start Time", value: formatTimeDisplay(session.startTime), icon: "schedule" },
+              { label: "End Time", value: formatTimeDisplay(session.endTime), icon: "flag" },
+              { label: "Duration", value: formatDuration(session.duration), icon: "timer" },
+              { label: "Distance", value: `${session.distance} km`, icon: "straighten" },
+              { label: "GPS Distance", value: `${session.gpsDistance} km`, icon: "gps_fixed" },
+              { label: "Avg Speed", value: `${session.avgSpeed} km/h`, icon: "speed" },
+              { label: "Status", value: session.status, icon: "info" },
             ].map(({ label, value, icon }) => (
               <Box
                 key={label}
@@ -279,24 +273,29 @@ const SessionDetailModal = ({ open, onClose, record }) => {
                 <Box display="flex" alignItems="center" gap={0.6}>
                   <Icon sx={{ fontSize: 13, color: "#1A73E8" }}>{icon}</Icon>
                   <MDTypography
-                    variant="caption"
-                    color="text"
-                    sx={{ opacity: 0.65, fontSize: "0.68rem" }}
-                  >
-                    {label}
-                  </MDTypography>
+  variant="caption"
+  sx={{
+    color: "#000",
+    fontSize: "0.68rem",
+    opacity: 1, // remove fading
+  }}
+>
+  {label}
+</MDTypography>
                 </Box>
                 <MDTypography
-                  variant="caption"
-                  fontWeight="bold"
-                  sx={{ fontSize: "0.72rem", color: "#344767" }}
-                >
-                  {value}
-                </MDTypography>
+  variant="caption"
+  fontWeight="bold"
+  sx={{
+    fontSize: "0.72rem",
+    color: "#000",
+  }}
+>
+  {value}
+</MDTypography>
               </Box>
             ))}
 
-            {/* Locations */}
             <Box mt={1.5}>
               <MDTypography
                 variant="caption"
@@ -317,6 +316,7 @@ const SessionDetailModal = ({ open, onClose, record }) => {
                 {session.startLocation || "—"}
               </MDTypography>
             </Box>
+
             <Box mt={0.8}>
               <MDTypography
                 variant="caption"
@@ -339,11 +339,7 @@ const SessionDetailModal = ({ open, onClose, record }) => {
             </Box>
           </Grid>
 
-          {/* ── Right Panel: Map Playback ── */}
-          <Grid
-            item xs={12} md={8.5}
-            sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}
-          >
+          <Grid item xs={12} md={8.5} sx={{ p: 2.5, display: "flex", flexDirection: "column", gap: 1.5 }}>
             <Box display="flex" alignItems="center" gap={1}>
               <Icon sx={{ color: "#1A73E8", fontSize: 18 }}>map</Icon>
               <MDTypography
@@ -381,17 +377,23 @@ const SessionDetailModal = ({ open, onClose, record }) => {
 };
 
 SessionDetailModal.propTypes = {
-  open:    PropTypes.bool.isRequired,
+  open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  record:  PropTypes.object,
+  record: PropTypes.object,
 };
 
 // ─── Date Filter Bar ──────────────────────────────────────────────────────────
 const DateFilterBar = ({
-  startDate, endDate, imei,
-  onStartDate, onEndDate, onImei,
-  onFetch, isLoading,
-  imeiList, imeiLoading,
+  startDate,
+  endDate,
+  imei,
+  onStartDate,
+  onEndDate,
+  onImei,
+  onFetch,
+  isLoading,
+  imeiList,
+  imeiLoading,
   onQuickSelect,
 }) => {
   const [selectedQuickDate, setSelectedQuickDate] = useState(null);
@@ -403,14 +405,29 @@ const DateFilterBar = ({
 
   return (
     <Box
-      display="flex"
-      flexDirection="column"
-      gap={2.5}
-      mb={3}
-      sx={{ p: 3, background: "#f8f9ff", borderRadius: 2, border: "1px solid #e8eaf6" }}
+      sx={{
+        p: 2.5,
+        mb: 3,
+        background: "#f7f7fb",
+        borderRadius: 2,
+        border: "1px solid #e3e7ef",
+      }}
     >
-      <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "1fr 1fr",
+            md: "2.4fr 1.8fr 1.8fr 1.2fr",
+          },
+          gap: 2,
+          alignItems: "end",
+          width: "100%",
+        }}
+      >
         <Autocomplete
+          fullWidth
           options={imeiList}
           loading={imeiLoading}
           getOptionLabel={(option) =>
@@ -419,54 +436,89 @@ const DateFilterBar = ({
           value={imeiList.find((item) => item.imei === imei) || null}
           onChange={(_, newValue) => onImei(newValue ? newValue.imei : "")}
           renderInput={(params) => (
-            <TextField {...params} label="Select Vehicle" size="medium" sx={{ minWidth: 300 }} />
+            <TextField
+              {...params}
+              label="Select Vehicle"
+              placeholder="Search Vehicle / IMEI"
+              size="small"
+              fullWidth
+            />
           )}
         />
+
         <TextField
-          label="Start Date" type="date" size="medium" value={startDate}
+          fullWidth
+          label="Start Date"
+          type="date"
+          size="small"
+          value={startDate}
           onChange={(e) => onStartDate(e.target.value)}
           InputLabelProps={{ shrink: true }}
         />
+
         <TextField
-          label="End Date" type="date" size="medium" value={endDate}
+          fullWidth
+          label="End Date"
+          type="date"
+          size="small"
+          value={endDate}
           onChange={(e) => onEndDate(e.target.value)}
           InputLabelProps={{ shrink: true }}
         />
+
         <MDButton
-          variant="gradient" color="info" size="medium"
+          variant="gradient"
+          color="info"
           onClick={onFetch}
           disabled={isLoading || !imei || !startDate || !endDate}
+          sx={{
+            height: "40px",
+            width: "100%",
+            minWidth: 0,
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+          }}
         >
-          {isLoading ? "Fetching…" : "Get Report"}
+          {isLoading ? "FETCHING..." : "GET REPORT"}
         </MDButton>
       </Box>
 
-      <Box display="flex" gap={1.5}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 1.5,
+          mt: 2,
+          flexWrap: "wrap",
+          width: "100%",
+        }}
+      >
         {[
-          { label: "Today",       value: "today"     },
-          { label: "Yesterday",   value: "yesterday" },
-          { label: "Last 7 Days", value: "last7"     },
+          { label: "TODAY", value: "today" },
+          { label: "YESTERDAY", value: "yesterday" },
+          { label: "LAST 7 DAYS", value: "last7" },
         ].map((btn) => (
           <Chip
             key={btn.value}
             label={btn.label}
-            size="medium"
+            clickable
             onClick={() => handleQuickDateClick(btn.value)}
+            variant="outlined"
             sx={{
-              fontSize: "0.85rem",
-              height: "36px",
-              cursor: "pointer",
-              padding: "0 12px",
-              backgroundColor: selectedQuickDate === btn.value ? "#1A73E8" : "transparent",
+              height: "30px",
+              px: 1,
+              borderRadius: "8px",
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              border: "1px solid #1A73E8",
+              backgroundColor: selectedQuickDate === btn.value ? "#1A73E8" : "#fff",
               color: selectedQuickDate === btn.value ? "#fff" : "#1A73E8",
-              borderColor: "#1A73E8",
-              fontWeight: selectedQuickDate === btn.value ? 700 : 500,
               "&:hover": {
-                backgroundColor: selectedQuickDate === btn.value ? "#0D47A1" : "#e3f2fd",
+                backgroundColor: selectedQuickDate === btn.value ? "#1565c0" : "#eef5ff",
               },
             }}
-            variant="outlined"
-            color="info"
           />
         ))}
       </Box>
@@ -475,16 +527,16 @@ const DateFilterBar = ({
 };
 
 DateFilterBar.propTypes = {
-  startDate:     PropTypes.string.isRequired,
-  endDate:       PropTypes.string.isRequired,
-  imei:          PropTypes.string.isRequired,
-  onStartDate:   PropTypes.func.isRequired,
-  onEndDate:     PropTypes.func.isRequired,
-  onImei:        PropTypes.func.isRequired,
-  onFetch:       PropTypes.func.isRequired,
-  isLoading:     PropTypes.bool.isRequired,
-  imeiList:      PropTypes.array.isRequired,
-  imeiLoading:   PropTypes.bool.isRequired,
+  startDate: PropTypes.string.isRequired,
+  endDate: PropTypes.string.isRequired,
+  imei: PropTypes.string.isRequired,
+  onStartDate: PropTypes.func.isRequired,
+  onEndDate: PropTypes.func.isRequired,
+  onImei: PropTypes.func.isRequired,
+  onFetch: PropTypes.func.isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  imeiList: PropTypes.array.isRequired,
+  imeiLoading: PropTypes.bool.isRequired,
   onQuickSelect: PropTypes.func.isRequired,
 };
 
@@ -510,28 +562,28 @@ const getQuickDateRange = (type) => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 function HourlyReport({ accountId }) {
-  const today     = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  const [imei,           setImei]           = useState("");
-  const [startDate,      setStartDate]      = useState(yesterday);
-  const [endDate,        setEndDate]        = useState(today);
-  const [records,        setRecords]        = useState([]);
-  const [isLoading,      setIsLoading]      = useState(false);
-  const [error,          setError]          = useState(null);
-  const [searchTerm,     setSearchTerm]     = useState("");
-  const [page,           setPage]           = useState(0);
-  const [rowsPerPage,    setRowsPerPage]    = useState(10);
-  const [imeiList,       setImeiList]       = useState([]);
-  const [imeiLoading,    setImeiLoading]    = useState(false);
-  const [modalOpen,      setModalOpen]      = useState(false);
+  const [imei, setImei] = useState("");
+  const [startDate, setStartDate] = useState(yesterday);
+  const [endDate, setEndDate] = useState(today);
+  const [records, setRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [imeiList, setImeiList] = useState([]);
+  const [imeiLoading, setImeiLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   useEffect(() => {
     const fetchImeis = async () => {
       setImeiLoading(true);
       try {
-        const res      = await ApiService.getImeiDropdown(accountId);
+        const res = await ApiService.getImeiDropdown(accountId);
         const vehicles = res?.data?.response?.vehicles || [];
         setImeiList(vehicles);
         if (vehicles.length > 0 && !imei) setImei(vehicles[0].imei);
@@ -542,7 +594,7 @@ function HourlyReport({ accountId }) {
       }
     };
     fetchImeis();
-  }, [accountId]);
+  }, [accountId, imei]);
 
   const handleQuickSelect = (type) => {
     const { start, end } = getQuickDateRange(type);
@@ -562,14 +614,16 @@ function HourlyReport({ accountId }) {
     setError(null);
     setModalOpen(false);
     setSelectedRecord(null);
+
     try {
       const payload = {
         imei,
         startDate: formatDateForApi(startDate),
-        endDate:   formatDateForApi(endDate),
+        endDate: formatDateForApi(endDate),
       };
-      const res  = await ApiService.getWorkingHourReport(payload);
+      const res = await ApiService.getWorkingHourReport(payload);
       const data = res?.data?.data || [];
+
       if (!data.length) {
         setError("No data found for the selected filters.");
         setRecords([]);
@@ -584,7 +638,9 @@ function HourlyReport({ accountId }) {
     }
   };
 
-  useEffect(() => { fetchReport(); }, []);
+  useEffect(() => {
+    fetchReport();
+  }, []);
 
   const filteredRecords = useMemo(() => {
     if (!searchTerm) return records;
@@ -612,16 +668,24 @@ function HourlyReport({ accountId }) {
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card>
-            {/* Card header */}
             <MDBox
-              mx={2} mt={-3} py={3} px={2}
-              variant="gradient" bgColor="info"
-              borderRadius="lg" coloredShadow="info"
-              display="flex" justifyContent="space-between" alignItems="center"
+              mx={2}
+              mt={-3}
+              py={3}
+              px={2}
+              variant="gradient"
+              bgColor="info"
+              borderRadius="lg"
+              coloredShadow="info"
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
             >
               <MDBox display="flex" alignItems="center" gap={1}>
                 <Icon sx={{ color: "#fff", fontSize: 22 }}>directions_car</Icon>
-                <MDTypography variant="h6" color="white">Working Hour Report</MDTypography>
+                <MDTypography variant="h6" color="white">
+                  Working Hour Report
+                </MDTypography>
               </MDBox>
               <MDTypography variant="caption" color="white" sx={{ opacity: 0.8 }}>
                 {records.length} record{records.length !== 1 ? "s" : ""} loaded
@@ -630,12 +694,16 @@ function HourlyReport({ accountId }) {
 
             <MDBox p={3}>
               <DateFilterBar
-                imei={imei}           onImei={setImei}
-                startDate={startDate} onStartDate={setStartDate}
-                endDate={endDate}     onEndDate={setEndDate}
+                imei={imei}
+                onImei={setImei}
+                startDate={startDate}
+                onStartDate={setStartDate}
+                endDate={endDate}
+                onEndDate={setEndDate}
                 onFetch={fetchReport}
                 isLoading={isLoading}
-                imeiList={imeiList}   imeiLoading={imeiLoading}
+                imeiList={imeiList}
+                imeiLoading={imeiLoading}
                 onQuickSelect={handleQuickSelect}
               />
 
@@ -650,7 +718,9 @@ function HourlyReport({ accountId }) {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start"><Icon>search</Icon></InputAdornment>
+                      <InputAdornment position="start">
+                        <Icon>search</Icon>
+                      </InputAdornment>
                     ),
                   }}
                   sx={{ minWidth: 260 }}
@@ -660,20 +730,25 @@ function HourlyReport({ accountId }) {
               {error && (
                 <Box
                   sx={{
-                    p: 2, mb: 2,
+                    p: 2,
+                    mb: 2,
                     background: "#fff3e0",
                     borderRadius: 2,
                     border: "1px solid #ffe0b2",
                   }}
                 >
-                  <MDTypography variant="caption" color="warning">{error}</MDTypography>
+                  <MDTypography variant="caption" color="warning">
+                    {error}
+                  </MDTypography>
                 </Box>
               )}
 
               {isLoading && (
                 <Box display="flex" justifyContent="center" alignItems="center" py={4}>
                   <CircularProgress size={32} />
-                  <MDTypography variant="button" sx={{ ml: 2 }}>Fetching report…</MDTypography>
+                  <MDTypography variant="button" sx={{ ml: 2 }}>
+                    Fetching report…
+                  </MDTypography>
                 </Box>
               )}
 
@@ -683,14 +758,14 @@ function HourlyReport({ accountId }) {
                 >
                   <Table sx={tableSx}>
                     <colgroup>
-                      <col style={{ width: COL_WIDTHS.actions       }} />
-                      <col style={{ width: COL_WIDTHS.imei          }} />
-                      <col style={{ width: COL_WIDTHS.vehNum        }} />
-                      <col style={{ width: COL_WIDTHS.date          }} />
-                      <col style={{ width: COL_WIDTHS.sessions      }} />
-                      <col style={{ width: COL_WIDTHS.totalDist     }} />
+                      <col style={{ width: COL_WIDTHS.actions }} />
+                      <col style={{ width: COL_WIDTHS.imei }} />
+                      <col style={{ width: COL_WIDTHS.vehNum }} />
+                      <col style={{ width: COL_WIDTHS.date }} />
+                      <col style={{ width: COL_WIDTHS.sessions }} />
+                      <col style={{ width: COL_WIDTHS.totalDist }} />
                       <col style={{ width: COL_WIDTHS.totalDuration }} />
-                      <col style={{ width: COL_WIDTHS.status        }} />
+                      <col style={{ width: COL_WIDTHS.status }} />
                     </colgroup>
 
                     <TableHead sx={tableHeadSx}>
@@ -718,13 +793,9 @@ function HourlyReport({ accountId }) {
                             "&:hover": { backgroundColor: "#f5f8ff" },
                           }}
                         >
-                          {/* Icon — stopPropagation so clicking the button alone still works */}
                           <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                             <Tooltip title="View Sessions & Map">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRowClick(record)}
-                              >
+                              <IconButton size="small" onClick={() => handleRowClick(record)}>
                                 <Icon sx={{ fontSize: 18 }}>open_in_new</Icon>
                               </IconButton>
                             </Tooltip>
@@ -816,7 +887,6 @@ function HourlyReport({ accountId }) {
         </Grid>
       </Grid>
 
-      {/* ── Session Detail Modal (rendered outside the Card) ── */}
       <SessionDetailModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
