@@ -532,6 +532,24 @@ class ApiService {
     // data should contain { imei, startDate, endDate }
     return this.postRequest("/reports/workinghourreport", data, true, SERVICES.report);
   }
+  getAccountSummaryReport(startDate, endDate, accid = null) {
+    let targetId = accid;
+    if (!targetId) {
+      try {
+        const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+        targetId = user?.accountId || user?.accid || 1;
+      } catch {
+        targetId = 1;
+      }
+    }
+
+    return this.postRequest(
+      `/reports/account-summary-report?accid=${targetId}`,
+      { startDate, endDate },
+      true,
+      SERVICES.dashboard // process.env.REACT_APP_BASE_URL + "/usage"  (:8075)
+    );
+  }
 }
 export { SERVICES };
 export default new ApiService();
