@@ -3,6 +3,7 @@
 * Material Dashboard 2 React - v2.2.0
 =========================================================
 */
+import Analytics from '../src/pages/AnalyticalDashboard/AnalyticalDashboard'
 import Geozone from "pages/Geozone/Geozone";
 import MDBox from "assets/components/MDBox";
 import LiveTrack from "pages/LiveTrack/LiveTrack";
@@ -36,23 +37,15 @@ const routes = [
     component: <Dashboard />,
   },
 
-  // {
-  //   type: "collapse",
-  //   name: "Dashboard 2",
-  //   key: "dashboard2",
-  //   icon: <Icon fontSize="small">analytics</Icon>,
-  //   route: "/dashboard2",
-  //   component: <Dashboard2 />,
-  // },
-
-  // {
-  //   type: "collapse",
-  //   name: "Device Config",
-  //   key: "device-configuration",
-  //   icon: <Icon fontSize="small">settings_cell</Icon>,
-  //   route: "/device-configuration",
-  //   component: <DeviceConfiguration />,
-  // },
+  // ✅ NEW: Analytical Dashboard route
+  {
+    type: "collapse",
+    name: "Analytics",
+    key: "analytics",
+    icon: <Icon fontSize="small">bar_chart</Icon>,
+    route: "/analytics",
+    component: <Analytics />,
+  },
 
   {
     type: "collapse",
@@ -62,15 +55,6 @@ const routes = [
     route: "/live-track",
     component: <LiveTrack />,
   },
-
-  // {
-  //   type: "collapse",
-  //   name: "Exam",
-  //   key: "trip-dashboard2",
-  //   icon: <Icon fontSize="small">gps_fixed</Icon>,
-  //   route: "/trip-dashboard2",
-  //   component: <TripDashboard2 />,
-  // },
 
   {
     type: "collapse",
@@ -102,11 +86,12 @@ const routes = [
     route: "/map-view",
     component: <MapView />,
   },
+
   {
     type: "collapse",
     name: "Geozone",
     key: "geozone",
-    icon: <Icon fontSize="small">public</Icon>, // or any other icon
+    icon: <Icon fontSize="small">public</Icon>,
     route: "/geozone",
     component: <Geozone />,
   },
@@ -183,7 +168,7 @@ const routes = [
   },
 
   // ----------------------------------------------------------------------
-  // AUTH PAGES IN SIDEBAR (same behavior as old navbar)
+  // AUTH PAGES
   // ----------------------------------------------------------------------
   {
     type: "collapse",
@@ -199,7 +184,6 @@ const routes = [
     name: "Sign Out",
     key: "sign-out",
     icon: <Icon fontSize="small">logout</Icon>,
-    // IMPORTANT: same as your old navbar: Sign Out goes to sign-up route
     route: "/authentication/sign-up",
     component: <SignUp />,
   },
