@@ -3,14 +3,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers";
 
 // MUI
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
-import Button from "@mui/material/Button";
 import Icon from "@mui/material/Icon";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
@@ -308,7 +307,7 @@ DeviceTable.propTypes = {
 };
 
 /**
- * Calculates the bearing between two points in degrees
+ * Calculates the bearing between two points in degrees (0 = North, 90 = East, etc.)
  */
 const calculateBearing = (start, end) => {
   if (!start || !end) return 0;
@@ -407,6 +406,14 @@ export default function LiveTrack() {
   // Search state for devices
   const [deviceSearch, setDeviceSearch] = useState("");
 
+  // --- Smooth animation state & refs ---
+  // animatedPos holds the interpolated [lat, lng] rendered on the map each frame
+  const [animatedPos, setAnimatedPos] = useState(null);
+  // animFrameRef holds the rAF id so we can cancel it on unmount / device change
+  const animFrameRef = useRef(null);
+  // animFromRef holds the position we are animating FROM (previous GPS fix)
+  const animFromRef = useRef(null);
+
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
@@ -415,6 +422,55 @@ export default function LiveTrack() {
   const imeiFromState = location.state?.targetImei;
   const targetImei = imeiFromState || imeiFromQuery;
   const targetAccountId = location.state?.targetAccountId;
+
+  /* ------------------------------------------------------------------
+   * animateToPosition
+   * Smoothly moves the marker from `fromPos` to `toPos` over `duration`
+   * milliseconds using requestAnimationFrame + ease-in-out interpolation.
+   * ------------------------------------------------------------------ */
+  const animateToPosition = (fromPos, toPos, duration = 28000) => {
+    // Cancel any in-progress animation
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    // Guard: need valid coordinates
+    if (
+      !fromPos ||
+      !toPos ||
+      fromPos.length < 2 ||
+      toPos.length < 2 ||
+      (fromPos[0] === toPos[0] && fromPos[1] === toPos[1])
+    ) {
+      // No real movement — just snap to destination
+      setAnimatedPos(toPos);
+      return;
+    }
+
+    const startTime = performance.now();
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const rawT = Math.min(elapsed / duration, 1);
+
+      // Ease-in-out cubic: slow start, fast middle, slow end
+      const t = rawT < 0.5 ? 2 * rawT * rawT : -1 + (4 - 2 * rawT) * rawT;
+
+      const lat = fromPos[0] + (toPos[0] - fromPos[0]) * t;
+      const lng = fromPos[1] + (toPos[1] - fromPos[1]) * t;
+
+      setAnimatedPos([lat, lng]);
+
+      if (rawT < 1) {
+        animFrameRef.current = requestAnimationFrame(step);
+      } else {
+        animFrameRef.current = null;
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(step);
+  };
 
   useEffect(() => {
     ApiService.getAllDevices()
@@ -450,35 +506,6 @@ export default function LiveTrack() {
       .catch(console.error);
   }, [targetImei, targetAccountId]);
 
-  // Load all devices and select correct initial one
-  // useEffect(() => {
-  //   ApiService.getAllDevices()
-  //     .then((devices) => {
-  //       setAllDevices(devices || []);
-
-  //       let initialSelectedDevice = null;
-
-  //       if (targetImei) {
-  //         initialSelectedDevice =
-  //           devices.find((d) => d.id === targetImei) || devices.find((d) => d.imei === targetImei);
-  //       }
-
-  //       if (initialSelectedDevice && targetAccountId) {
-  //         initialSelectedDevice = {
-  //           ...initialSelectedDevice,
-  //           accountId: targetAccountId,
-  //         };
-  //       }
-
-  //       if (!initialSelectedDevice && devices.length > 0) {
-  //         initialSelectedDevice = devices[0];
-  //       }
-
-  //       setSelectedDevice(initialSelectedDevice);
-  //     })
-  //     .catch(console.error);
-  // }, [targetImei, targetAccountId]);
-
   // Live updates for selected device
   useEffect(() => {
     if (!selectedDevice?.accountId || !selectedDevice?.id) {
@@ -510,8 +537,18 @@ export default function LiveTrack() {
 
           const newLocation = [rawData.lat, rawData.lng];
 
-          setAllDevices((prevDevices) =>
-            prevDevices.map((d) => {
+          setAllDevices((prevDevices) => {
+            // Capture the previous last-known position BEFORE updating state
+            const prevDevice = prevDevices.find((d) => d.id === imei);
+            const prevLocation = prevDevice?.route?.length
+              ? prevDevice.route[prevDevice.route.length - 1]
+              : newLocation;
+
+            // Kick off smooth animation from previous position → new GPS fix
+            // Use 28 s so the animation finishes just before the next 30 s poll
+            animateToPosition(prevLocation, newLocation, 28000);
+
+            return prevDevices.map((d) => {
               if (d.id === imei) {
                 const accumulatedRoute = [...(d.route || []), newLocation].slice(-100);
                 const updatedDevice = {
@@ -524,7 +561,6 @@ export default function LiveTrack() {
                   distance: rawData.distance ?? 0,
                   address: addressString,
                   lastUpdate: formatDevTimestamp(rawData.devTs),
-                  address: rawData.address ?? "Address not available",
                   location: `${rawData.lat},${rawData.lng}`,
                   route: accumulatedRoute,
                 };
@@ -532,8 +568,8 @@ export default function LiveTrack() {
                 return updatedDevice;
               }
               return d;
-            })
-          );
+            });
+          });
         }
       } catch (error) {
         console.error(`Failed to fetch live update for ${imei}:`, error);
@@ -607,6 +643,7 @@ export default function LiveTrack() {
     };
   }, [liveMetrics, selectedDevice]);
 
+  // Bearing derived from the two most recent route points
   const currentBearing = useMemo(() => {
     const route = selectedTrip?.route;
     if (route && route.length >= 2) {
@@ -617,11 +654,26 @@ export default function LiveTrack() {
     return 0;
   }, [selectedTrip?.route]);
 
+  // The truck icon image faces East (right) by default.
+  // CSS rotation 0° = North in our convention, so we subtract 90° to compensate.
+  const truckRotation = currentBearing - 90;
+
+  // Map center follows the real (non-animated) last GPS fix so FlyToMarker
+  // pans to the destination immediately while the truck drives there.
   const mapCenter = useMemo(() => {
     const r = selectedTrip?.route;
     if (r?.length) return r[r.length - 1];
     return [18.5204, 73.8567];
   }, [selectedTrip]);
+
+  // The position actually rendered for the live truck marker:
+  // - While animation is running → animatedPos (smooth interpolated position)
+  // - Before first fix / after device switch → fall back to last route point
+  const renderedMarkerPos = useMemo(() => {
+    if (animatedPos) return animatedPos;
+    const r = selectedTrip?.route;
+    return r?.length ? r[r.length - 1] : null;
+  }, [animatedPos, selectedTrip?.route]);
 
   const startPlayback = (speedMultiplier = 1) => {
     if (!selectedTrip?.route?.length) return;
@@ -666,11 +718,27 @@ export default function LiveTrack() {
     }
   }, [filterStatus, filteredDevices]);
 
+  // Reset animation and playback when the selected device changes
   useEffect(() => {
+    // Cancel any running smooth-move animation
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    setAnimatedPos(null);
+    animFromRef.current = null;
+
     pausePlayback();
     setCurrentStep(0);
     setMarkerPos(selectedTrip?.route?.[0] ?? null);
   }, [selectedDevice]);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
 
   return (
     <DashboardLayout>
@@ -737,39 +805,42 @@ export default function LiveTrack() {
             <MapFixer />
             <LayerSwitcher />
 
-            {selectedDevice && selectedTrip?.route?.length > 0 && (
+            {/* Live truck marker — uses animatedPos for smooth movement */}
+            {selectedDevice && renderedMarkerPos && (
               <Marker
-                position={selectedTrip.route[selectedTrip.route.length - 1]}
+                position={renderedMarkerPos}
                 icon={L.divIcon({
                   className: "rotating-truck-container",
                   html: getRotatingTruckHtml(
-                    selectedTrip.status,
-                    currentBearing - 90,
-                    true // Highlighted
+                    selectedTrip?.status,
+                    truckRotation, // bearing − 90° so icon aligns with direction of travel
+                    true // highlighted
                   ),
                   iconSize: [40, 40],
-                  iconAnchor: [20, 20], // Center anchor for rotation
+                  iconAnchor: [20, 20], // centre anchor for clean rotation
                 })}
               >
                 <Popup>
                   <Box sx={{ minWidth: 180 }}>
                     <Typography variant="subtitle2" fontWeight="bold">
-                      {selectedTrip.vehicle}
+                      {selectedTrip?.vehicle}
                     </Typography>
                     <Typography variant="body2">
-                      Status: <strong>{selectedTrip.status}</strong>
+                      Status: <strong>{selectedTrip?.status}</strong>
                     </Typography>
                     <Typography variant="body2">
-                      Speed: <strong>{selectedTrip.speed} km/h</strong>
+                      Speed: <strong>{selectedTrip?.speed} km/h</strong>
                     </Typography>
                   </Box>
                 </Popup>
               </Marker>
             )}
 
+            {/* FlyToMarker uses real GPS destination, not animated position */}
             {selectedTrip?.route?.length > 0 && (
               <FlyToMarker position={selectedTrip.route[selectedTrip.route.length - 1]} />
             )}
+
             {selectedTrip?.route?.length > 0 && (
               <Polyline positions={selectedTrip.route} color="blue" weight={5} opacity={0.7} />
             )}
