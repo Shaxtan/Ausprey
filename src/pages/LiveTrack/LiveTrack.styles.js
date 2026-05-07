@@ -246,7 +246,7 @@ export const getRotatingTruckHtml = (status, bearing = 0, isHighlighted = false)
       width: 40px;
       height: 40px;
       transform: rotate(${bearing}deg);
-      transition: transform 0.8s ease-out;
+      transition: transform 0.15s linear;   /* ← shorter, snappier */
       display: flex;
       justify-content: center;
       align-items: center;

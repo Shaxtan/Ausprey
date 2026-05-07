@@ -405,6 +405,8 @@ export default function LiveTrack() {
 
   // Search state for devices
   const [deviceSearch, setDeviceSearch] = useState("");
+  const prevAnimatedPosRef = useRef(null);
+  const [animatedBearing, setAnimatedBearing] = useState(0);
 
   // --- Smooth animation state & refs ---
   // animatedPos holds the interpolated [lat, lng] rendered on the map each frame
@@ -453,14 +455,20 @@ export default function LiveTrack() {
     const step = (now) => {
       const elapsed = now - startTime;
       const rawT = Math.min(elapsed / duration, 1);
-
-      // Ease-in-out cubic: slow start, fast middle, slow end
       const t = rawT < 0.5 ? 2 * rawT * rawT : -1 + (4 - 2 * rawT) * rawT;
 
       const lat = fromPos[0] + (toPos[0] - fromPos[0]) * t;
       const lng = fromPos[1] + (toPos[1] - fromPos[1]) * t;
+      const newPos = [lat, lng];
 
-      setAnimatedPos([lat, lng]);
+      // Calculate bearing from previous animated position → current animated position
+      if (prevAnimatedPosRef.current) {
+        const b = calculateBearing(prevAnimatedPosRef.current, newPos);
+        setAnimatedBearing(b);
+      }
+      prevAnimatedPosRef.current = newPos;
+
+      setAnimatedPos(newPos);
 
       if (rawT < 1) {
         animFrameRef.current = requestAnimationFrame(step);
@@ -656,7 +664,7 @@ export default function LiveTrack() {
 
   // The truck icon image faces East (right) by default.
   // CSS rotation 0° = North in our convention, so we subtract 90° to compensate.
-  const truckRotation = currentBearing - 90;
+  const truckRotation = (animatedPos ? animatedBearing : currentBearing) - 125;
 
   // Map center follows the real (non-animated) last GPS fix so FlyToMarker
   // pans to the destination immediately while the truck drives there.
@@ -727,6 +735,8 @@ export default function LiveTrack() {
     }
     setAnimatedPos(null);
     animFromRef.current = null;
+    prevAnimatedPosRef.current = null;
+    setAnimatedBearing(0);
 
     pausePlayback();
     setCurrentStep(0);

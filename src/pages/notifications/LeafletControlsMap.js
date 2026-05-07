@@ -1,34 +1,26 @@
 import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"; // Don't forget the CSS!
+import "react-datepicker/dist/react-datepicker.css";
 import { getRotatingTruckHtml } from "../../../src/pages/LiveTrack/LiveTrack.styles";
 
-import TextField from "@mui/material/TextField"; // The replacement input
+import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-polylinedecorator";
-// <<<<<<< HEAD
-// import ApiService from "../../services/ApiService"; // ⭐ The API Service
-import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers"; // Assuming path is correct
-// import DatePicker from "react-datepicker";
-// =======
 import "leaflet-rotatedmarker";
-import "leaflet-geometryutil"; // npm install leaflet-geometryutil
+import "leaflet-geometryutil";
 import simplify from "simplify-js";
 
 import ApiService from "../../services/ApiService";
-// import { createTileLayers } from "../LoadCellReport/createTileLayers";
-// import DatePicker from "react-datepicker";
-// >>>>>>> 191ac6946e434fd06cac94e17eadc667aa63035e
+import { createTileLayers } from "../../pages/LoadCellReport/createTileLayers";
 import "react-datepicker/dist/react-datepicker.css";
 import { format, formatISO } from "date-fns";
 
 import { exportCSV, exportExcel, exportPDF } from "./../utils/downloadUtils";
 import { AlertSuccess, callAlert, callAlertConfirm } from "../../services/CommonService";
 
-/* MUI components (used inside the panel) */
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
@@ -36,20 +28,25 @@ import MDInput from "../../assets/components/MDInput";
 import Icon from "@mui/material/Icon";
 import Autocomplete from "@mui/material/Autocomplete";
 
-/* -------------------------------------------------
-   ICON FIX – default Leaflet marker
-------------------------------------------------- */
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 if (L.Icon.Default.prototype._getIconUrl) {
   delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl,
-    iconUrl,
-    shadowUrl,
-  });
+  L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 }
+
+/* -------------------------------------------------
+   SMOOTH ANIMATION HELPERS
+------------------------------------------------- */
+const lerp = (a, b, t) => a + (b - a) * t;
+
+const lerpAngle = (a, b, t) => {
+  const diff = ((b - a + 540) % 360) - 180;
+  return a + diff * t;
+};
+
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 
 /* -------------------------------------------------
    HELPER FUNCTIONS
@@ -58,27 +55,26 @@ const formatTimestamp = (input) => {
   const d = new Date(input);
   if (isNaN(d)) return input;
   const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
 /* -------------------------------------------------
    COMPONENT
 ------------------------------------------------- */
 const LeafletControlsMap = () => {
-  // Get current user ID
   const userDetails = JSON.parse(localStorage.getItem("userDetails") || "{}");
   const currentAccId = userDetails?.accid || 1;
+
   /* ---------- refs ---------- */
   const mapRef = useRef(null);
   const vehicleLayerRef = useRef(null);
   const zoomDivRef = useRef(null);
   const animatedMarkerRef = useRef(null);
-  const animationTimeoutRef = useRef(null);
+  // RAF-based animation refs (replaces animationTimeoutRef)
+  const rafRef = useRef(null);
+  const playbackRef = useRef({ idx: 0 });
   const panelRef = useRef(null);
-  const originalPathRef = useRef({ line: null, decorator: null, points: [] }); // NEW: Store full path
-  // NEW REF: To store the time offset when paused.
+  const originalPathRef = useRef({ line: null, decorator: null, points: [] });
   const pauseTimeRef = useRef(0);
 
   /* ---------- state ---------- */
@@ -97,49 +93,40 @@ const LeafletControlsMap = () => {
   const [showVehicleHistory, setShowVehicleHistory] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState("");
   const [speed, setSpeed] = useState(1);
-  const [fromMilliseconds, setFromMilliseconds] = useState("000");
-  const [toMilliseconds, setToMilliseconds] = useState("000");
-  // NEW STATE: Tracks if the animation is paused.
   const [isPaused, setIsPaused] = useState(false);
   const [selectedQuickRange, setSelectedQuickRange] = useState(null);
   const [currentPlaybackInfo, setCurrentPlaybackInfo] = useState(null);
   const SIDEBAR_WIDTH = "300px";
 
-  /* ---------- fetch vehicle list (IMEI) ---------- */
-  /* ---------- fetch vehicle list (IMEI) ---------- */
+  /* ---------- fetch vehicle list ---------- */
   useEffect(() => {
     const fetchVehicles = async () => {
       setIsLoading(true);
       try {
         const res = await ApiService.getImeiDropdown();
         const vehicles = res?.data?.response?.vehicles || [];
-
         const options = vehicles.map((v) => ({
           value: v.imei,
           label: `${v.imei} (${v.vehnum})`,
         }));
-
         const sorted = options.sort((a, b) => a.label.localeCompare(b.label));
         setVehicleList(sorted);
       } catch (err) {
         console.error("Failed to load IMEI dropdown:", err);
         callAlert("Failed to load vehicle list.");
-
         const fallback = { value: "868373076396961", label: "868373076396961" };
         setVehicleList([fallback]);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchVehicles();
   }, []);
 
-  /* ---------- filtered data (date + status) ---------- */
+  /* ---------- filtered data ---------- */
   const filteredData = useMemo(() => {
     const from = fromDate ? new Date(fromDate) : null;
     const to = toDate ? new Date(toDate) : null;
-
     return vehicleData.filter((r) => {
       const ts = new Date(r.ts).getTime();
       const dateOk = (!from || ts >= from.getTime()) && (!to || ts <= to.getTime());
@@ -147,16 +134,18 @@ const LeafletControlsMap = () => {
       return dateOk && statusOk;
     });
   }, [vehicleData, fromDate, toDate, statusFilter]);
-  /* ---------- FULL STOP (used on form submit) ---------- */
+
+  /* ---------- FULL STOP ---------- */
   const fullStopAnimation = useCallback(() => {
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current); // ← clearTimeout instead of cancelAnimationFrame
-      animationTimeoutRef.current = null;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
     if (animatedMarkerRef.current) {
       animatedMarkerRef.current.remove();
       animatedMarkerRef.current = null;
     }
+    playbackRef.current = { idx: 0 };
     pauseTimeRef.current = 0;
     setIsPaused(false);
     setHighlightedIndex(null);
@@ -170,16 +159,7 @@ const LeafletControlsMap = () => {
     }
   }, [highlightedIndex, vehicleData]);
 
-  // const filteredData = useMemo(() => {
-  //   return vehicleData.filter((r) => {
-  //     const ts = new Date(r.ts).getTime();
-  //     const dateOk = (!fromDate || ts >= fromDate.getTime()) && (!toDate || ts <= toDate.getTime());
-  //     const statusOk = statusFilter.includes(r.status);
-  //     return dateOk && statusOk;
-  //   });
-  // }, [vehicleData, fromDate, toDate, statusFilter]);
-
-  /* ---------- submit – call getTrackPlayHistory ---------- */
+  /* ---------- submit ---------- */
   const handleTrackSubmit = async () => {
     if (!selectedVehicle?.value) return callAlert("Please select a vehicle.");
     if (!fromDate || !toDate) return callAlert("Please select both From and To dates.");
@@ -191,7 +171,6 @@ const LeafletControlsMap = () => {
     setHighlightedIndex(null);
     setShowOnlyPath(false);
     setStatusFilter(["MOTION", "STOP", "IDLE"]);
-    // Stop and clean up any ongoing animation
     fullStopAnimation();
     if (vehicleLayerRef.current) vehicleLayerRef.current.clearLayers();
 
@@ -203,7 +182,7 @@ const LeafletControlsMap = () => {
 
     try {
       const payload = {
-        imei: selectedVehicle.value, // ← Use .value
+        imei: selectedVehicle.value,
         startTime: formatISO(fromDate),
         endTime: formatISO(toDate),
       };
@@ -218,7 +197,6 @@ const LeafletControlsMap = () => {
       const sorted = report.sort((a, b) => new Date(a.ts) - new Date(b.ts));
       setVehicleData(sorted);
       setShowHistory(true);
-      // AlertSuccess(`Loaded ${sorted.length} points.`);
     } catch (err) {
       console.error(err);
       callAlert("Failed to load track data.");
@@ -227,12 +205,7 @@ const LeafletControlsMap = () => {
     }
   };
 
-  /* ---------- animation (track play) – uses full original path ---------- */
-  // Inside the component:
-
-  // Renamed simulateMovement to startAnimation for clarity
-  /* ---------- animation (track play) – moves only on actual lat/lng changes ---------- */
-  /* ---------- Updated animation with slow movement and auto-tracking ---------- */
+  /* ---------- SMOOTH animation (RAF-based, segment interpolation) ---------- */
   const startAnimation = useCallback(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
@@ -241,7 +214,8 @@ const LeafletControlsMap = () => {
       return callAlert("Track data not ready.", "warning");
     }
 
-    if (animationTimeoutRef.current && !isPaused) return;
+    // Don't restart if already running (not paused)
+    if (rafRef.current && !isPaused) return;
 
     setIsPaused(false);
     layer.clearLayers();
@@ -249,17 +223,21 @@ const LeafletControlsMap = () => {
     // Re-add static path elements
     originalPathRef.current.line.addTo(layer);
     originalPathRef.current.decorator?.addTo(layer);
+    originalPathRef.current.startMarker?.addTo(layer);
+    originalPathRef.current.endMarker?.addTo(layer);
 
     const points = vehicleData;
     const totalPoints = points.length;
+
+    // Resume from paused index, or restart from 0
     const startIndex =
       isPaused && pauseTimeRef.current > 0
-        ? Math.min(Math.floor(pauseTimeRef.current), totalPoints - 1)
+        ? Math.min(Math.floor(pauseTimeRef.current), totalPoints - 2)
         : 0;
+    playbackRef.current.idx = startIndex;
 
-    let currentIndex = startIndex;
+    // Create or reuse animated marker
     let marker = animatedMarkerRef.current;
-
     if (!marker) {
       const firstPoint = points[startIndex];
       marker = L.marker([+firstPoint.lat, +firstPoint.lng], {
@@ -275,86 +253,108 @@ const LeafletControlsMap = () => {
       marker.addTo(layer);
     }
 
-    /* 1. SLOWER SPEED: 
-     Increase the numerator (e.g., from 30000 to 60000 or 100000).
-     Higher number = slower movement.
-  */
-    const baseInterval = 80000 / speed / totalPoints;
+    // ms to animate between two consecutive GPS points — lower = faster
+    const SEGMENT_DURATION = Math.max(50, 600 / speed);
 
-    const stepToNext = () => {
-      if (currentIndex >= totalPoints) {
-        callAlert("Track play finished.", "info");
-        fullStopAnimation();
-        return;
-      }
+    const animateSegment = (fromPt, toPt, fromBearing, toBearing) => {
+      const startTime = performance.now();
+      const fromLat = +fromPt.lat,
+        fromLng = +fromPt.lng;
+      const toLat = +toPt.lat,
+        toLng = +toPt.lng;
 
-      const point = points[currentIndex];
-      const lat = +point.lat;
-      const lng = +point.lng;
+      const frame = (now) => {
+        const m = animatedMarkerRef.current;
+        if (!m || !mapRef.current) return;
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        const prevPoint = currentIndex > 0 ? points[currentIndex - 1] : null;
-        let bearing = 0;
-        if (prevPoint) {
-          bearing = L.GeometryUtil.bearing(
-            L.latLng(+prevPoint.lat, +prevPoint.lng),
-            L.latLng(lat, lng)
-          );
-        }
+        const t = Math.min((now - startTime) / SEGMENT_DURATION, 1);
+        const ease = easeInOut(t);
 
-        // Update Marker Position
-        marker.setLatLng([lat, lng]);
+        const lat = lerp(fromLat, toLat, ease);
+        const lng = lerp(fromLng, toLng, ease);
+        const bearing = lerpAngle(fromBearing, toBearing, ease);
 
-        /* 2. AUTOMATIC PAN & ZOOM:
-         - We use setView to center the map on the truck.
-         - We zoom in (e.g., zoom level 17).
-         - animate: true makes the transition smooth.
-      */
-        map.setView([lat, lng], 17, {
-          animate: true,
-          pan: {
-            duration: baseInterval / 1000, // Sync pan duration with point interval
-          },
-        });
-
-        marker.setIcon(
+        m.setLatLng([lat, lng]);
+        m.setIcon(
           L.divIcon({
             className: "rotating-truck-container",
-            html: getRotatingTruckHtml(point.status, bearing - 90),
+            html: getRotatingTruckHtml(toPt.status, bearing - 125),
             iconSize: [40, 40],
             iconAnchor: [20, 20],
           })
         );
 
-        setHighlightedIndex(currentIndex);
-        pauseTimeRef.current = currentIndex;
-      }
+        // Pan only when truck nears the edge — avoids jerky re-centering
+        const bounds = mapRef.current.getBounds().pad(-0.15);
+        if (!bounds.contains([lat, lng])) {
+          mapRef.current.panTo([lat, lng], { animate: true, duration: 0.4 });
+        }
 
-      currentIndex++;
-      animationTimeoutRef.current = setTimeout(stepToNext, baseInterval);
+        setHighlightedIndex(playbackRef.current.idx);
+        pauseTimeRef.current = playbackRef.current.idx;
+
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(frame);
+        } else {
+          // Segment done — move to next
+          playbackRef.current.idx++;
+          const nextIdx = playbackRef.current.idx;
+
+          if (nextIdx >= totalPoints - 1) {
+            callAlert("Track play finished.", "info");
+            fullStopAnimation();
+            return;
+          }
+          advanceToNext(nextIdx);
+        }
+      };
+
+      rafRef.current = requestAnimationFrame(frame);
     };
 
-    stepToNext();
+    const advanceToNext = (idx) => {
+      const fromPt = points[idx];
+      const toPt = points[idx + 1];
+
+      const fromBearing =
+        idx > 0
+          ? L.GeometryUtil.bearing(
+              L.latLng(+points[idx - 1].lat, +points[idx - 1].lng),
+              L.latLng(+fromPt.lat, +fromPt.lng)
+            )
+          : 0;
+
+      const toBearing = L.GeometryUtil.bearing(
+        L.latLng(+fromPt.lat, +fromPt.lng),
+        L.latLng(+toPt.lat, +toPt.lng)
+      );
+
+      setHighlightedIndex(idx);
+      animateSegment(fromPt, toPt, fromBearing, toBearing);
+    };
+
+    advanceToNext(playbackRef.current.idx);
   }, [vehicleData, isPaused, fullStopAnimation, speed]);
 
-  /* ---------- PAUSE / RESUME logic ---------- */
+  /* ---------- PAUSE / RESUME ---------- */
   const togglePlayPause = () => {
-    if (animationTimeoutRef.current && !isPaused) {
+    if (rafRef.current && !isPaused) {
       // PAUSE
-      clearTimeout(animationTimeoutRef.current); // ← clearTimeout instead of cancelAnimationFrame
-      animationTimeoutRef.current = null;
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
       setIsPaused(true);
-      // pauseTimeRef.current is already being updated inside stepToNext
     } else if (isPaused) {
       // RESUME
       startAnimation();
     } else {
       // START NEW
       pauseTimeRef.current = 0;
+      playbackRef.current = { idx: 0 };
       startAnimation();
     }
-  }; /* ---------- marker icons ---------- */
+  };
 
+  /* ---------- marker icons ---------- */
   const redIcon = useMemo(
     () =>
       new L.Icon({
@@ -409,7 +409,6 @@ const LeafletControlsMap = () => {
       }),
     []
   );
-
   const endIcon = useMemo(
     () =>
       L.divIcon({
@@ -454,7 +453,6 @@ const LeafletControlsMap = () => {
     mapRef.current = map;
     vehicleLayerRef.current = L.layerGroup().addTo(map);
 
-    /* ---- layer switcher ---- */
     let currentLayer = baseMaps["OpenStreet"];
     const makeBtn = (icon, title, switchFn) => {
       const btn = L.DomUtil.create("button", "", null);
@@ -488,13 +486,8 @@ const LeafletControlsMap = () => {
         switchTo("GoogleSatellite")
       )
     );
-    map.addControl(
-      new (L.Control.extend({
-        onAdd: () => container,
-      }))({ position: "bottomleft" })
-    );
+    map.addControl(new (L.Control.extend({ onAdd: () => container }))({ position: "bottomleft" }));
 
-    /* ---- custom zoom buttons ---- */
     const zoomPanel = L.DomUtil.create("div", "custom-zoom-panel");
     zoomPanel.style.cssText =
       "display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:8px;padding:6px;box-shadow:0 2px 6px rgba(0,0,0,0.2);";
@@ -517,11 +510,7 @@ const LeafletControlsMap = () => {
       padding: "4px",
     });
     zoomOut.onclick = () => map.zoomOut();
-    map.addControl(
-      new (L.Control.extend({
-        onAdd: () => zoomPanel,
-      }))({ position: "topright" })
-    );
+    map.addControl(new (L.Control.extend({ onAdd: () => zoomPanel }))({ position: "topright" }));
 
     L.control.zoomview({ position: "topleft" }).addTo(map);
     L.control.scale().addTo(map);
@@ -529,20 +518,20 @@ const LeafletControlsMap = () => {
       if (zoomDivRef.current) zoomDivRef.current.innerHTML = `Zoom: ${map.getZoom()}`;
     });
 
-    // Cleanup on unmount
     return () => {
-      fullStopAnimation(); // Ensures animation is stopped
+      fullStopAnimation();
       map.remove();
     };
-  }, [fullStopAnimation]); // Added fullStopAnimation dependency
+  }, [fullStopAnimation]);
 
-  /* Draw Path + Markers */
+  /* ---------- Draw Path + Markers ---------- */
   useEffect(() => {
     const map = mapRef.current;
     const layer = vehicleLayerRef.current;
     if (!map || !layer || !showHistory || !selectedVehicle) return;
 
-    const isAnimationActive = animationTimeoutRef.current || isPaused;
+    // Use rafRef instead of animationTimeoutRef
+    const isAnimationActive = rafRef.current || isPaused;
 
     if (!isAnimationActive) layer.clearLayers();
     else {
@@ -595,17 +584,11 @@ const LeafletControlsMap = () => {
         ],
       }).addTo(layer);
 
-      // Start Marker
       const startLatLng = latLngs[0];
-      const startMarker = L.marker(startLatLng, { icon: startIcon })
-        // .bindTooltip("Start Point", { permanent: true, direction: "top", offset: [0, -10] })
-        .addTo(layer);
+      const startMarker = L.marker(startLatLng, { icon: startIcon }).addTo(layer);
 
-      // End Marker
       const endLatLng = latLngs[latLngs.length - 1];
-      const endMarker = L.marker(endLatLng, { icon: endIcon })
-        // .bindTooltip("End Point", { permanent: true, direction: "top", offset: [0, -10] })
-        .addTo(layer);
+      const endMarker = L.marker(endLatLng, { icon: endIcon }).addTo(layer);
 
       originalPathRef.current = {
         line,
@@ -631,9 +614,7 @@ const LeafletControlsMap = () => {
           rec.status === "MOTION" ? greenIcon : rec.status === "STOP" ? redIcon : yellowIcon;
         L.marker([+rec.lat, +rec.lng], { icon })
           .bindTooltip(
-            `Time: ${formatTimestamp(rec.ts)}<br>Speed: ${rec.speed ?? "N/A"} km/h<br>Status: ${
-              rec.status
-            }`
+            `Time: ${formatTimestamp(rec.ts)}<br>Speed: ${rec.speed ?? "N/A"} km/h<br>Status: ${rec.status}`
           )
           .addTo(layer);
       });
@@ -650,14 +631,13 @@ const LeafletControlsMap = () => {
     startIcon,
     endIcon,
   ]);
-  // QUICK SELECT DATE HANDLER
-  const handleQuickSelect = (type) => {
-    setSelectedQuickRange(type); // ← remember which one is active
 
+  /* ---------- Quick date select ---------- */
+  const handleQuickSelect = (type) => {
+    setSelectedQuickRange(type);
     const now = new Date();
     let start = new Date();
     let end = new Date();
-
     now.setSeconds(0, 0);
 
     switch (type) {
@@ -673,7 +653,6 @@ const LeafletControlsMap = () => {
         break;
       case "week":
         start.setDate(now.getDate() - 7);
-        // end remains = now
         break;
       default:
         return;
@@ -681,9 +660,7 @@ const LeafletControlsMap = () => {
 
     const formatDateForInput = (date) => {
       const pad = (num) => num.toString().padStart(2, "0");
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-        date.getHours()
-      )}:${pad(date.getMinutes())}`;
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
     setFromDate(formatDateForInput(start));
@@ -757,7 +734,8 @@ const LeafletControlsMap = () => {
         <MDTypography variant="h6" mb={2} color="info">
           Track Play Controls
         </MDTypography>
-        {/* Vehicle select - Searchable Autocomplete */}
+
+        {/* Vehicle select */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5}>
           Select Vehicle
         </MDTypography>
@@ -772,7 +750,6 @@ const LeafletControlsMap = () => {
               fullStopAnimation();
               setStatusFilter(["MOTION", "STOP", "IDLE"]);
             }}
-            // Ensures the dropdown looks like your other MDInputs
             renderInput={(params) => (
               <MDInput
                 {...params}
@@ -781,21 +758,16 @@ const LeafletControlsMap = () => {
                 fullWidth
               />
             )}
-            // Styling to ensure it fits the Material Dashboard theme
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                padding: "2px",
-              },
-            }}
+            sx={{ "& .MuiOutlinedInput-root": { padding: "2px" } }}
           />
         </MDBox>
+
         {/* Date/Time Range */}
         <MDTypography variant="button" fontWeight="medium" mb={0.5} display="block">
           Select Date/Time Range
         </MDTypography>
         <MDBox mt={3} mb={3}>
           <Grid container spacing={2}>
-            {/* FROM DATE/TIME */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
@@ -814,8 +786,6 @@ const LeafletControlsMap = () => {
                 />
               </MDBox>
             </Grid>
-
-            {/* TO DATE/TIME */}
             <Grid item xs={12} sm={6}>
               <MDBox>
                 <MDTypography variant="caption" display="block" mb={0.5}>
@@ -834,70 +804,37 @@ const LeafletControlsMap = () => {
                 />
               </MDBox>
             </Grid>
-          </Grid>{" "}
-          {/* <--- THIS WAS LIKELY THE MISSING CLOSING TAG */}
+          </Grid>
         </MDBox>
 
-        {/* Quick Select Buttons - Proportional Alignment */}
+        {/* Quick Select Buttons */}
         <MDBox mb={2} px={0.5}>
           <Grid container spacing={1}>
-            <Grid item xs={4}>
-              <MDButton
-                variant="contained"
-                color={selectedQuickRange === "today" ? "info" : "secondary"}
-                size="small"
-                fullWidth
-                onClick={() => handleQuickSelect("today")}
-                sx={{
-                  fontSize: "0.75rem",
-                  px: 0,
-                  ...(selectedQuickRange === "today" && {
-                    backgroundColor: "#2196f3 !important",
-                    color: "white !important",
-                  }),
-                }}
-              >
-                Today
-              </MDButton>
-            </Grid>
-            <Grid item xs={4}>
-              <MDButton
-                variant="contained"
-                color={selectedQuickRange === "yesterday" ? "info" : "secondary"}
-                size="small"
-                fullWidth
-                onClick={() => handleQuickSelect("yesterday")}
-                sx={{
-                  fontSize: "0.75rem",
-                  px: 0,
-                  ...(selectedQuickRange === "yesterday" && {
-                    backgroundColor: "#2196f3 !important",
-                    color: "white !important",
-                  }),
-                }}
-              >
-                Yesterday
-              </MDButton>
-            </Grid>
-            <Grid item xs={4}>
-              <MDButton
-                variant="contained"
-                color={selectedQuickRange === "week" ? "info" : "secondary"}
-                size="small"
-                fullWidth
-                onClick={() => handleQuickSelect("week")}
-                sx={{
-                  fontSize: "0.75rem",
-                  px: 0,
-                  ...(selectedQuickRange === "week" && {
-                    backgroundColor: "#2196f3 !important",
-                    color: "white !important",
-                  }),
-                }}
-              >
-                7 Days
-              </MDButton>
-            </Grid>
+            {[
+              { key: "today", label: "Today" },
+              { key: "yesterday", label: "Yesterday" },
+              { key: "week", label: "7 Days" },
+            ].map(({ key, label }) => (
+              <Grid item xs={4} key={key}>
+                <MDButton
+                  variant="contained"
+                  color={selectedQuickRange === key ? "info" : "secondary"}
+                  size="small"
+                  fullWidth
+                  onClick={() => handleQuickSelect(key)}
+                  sx={{
+                    fontSize: "0.75rem",
+                    px: 0,
+                    ...(selectedQuickRange === key && {
+                      backgroundColor: "#2196f3 !important",
+                      color: "white !important",
+                    }),
+                  }}
+                >
+                  {label}
+                </MDButton>
+              </Grid>
+            ))}
           </Grid>
         </MDBox>
 
@@ -912,19 +849,8 @@ const LeafletControlsMap = () => {
         >
           {isLoading ? "Loading…" : "Get Track Data"}
         </MDButton>
-        {/* Submit
-        <MDButton
-          variant="gradient"
-          color="info"
-          fullWidth
-          onClick={handleTrackSubmit}
-          disabled={isLoading || !selectedVehicle || !fromDate || !toDate}
-          sx={{ mb: 3 }}
-        >
-          {isLoading ? "Loading…" : "Get Track Data"}
-        </MDButton> */}
 
-        {/* ---------- when history is loaded ---------- */}
+        {/* History controls */}
         {showHistory && filteredData.length > 0 && (
           <>
             {/* Status filter */}
@@ -965,7 +891,6 @@ const LeafletControlsMap = () => {
                           const toggled = prev.includes(type)
                             ? prev.filter((s) => s !== type)
                             : [...prev, type];
-
                           if (toggled.length === 0) {
                             callAlert("At least one status must stay active.", "warning");
                             return prev;
@@ -978,7 +903,8 @@ const LeafletControlsMap = () => {
                 );
               })}
             </MDBox>
-            {/* Speed Control Slider */}
+
+            {/* Speed Control */}
             <MDBox mb={2}>
               <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
                 <MDTypography variant="button" fontWeight="medium">
@@ -998,59 +924,51 @@ const LeafletControlsMap = () => {
                   onChange={(e) => {
                     const newSpeed = parseFloat(e.target.value);
                     setSpeed(newSpeed);
-                    if (animationTimeoutRef.current && !isPaused) {
-                      clearTimeout(animationTimeoutRef.current); // ← here too
-                      animationTimeoutRef.current = null;
+                    // Cancel current RAF loop so next play uses new speed
+                    if (rafRef.current && !isPaused) {
+                      cancelAnimationFrame(rafRef.current);
+                      rafRef.current = null;
                     }
                   }}
                   style={{ width: "100%", accentColor: "#1A73E8" }}
                 />
                 <MDBox display="flex" justifyContent="space-between">
-                  <MDTypography variant="caption" color="secondary">
-                    0.25x
-                  </MDTypography>
-                  <MDTypography variant="caption" color="secondary">
-                    1x
-                  </MDTypography>
-                  <MDTypography variant="caption" color="secondary">
-                    2x
-                  </MDTypography>
-                  <MDTypography variant="caption" color="secondary">
-                    4x
-                  </MDTypography>
+                  {["0.25x", "1x", "2x", "4x"].map((l) => (
+                    <MDTypography key={l} variant="caption" color="secondary">
+                      {l}
+                    </MDTypography>
+                  ))}
                 </MDBox>
               </MDBox>
             </MDBox>
-            {/* Play / Pause / Stop Buttons - Improved Spacing & Icons */}
+
+            {/* Play / Pause / Stop */}
             <MDBox display="flex" gap={2} justifyContent="space-between" mb={3}>
-              {/* Play / Pause Button */}
               <MDButton
                 variant="gradient"
-                color={animationTimeoutRef.current ? (isPaused ? "success" : "warning") : "success"}
-                startIcon={
-                  <Icon>{animationTimeoutRef.current && !isPaused ? "pause" : "play_arrow"}</Icon>
-                }
+                color={rafRef.current ? (isPaused ? "success" : "warning") : "success"}
+                startIcon={<Icon>{rafRef.current && !isPaused ? "pause" : "play_arrow"}</Icon>}
                 onClick={togglePlayPause}
                 disabled={!showHistory || vehicleData.length < 2}
                 sx={{ flex: 1, minWidth: 0 }}
                 size="medium"
               >
-                {animationTimeoutRef.current ? (isPaused ? "Resume" : "Pause") : "Play Track"}
+                {rafRef.current ? (isPaused ? "Resume" : "Pause") : "Play Track"}
               </MDButton>
 
-              {/* Full Stop Button */}
               <MDButton
                 variant="gradient"
                 color="error"
                 startIcon={<Icon>stop</Icon>}
                 onClick={fullStopAnimation}
-                disabled={!animationTimeoutRef.current && !isPaused}
+                disabled={!rafRef.current && !isPaused}
                 sx={{ flex: 1, minWidth: 0 }}
                 size="medium"
               >
                 Stop
               </MDButton>
             </MDBox>
+
             {/* History list */}
             <MDTypography
               variant="button"
@@ -1096,6 +1014,7 @@ const LeafletControlsMap = () => {
                 ))}
               </MDBox>
             )}
+
             {/* Download */}
             <MDTypography
               variant="button"
@@ -1122,7 +1041,6 @@ const LeafletControlsMap = () => {
                   <option value="excel">Excel</option>
                   <option value="pdf">PDF</option>
                 </MDInput>
-
                 <MDButton
                   variant="gradient"
                   color="secondary"
@@ -1132,15 +1050,10 @@ const LeafletControlsMap = () => {
                     const imei = selectedVehicle?.value || "unknown";
                     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
                     const baseName = `track_${imei}_${timestamp}`;
-
-                    if (downloadFormat === "csv") {
-                      exportCSV(filteredData, `${baseName}.csv`);
-                    } else if (downloadFormat === "excel") {
+                    if (downloadFormat === "csv") exportCSV(filteredData, `${baseName}.csv`);
+                    else if (downloadFormat === "excel")
                       exportExcel(filteredData, `${baseName}.xlsx`);
-                    } else if (downloadFormat === "pdf") {
-                      exportPDF(filteredData, `${baseName}.pdf`);
-                    }
-
+                    else if (downloadFormat === "pdf") exportPDF(filteredData, `${baseName}.pdf`);
                     AlertSuccess(`Downloaded as ${downloadFormat.toUpperCase()}`);
                     setShowDownload(false);
                     setDownloadFormat("");
@@ -1153,9 +1066,8 @@ const LeafletControlsMap = () => {
           </>
         )}
       </MDBox>
-      {/* =============================================
-        RIGHT INFO PANEL — NEW
-    ============================================= */}
+
+      {/* RIGHT INFO PANEL */}
       {showHistory && filteredData.length > 0 && (
         <MDBox
           sx={{
@@ -1298,7 +1210,8 @@ const LeafletControlsMap = () => {
                   width: 7,
                   height: 7,
                   borderRadius: "50%",
-                  background: animationTimeoutRef.current && !isPaused ? "#4caf50" : "#bdbdbd",
+                  // ✅ Uses rafRef — no more animationTimeoutRef
+                  background: rafRef.current && !isPaused ? "#4caf50" : "#bdbdbd",
                   transition: "background 0.3s",
                 }}
               />
@@ -1312,11 +1225,7 @@ const LeafletControlsMap = () => {
                   letterSpacing: 1,
                 }}
               >
-                {animationTimeoutRef.current && !isPaused
-                  ? "Live Playback"
-                  : isPaused
-                    ? "Paused"
-                    : "Playback"}
+                {rafRef.current && !isPaused ? "Live Playback" : isPaused ? "Paused" : "Playback"}
               </MDTypography>
             </MDBox>
 

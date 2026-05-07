@@ -157,7 +157,7 @@ const MiniTrackPlayer = ({ imei, fromDate, toDate, isPlaying }) => {
         marker.setIcon(
           L.divIcon({
             className: "rotating-truck-container",
-            html: getRotatingTruckHtml(toPt.status, bearing - 90),
+            html: getRotatingTruckHtml(toPt.status, bearing - 125),
             iconSize: [30, 30],
             iconAnchor: [15, 15],
           })
