@@ -33,8 +33,6 @@ export const styles = {
     px: { xs: 1, sm: 2, md: 3 },
     pb: 2,
     pt: 0,
-    // Fill available viewport height under navbar.
-    // Adjust 64 if your top navbar height is different.
     height: "calc(100vh - 64px)",
     minHeight: 0,
     alignItems: "stretch",
@@ -43,7 +41,7 @@ export const styles = {
 
   // --- Left Panel ---
   leftPanelContainer: (width) => ({
-    width: { xs: "100%", sm: `${width * 0.6}px` }, //20% narrower
+    width: { xs: "100%", sm: `${width * 0.6}px` },
     flexShrink: 0,
     display: { xs: "block", sm: "flex" },
     flexDirection: "column",
@@ -54,7 +52,6 @@ export const styles = {
     height: "100%",
     minHeight: 0,
     marginLeft: -4,
-    // removed negative margin to align with main layout
   }),
 
   leftPanelHeader: {
@@ -112,7 +109,6 @@ export const styles = {
   }),
 
   // --- Device Table Component ---
-  // Left panel is a flex column, so let the table card grow and scroll inside
   tableCard: {
     p: 0,
     overflow: "hidden",
@@ -221,17 +217,36 @@ export const styles = {
   },
 };
 
-// Add this to LiveTrack.styles.js
-// In LiveTrack.styles.js
+/**
+ * getRotatingTruckHtml
+ *
+ * Renders the truck marker div that is placed inside a Leaflet divIcon.
+ *
+ * BEARING CONVENTION
+ * ------------------
+ * The `bearing` parameter received here is already the *CSS rotation angle*
+ * (i.e. the geographic bearing minus 90°, applied in LiveTrack.js before
+ * calling this function). This keeps the style file free of navigation math.
+ *
+ * WHY −90°?
+ * The flaticon truck image (1048329.png) faces East (right) at 0° CSS rotation.
+ * Geographic bearing 0° = North. So we subtract 90° in the caller to align the
+ * icon's nose with the direction of travel.
+ *
+ * SMOOTH ROTATION
+ * ---------------
+ * `transition: transform 0.8s ease-out` makes the truck rotate gracefully
+ * when the bearing changes, avoiding the jarring snap of the original code.
+ */
 export const getRotatingTruckHtml = (status, bearing = 0, isHighlighted = false) => {
   const TRUCK_ICON_URL = "https://cdn-icons-png.flaticon.com/512/1048/1048329.png";
 
   return `
     <div style="
-      width: 40px; 
-      height: 40px; 
-      transform: rotate(${bearing}deg); 
-      transition: transform 0.4s ease-out; /* Makes the turn look smooth */
+      width: 40px;
+      height: 40px;
+      transform: rotate(${bearing}deg);
+      transition: transform 0.15s linear;   /* ← shorter, snappier */
       display: flex;
       justify-content: center;
       align-items: center;

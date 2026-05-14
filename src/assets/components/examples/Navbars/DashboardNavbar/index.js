@@ -4,10 +4,10 @@
 =========================================================
 */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 // react-router components
-import { useLocation, Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 // prop-types
 import PropTypes from "prop-types";
@@ -19,29 +19,21 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import Icon from "@mui/material/Icon";
 import MenuItem from "@mui/material/MenuItem";
-import Grid from "@mui/material/Grid";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
+import Autocomplete from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import MDButton from "../../../MDButton";
 
 // Material Dashboard components
 import MDBox from "../../../MDBox";
 import MDTypography from "../../../MDTypography";
+import MDButton from "../../../MDButton";
 
 // Example components
 import Breadcrumbs from "../../Breadcrumbs";
 import NotificationItem from "../../Items/NotificationItem";
 
 // Custom styles
-import {
-  navbar,
-  navbarContainer,
-  navbarRow,
-  navbarIconButton,
-  navbarMobileMenu,
-} from "../DashboardNavbar/styles";
+import { navbar, navbarContainer, navbarRow, navbarIconButton } from "../DashboardNavbar/styles";
 
 // Context
 import {
@@ -51,37 +43,27 @@ import {
   setOpenConfigurator,
 } from "context";
 
-// API Service Import
-import ApiService from "services/ApiService";
-
-// ==============================================================================
-// Placeholder functions (Ensure these are defined/imported in your actual project)
-const getInitialAccountId = () => {
-  return "";
-};
-// ==============================================================================
-
 function DashboardNavbar({
   absolute,
   light,
   isMini,
   handleAccountChange,
   selectedAccountId,
-  fetchAccounts,
   accounts,
-  onManualRefresh, //refresh handler
-  isRefreshing, //refresh state
-  lastRefreshTime, //timestamp of last refresh
+  onManualRefresh,
+  isRefreshing,
+  lastRefreshTime,
 }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
 
   const [openMenu, setOpenMenu] = useState(false);
-  // const [openAuthMenu, setOpenAuthMenu] = useState(false);  // removed usage
-  const [openAccountMenu, setOpenAccountMenu] = useState(false);
 
   const route = useLocation().pathname.split("/").slice(1);
+
+  // Find the selected account object to provide to Autocomplete
+  const currentAccount = accounts.find((acc) => acc.id === selectedAccountId) || null;
 
   // --- STANDARD NAVBAR EFFECTS ---
   useEffect(() => {
@@ -96,25 +78,15 @@ function DashboardNavbar({
     }
 
     window.addEventListener("scroll", handleTransparentNavbar);
-
     handleTransparentNavbar();
 
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
-  // --- END STANDARD NAVBAR EFFECTS ---
 
   // Handlers
-  const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
   const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
-
   const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
   const handleCloseMenu = () => setOpenMenu(false);
-
-  // const handleOpenAuthMenu = (event) => setOpenAuthMenu(event.currentTarget);
-  // const handleCloseAuthMenu = () => setOpenAuthMenu(false);
-
-  const handleOpenAccountMenu = (event) => setOpenAccountMenu(event.currentTarget);
-  const handleCloseAccountMenu = () => setOpenAccountMenu(false);
 
   // Menus
   const renderMenu = () => (
@@ -132,33 +104,9 @@ function DashboardNavbar({
     </Menu>
   );
 
-  // NOTE: renderAuthMenu removed so auth options are no longer in navbar
-
-  const renderAccountMenu = () => (
-    <Menu
-      anchorEl={openAccountMenu}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      transformOrigin={{ vertical: "top", horizontal: "right" }}
-      open={Boolean(openAccountMenu)}
-      onClose={handleCloseAccountMenu}
-      sx={{ mt: 2 }}
-    >
-      <MenuItem onClick={handleCloseAccountMenu}>
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Account 1
-        </MDTypography>
-      </MenuItem>
-      <MenuItem onClick={handleCloseAccountMenu}>
-        <MDTypography variant="button" fontWeight="regular" color="dark">
-          Account 2
-        </MDTypography>
-      </MenuItem>
-    </Menu>
-  );
-
   // Countdown Timer Component
   const RefreshCountdown = ({ lastRefreshTime }) => {
-    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes = 300 seconds
+    const [timeLeft, setTimeLeft] = useState(300);
 
     useEffect(() => {
       const calculateTimeLeft = () => {
@@ -190,11 +138,9 @@ function DashboardNavbar({
   const iconsStyle = ({ palette: { dark, white, text }, functions: { rgba } }) => ({
     color: () => {
       let colorValue = light || darkMode ? white.main : dark.main;
-
       if (transparentNavbar && !light) {
         colorValue = darkMode ? rgba(text.main, 0.6) : text.main;
       }
-
       return colorValue;
     },
   });
@@ -213,39 +159,43 @@ function DashboardNavbar({
 
         {!isMini && (
           <MDBox sx={(theme) => navbarRow(theme, { isMini })} display="flex" alignItems="center">
-            {/* 1. Account Dropdown Section */}
+            {/* 1. Searchable Account Dropdown Section */}
             <MDBox display="flex" alignItems="center" gap={2} mr={2}>
               <MDTypography variant="h6" color="text" sx={{ whiteSpace: "nowrap" }}>
                 Select Account
               </MDTypography>
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 200, height: 40 }}>
-                <InputLabel id="account-select-label">Account</InputLabel>
-                <Select
-                  labelId="account-select-label"
-                  id="account-select"
-                  value={selectedAccountId}
-                  label="Account"
-                  onChange={handleAccountChange}
-                  sx={{ height: "100%" }}
-                >
-                  {accounts.length > 0 ? (
-                    accounts.map((account) => (
-                      <MenuItem key={account.id} value={account.id}>
-                        {account.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem value={selectedAccountId} disabled>
-                      Loading accounts...
-                    </MenuItem>
-                  )}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={accounts}
+                getOptionLabel={(option) => option.name || ""}
+                value={currentAccount}
+                sx={{ width: 250 }}
+                // Syncs with your existing handleAccountChange logic
+                onChange={(event, newValue) => {
+                  handleAccountChange({
+                    target: { value: newValue ? newValue.id : "" },
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Account"
+                    variant="outlined"
+                    // Ensures background matches MD theme if needed
+                    sx={{
+                      "& .MuiInputBase-root": { height: 40 },
+                      "& .MuiOutlinedInput-root": { padding: "2px 8px" },
+                    }}
+                  />
+                )}
+                // Prevents the "Loading accounts..." manual check by letting Autocomplete handle empty states
+                noOptionsText="No accounts found"
+                loading={accounts.length === 0}
+              />
             </MDBox>
 
             {/* 2. Icons + Refresh */}
             <MDBox display="flex" alignItems="center" color={light ? "white" : "inherit"}>
-              {/* Refresh Button */}
               <MDBox display="flex" alignItems="center" mr={1}>
                 <MDButton
                   variant="text"
@@ -264,14 +214,9 @@ function DashboardNavbar({
                     minWidth: "unset",
                     p: 1,
                   }}
-                >
-                  {/* icon-only */}
-                </MDButton>
-
+                />
                 <RefreshCountdown lastRefreshTime={lastRefreshTime} />
               </MDBox>
-
-              {/* NOTE: account_circle button removed so sign in/out moves to sidebar */}
 
               <IconButton
                 size="small"
@@ -306,7 +251,6 @@ DashboardNavbar.defaultProps = {
   light: false,
   isMini: false,
   handleAccountChange: () => {},
-  fetchAccounts: () => {},
   selectedAccountId: "",
   accounts: [],
   onManualRefresh: () => {},
@@ -319,7 +263,6 @@ DashboardNavbar.propTypes = {
   light: PropTypes.bool,
   isMini: PropTypes.bool,
   handleAccountChange: PropTypes.func.isRequired,
-  fetchAccounts: PropTypes.func.isRequired,
   selectedAccountId: PropTypes.string.isRequired,
   accounts: PropTypes.array.isRequired,
   onManualRefresh: PropTypes.func.isRequired,

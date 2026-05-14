@@ -1259,7 +1259,7 @@ function HourlyReport({ accountId }) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
   const [imei, setImei] = useState("");
-  const [startDate, setStartDate] = useState(yesterday);
+  const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
