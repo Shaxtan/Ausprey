@@ -276,7 +276,7 @@ function LiveLoadGraph() {
 
   return (
     <DashboardLayout>
-      {/*<DashboardNavbar />*/}
+      <DashboardNavbar /> {/* ← UNCOMMENTED */}
       <MDBox py={3}>
         {/* --- Search + Format + Download in ONE row --- */}
         <Grid container spacing={3} mb={4}>
