@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // <-- ADDED: Navigate hook for routing
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import useLoadCellReportLogic from "./useLoadCellReportLogic";
-// Add this near your other imports
 import ReactSelect from "react-select";
+
 // Material Dashboard 2 React components
 import MDBox from "../../../src/assets/components/MDBox";
 import MDTypography from "../../../src/assets/components/MDTypography";
@@ -42,6 +42,9 @@ import {
 // Export utils
 import { exportCSV, exportExcel, exportPDF } from "../../../src/pages/utils/exportUtils";
 
+// API Service
+import ApiService from "../../../src/services/ApiService";
+
 // Chatbot Icon
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
@@ -49,7 +52,7 @@ function LoadCellReport() {
   const {
     imei,
     setImei,
-    imeis,
+    imeis, // fallback list from the hook (used when no account is selected)
     fromDate,
     setFromDate,
     toDate,
@@ -66,13 +69,76 @@ function LoadCellReport() {
     handleSubmit,
   } = useLoadCellReportLogic();
 
-  // Initialize navigation hook
-  const navigate = useNavigate(); // <-- Initialized here
+  const navigate = useNavigate();
 
+  // ─── Account & IMEI state ───────────────────────────────────────────────────
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+
+  // Local imeiOptions driven by selected account; falls back to hook's list
+  const [imeiOptions, setImeiOptions] = useState([]);
+
+  // ─── Fetch accounts on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1) {
+        const mapped = res.data.data.map((acc) => ({
+          // normalise: some backends use accid, some use id
+          id: String(acc.accid ?? acc.id ?? ""),
+          name: acc.accountName ?? acc.name ?? String(acc.accid ?? acc.id),
+        }));
+        setAccounts(mapped);
+      }
+    });
+  }, []);
+
+  // ─── Sync fallback imeis from hook when no account is selected ──────────────
+  useEffect(() => {
+    if (!selectedAccountId) {
+      setImeiOptions((imeis || []).map((o) => ({ value: o.value, label: o.label })));
+    }
+  }, [imeis, selectedAccountId]);
+
+  // ─── Fetch IMEIs whenever the selected account changes ──────────────────────
+  useEffect(() => {
+    if (!selectedAccountId) return;
+
+    setImei(""); // reset previously selected IMEI
+    setImeiOptions([]); // clear while loading
+
+    ApiService.getImeiDropdown(selectedAccountId)
+      .then((res) => {
+        const vehicles = res?.data?.response?.vehicles || [];
+        setImeiOptions(
+          vehicles.map((v) => ({
+            value: v.imei,
+            label: v.vehnum ? `${v.vehnum} (${v.imei})` : v.imei,
+          }))
+        );
+      })
+      .catch(() => {
+        setImeiOptions([]);
+      });
+  }, [selectedAccountId]);
+
+  // ─── Navbar handlers ────────────────────────────────────────────────────────
+  const handleAccountChange = (e) => {
+    setSelectedAccountId(String(e.target.value));
+  };
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    setLastRefreshTime(Date.now());
+    setTimeout(() => setIsRefreshing(false), 1500);
+  };
+
+  // ─── Misc local state ───────────────────────────────────────────────────────
   const [downloading, setDownloading] = useState(false);
   const [selectedQuickRange, setSelectedQuickRange] = useState(null);
 
-  // CHATBOT LOGIC
+  // ─── Chatbot logic ──────────────────────────────────────────────────────────
   const CHAT_STEP = useMemo(
     () => ({
       ASK_IMEI: "ask_imei",
@@ -114,7 +180,6 @@ function LoadCellReport() {
     }, 1000);
   };
 
-  // 🚀 MODIFIED FUNCTION: Added redirection logic for both Alert Logs and Track/Play
   const handleOptionSelect = (option) => {
     const newUserMessage = { type: "user", text: option };
     setMessages((prev) => [...prev, newUserMessage]);
@@ -124,11 +189,11 @@ function LoadCellReport() {
 
       if (option === "Alert Logs") {
         botResponseText = "You selected **Alert Logs**. Redirecting you to the Alerts page now...";
-        navigate("/alerts"); // <-- REDIRECT TO ALERTS
+        navigate("/alerts");
       } else if (option === "Track/Play") {
         botResponseText =
           "You selected **Track/Play**. Redirecting you to the device tracking view now...";
-        navigate("/notifications"); // <-- REDIRECT TO NOTIFICATIONS/TRACKING
+        navigate("/notifications");
       } else {
         botResponseText = `You selected **${option}**. I will now open the corresponding dashboard view for this device.`;
       }
@@ -145,7 +210,7 @@ function LoadCellReport() {
     }, 1000);
   };
 
-  // CHATBOT STYLES (UNCHANGED)
+  // ─── Chatbot styles ─────────────────────────────────────────────────────────
   const iconStyle = {
     position: "fixed",
     bottom: "30px",
@@ -229,39 +294,13 @@ function LoadCellReport() {
     borderBottomLeftRadius: type === "user" ? "18px" : "2px",
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
-  // 1. Transform imeis for React Select
-  const imeiOptions = imeis.map((option) => ({
-    value: option.value,
-    label: option.label,
-  }));
 
-  // 2. Custom Styles for React Select
-  const customSelectStyles = {
-    control: (base, state) => ({
-      ...base,
-      minHeight: "40px",
-      borderRadius: "4px",
-      borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
-      boxShadow: "none",
-      "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
-    }),
-    placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
-    singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
-  };
-
-  // --- DYNAMIC AVERAGE COLOR LOGIC (UNCHANGED) ---
+  // ─── Average colour config ──────────────────────────────────────────────────
   const getAverageColorConfig = () => {
     if (chartData.length === 0) return null;
-
     const latestAvg = parseFloat(chartData[chartData.length - 1].Average);
-
     if (latestAvg > 100) {
-      return {
-        stroke: "#d32f2f",
-        fill: "#ffcdd2",
-        labelColor: "error",
-        labelText: "High Load",
-      };
+      return { stroke: "#d32f2f", fill: "#ffcdd2", labelColor: "error", labelText: "High Load" };
     } else if (latestAvg > 50) {
       return {
         stroke: "#388e3c",
@@ -270,24 +309,19 @@ function LoadCellReport() {
         labelText: "Moderate Load",
       };
     } else {
-      return {
-        stroke: "#1976d2",
-        fill: "#bbdefb",
-        labelColor: "info",
-        labelText: "Low Load",
-      };
+      return { stroke: "#1976d2", fill: "#bbdefb", labelColor: "info", labelText: "Low Load" };
     }
   };
 
   const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
-  // QUICK SELECT DATE HANDLER
+
+  // ─── Quick-select date handler ──────────────────────────────────────────────
   const handleQuickSelect = (type) => {
-    setSelectedQuickRange(type); // ← remember which one is active
+    setSelectedQuickRange(type);
 
     const now = new Date();
     let start = new Date();
     let end = new Date();
-
     now.setSeconds(0, 0);
 
     switch (type) {
@@ -303,7 +337,6 @@ function LoadCellReport() {
         break;
       case "week":
         start.setDate(now.getDate() - 7);
-        // end remains = now
         break;
       default:
         return;
@@ -320,11 +353,21 @@ function LoadCellReport() {
     setToDate(formatDateForInput(end));
   };
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      {/* ── Navbar – now receives account props ── */}
+      <DashboardNavbar
+        handleAccountChange={handleAccountChange}
+        selectedAccountId={selectedAccountId}
+        accounts={accounts}
+        onManualRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
+        lastRefreshTime={lastRefreshTime}
+      />
+
       <MDBox py={3}>
-        {/* --- Search Form Card --- */}
+        {/* ── Search Form Card ── */}
         <Grid container spacing={3} mb={4}>
           <Grid item xs={12}>
             <Card>
@@ -333,62 +376,64 @@ function LoadCellReport() {
                   Search Load Cell Data
                 </MDTypography>
               </MDBox>
+
               <MDBox p={3}>
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
-                    {/* IMEI Input */}
-                    {/* Searchable IMEI Input */}
+                    {/* ── Searchable IMEI dropdown (filtered by selected account) ── */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
                         <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
                           Select IMEI
+                          {!selectedAccountId && (
+                            <MDTypography
+                              component="span"
+                              variant="caption"
+                              color="text"
+                              fontWeight="regular"
+                              ml={0.5}
+                            >
+                              (select an account first)
+                            </MDTypography>
+                          )}
                         </MDTypography>
                       </MDBox>
 
                       <ReactSelect
                         options={imeiOptions}
                         value={imeiOptions.find((opt) => opt.value === imei) || null}
-                        onChange={(selected) => {
-                          setImei(selected ? selected.value : "");
-                        }}
-                        placeholder="Search IMEI..."
+                        onChange={(selected) => setImei(selected ? selected.value : "")}
+                        placeholder={
+                          selectedAccountId
+                            ? imeiOptions.length === 0
+                              ? "Loading IMEIs…"
+                              : "Search IMEI..."
+                            : "Select account first"
+                        }
                         isClearable
                         isSearchable
+                        isDisabled={!selectedAccountId}
+                        menuPortalTarget={document.body}
                         styles={{
                           control: (base, state) => ({
                             ...base,
-                            minHeight: 40, // smaller box
+                            minHeight: 40,
                             height: 30,
                             borderRadius: 4,
                             fontSize: 12,
                             borderColor: state.isFocused ? "#1A73E8" : "#c4c4c4",
                             boxShadow: state.isFocused ? "0 0 0 1px #1A73E8" : "none",
-                            "&:hover": {
-                              borderColor: "#000",
-                            },
+                            "&:hover": { borderColor: "#000" },
                           }),
-                          valueContainer: (base) => ({
-                            ...base,
-                            padding: "0 6px",
-                          }),
-                          input: (base) => ({
-                            ...base,
-                            margin: 0,
-                            padding: 0,
-                          }),
-                          indicatorsContainer: (base) => ({
-                            ...base,
-                            padding: 4,
-                          }),
-                          menuPortal: (base) => ({
-                            ...base,
-                            zIndex: 9999,
-                          }),
+                          valueContainer: (base) => ({ ...base, padding: "0 6px" }),
+                          input: (base) => ({ ...base, margin: 0, padding: 0 }),
+                          indicatorsContainer: (base) => ({ ...base, padding: 4 }),
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                         }}
                       />
                     </Grid>
 
-                    {/* From Date-Time */}
+                    {/* ── From Date-Time ── */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         From Date-Time
@@ -405,7 +450,7 @@ function LoadCellReport() {
                       />
                     </Grid>
 
-                    {/* To Date-Time */}
+                    {/* ── To Date-Time ── */}
                     <Grid item xs={12} md={3}>
                       <MDTypography variant="caption" display="block" mb={0.5}>
                         To Date-Time
@@ -422,7 +467,7 @@ function LoadCellReport() {
                       />
                     </Grid>
 
-                    {/* Checkboxes + Search */}
+                    {/* ── Checkboxes + Search ── */}
                     <Grid item xs={12} md={3} sx={{ display: "flex", alignItems: "center" }}>
                       <FormControlLabel
                         control={
@@ -456,7 +501,8 @@ function LoadCellReport() {
                         Search
                       </MDButton>
                     </Grid>
-                    {/* Quick Select Buttons */}
+
+                    {/* ── Quick-select buttons ── */}
                     <MDBox
                       mb={2}
                       display="flex"
@@ -475,14 +521,14 @@ function LoadCellReport() {
                         ml={2}
                       >
                         <MDButton
-                          variant="contained" // ← changed from outlined
+                          variant="contained"
                           color={selectedQuickRange === "today" ? "info" : "secondary"}
                           size="small"
                           onClick={() => handleQuickSelect("today")}
                           sx={{
                             minWidth: "90px",
                             ...(selectedQuickRange === "today" && {
-                              backgroundColor: "#2196f3 !important", // MUI blue
+                              backgroundColor: "#2196f3 !important",
                               color: "white !important",
                             }),
                           }}
@@ -525,7 +571,7 @@ function LoadCellReport() {
                     </MDBox>
                   </Grid>
 
-                  {/* --- Download Options --- */}
+                  {/* ── Download Options ── */}
                   {showDownloadOptions && chartData.length > 0 && (
                     <MDBox mt={4} display="flex" justifyContent="flex-end" alignItems="center">
                       <MDTypography variant="button" fontWeight="bold" mr={1.5}>
@@ -560,10 +606,8 @@ function LoadCellReport() {
                             alert("No data to export.");
                             return;
                           }
-
                           setDownloading(true);
                           const baseName = `LoadCellReport_${imei || "data"}_${Date.now()}`;
-
                           try {
                             if (exportFormat === "csv") {
                               exportCSV(chartData, `${baseName}.csv`);
@@ -597,7 +641,7 @@ function LoadCellReport() {
           </Grid>
         </Grid>
 
-        {/* --- Graph Card --- */}
+        {/* ── Graph Card ── */}
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
@@ -614,7 +658,6 @@ function LoadCellReport() {
                   </MDTypography>
                 )}
 
-                {/* Current Average Display */}
                 {averageConfig && (
                   <MDBox textAlign="center" mb={3}>
                     <MDTypography variant="h5" fontWeight="bold" color={averageConfig.labelColor}>
@@ -627,13 +670,7 @@ function LoadCellReport() {
                   </MDBox>
                 )}
 
-                {/* SPACIOUS CHART CONTAINER */}
-                <MDBox
-                  sx={{
-                    width: "100%",
-                    height: { xs: 450, sm: 550, md: 650, lg: 750 },
-                  }}
-                >
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 550, md: 650, lg: 750 } }}>
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
                       Please select the date range for which you want to see the Load Cell Data.
@@ -650,10 +687,7 @@ function LoadCellReport() {
                           tick={{ fontSize: 12 }}
                           tickFormatter={(value) => {
                             const date = new Date(value);
-                            return `${date.getHours()}:${String(date.getMinutes()).padStart(
-                              2,
-                              "0"
-                            )}`;
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
                           }}
                         />
                         <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
@@ -667,7 +701,6 @@ function LoadCellReport() {
                         />
                         <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
 
-                        {/* Individual Load Cells - Light & Subtle */}
                         {showData && (
                           <>
                             <Area
@@ -713,7 +746,6 @@ function LoadCellReport() {
                           </>
                         )}
 
-                        {/* Average Load - Clean, Color-Coded, Not Overpowering */}
                         {averageConfig && (
                           <Area
                             type="monotone"
@@ -738,7 +770,7 @@ function LoadCellReport() {
         </Grid>
       </MDBox>
 
-      {/* CHATBOT WIDGET */}
+      {/* ── Chatbot toggle icon ── */}
       <div style={iconStyle} onClick={toggleChatbot}>
         <img
           src={CHATBOT_ICON_PLACEHOLDER}
@@ -747,6 +779,7 @@ function LoadCellReport() {
         />
       </div>
 
+      {/* ── Chatbot widget ── */}
       <div style={widgetStyle}>
         <div style={headerStyle}>
           <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
