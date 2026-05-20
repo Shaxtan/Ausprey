@@ -52,7 +52,7 @@ function LoadCellReport() {
   const {
     imei,
     setImei,
-    imeis, // fallback list from the hook (used when no account is selected)
+    imeis,
     fromDate,
     setFromDate,
     toDate,
@@ -76,8 +76,6 @@ function LoadCellReport() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
-
-  // Local imeiOptions driven by selected account; falls back to hook's list
   const [imeiOptions, setImeiOptions] = useState([]);
 
   // ─── Fetch accounts on mount ────────────────────────────────────────────────
@@ -85,7 +83,6 @@ function LoadCellReport() {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1) {
         const mapped = res.data.data.map((acc) => ({
-          // normalise: some backends use accid, some use id
           id: String(acc.accid ?? acc.id ?? ""),
           name: acc.accountName ?? acc.name ?? String(acc.accid ?? acc.id),
         }));
@@ -105,8 +102,8 @@ function LoadCellReport() {
   useEffect(() => {
     if (!selectedAccountId) return;
 
-    setImei(""); // reset previously selected IMEI
-    setImeiOptions([]); // clear while loading
+    setImei("");
+    setImeiOptions([]);
 
     ApiService.getImeiDropdown(selectedAccountId)
       .then((res) => {
@@ -356,7 +353,6 @@ function LoadCellReport() {
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
-      {/* ── Navbar – now receives account props ── */}
       <DashboardNavbar
         handleAccountChange={handleAccountChange}
         selectedAccountId={selectedAccountId}
@@ -380,7 +376,7 @@ function LoadCellReport() {
               <MDBox p={3}>
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
-                    {/* ── Searchable IMEI dropdown (filtered by selected account) ── */}
+                    {/* ── Searchable IMEI dropdown ── */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
                         <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
@@ -641,9 +637,10 @@ function LoadCellReport() {
           </Grid>
         </Grid>
 
-        {/* ── Graph Card ── */}
+        {/* ── Both Graphs Side by Side ── */}
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          {/* ── Load Cell Graph ── */}
+          <Grid item xs={12} md={6}>
             <Card>
               <MDBox pt={3} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
@@ -670,7 +667,7 @@ function LoadCellReport() {
                   </MDBox>
                 )}
 
-                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 550, md: 650, lg: 750 } }}>
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 500, md: 550 } }}>
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
                       Please select the date range for which you want to see the Load Cell Data.
@@ -704,6 +701,7 @@ function LoadCellReport() {
                         {showData && (
                           <>
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V1"
                               stroke="#8884d8"
@@ -714,6 +712,7 @@ function LoadCellReport() {
                               name="Load Cell 1"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V2"
                               stroke="#82ca9d"
@@ -724,6 +723,7 @@ function LoadCellReport() {
                               name="Load Cell 2"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V3"
                               stroke="#ffc658"
@@ -734,6 +734,7 @@ function LoadCellReport() {
                               name="Load Cell 3"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V4"
                               stroke="#ce7e00"
@@ -748,6 +749,7 @@ function LoadCellReport() {
 
                         {averageConfig && (
                           <Area
+                            yAxisId="left"
                             type="monotone"
                             dataKey="Average"
                             stroke={averageConfig.stroke}
@@ -760,6 +762,89 @@ function LoadCellReport() {
                             isAnimationActive={false}
                           />
                         )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </MDBox>
+              </MDBox>
+            </Card>
+          </Grid>
+
+          {/* ── Load Percent Graph ── */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <MDBox pt={3} px={3}>
+                <MDTypography variant="h6" fontWeight="medium">
+                  Load Percentage (%)
+                </MDTypography>
+              </MDBox>
+
+              <MDBox p={3}>
+                {dateRange && (
+                  <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
+                    {dateRange}
+                  </MDTypography>
+                )}
+
+                {chartData.length > 0 && (
+                  <MDBox textAlign="center" mb={3}>
+                    <MDTypography variant="h5" fontWeight="bold" color="secondary">
+                      Latest Load %:{" "}
+                      {parseFloat(chartData[chartData.length - 1].LoadPercent).toFixed(1)}%
+                    </MDTypography>
+                    <MDTypography variant="caption" color="text.secondary">
+                      Range: 0% – 100%
+                    </MDTypography>
+                  </MDBox>
+                )}
+
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 500, md: 550 } }}>
+                  {chartData.length === 0 ? (
+                    <MDTypography textAlign="center" color="text.secondary" mt={8}>
+                      Please select the date range for which you want to see the Load Percentage.
+                    </MDTypography>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
+                          }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tickFormatter={(v) => `${v}%`}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`${Number(value).toFixed(1)}%`, "Load %"]}
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #ccc",
+                            borderRadius: 4,
+                          }}
+                          labelStyle={{ fontWeight: "bold" }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
+                        <Area
+                          type="monotone"
+                          dataKey="LoadPercent"
+                          stroke="#7b1fa2"
+                          fill="#e1bee7"
+                          fillOpacity={0.35}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 5 }}
+                          name="Load %"
+                          isAnimationActive={false}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   )}
