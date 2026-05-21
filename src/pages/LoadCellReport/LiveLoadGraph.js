@@ -85,6 +85,22 @@ function LiveLoadGraph() {
           name: acc.accountName ?? acc.name ?? String(acc.accid ?? acc.id),
         }));
         setAccounts(mapped);
+
+        // ✅ Auto-select the logged-in user's account
+        try {
+          const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+          const loggedInAccountId = String(user?.accountId || user?.accid || "");
+
+          const match = mapped.find((acc) => acc.id === loggedInAccountId);
+
+          if (match) {
+            setSelectedAccountId(match.id);
+          } else if (mapped.length > 0) {
+            setSelectedAccountId(mapped[0].id); // fallback to first
+          }
+        } catch {
+          if (mapped.length > 0) setSelectedAccountId(mapped[0].id);
+        }
       }
     });
   }, []);
@@ -92,9 +108,7 @@ function LiveLoadGraph() {
   // ─── Sync fallback imeis from hook when no account is selected ──────────────
   useEffect(() => {
     if (!selectedAccountId) {
-      setImeiOptions(
-        (imeis || []).map((o) => ({ value: o.value, label: o.label }))
-      );
+      setImeiOptions((imeis || []).map((o) => ({ value: o.value, label: o.label })));
     }
   }, [imeis, selectedAccountId]);
 
@@ -298,7 +312,12 @@ function LiveLoadGraph() {
     if (latestAvg > 100) {
       return { stroke: "#d32f2f", fill: "#ffcdd2", labelColor: "error", labelText: "High Load" };
     } else if (latestAvg > 50) {
-      return { stroke: "#388e3c", fill: "#c8e6c9", labelColor: "success", labelText: "Moderate Load" };
+      return {
+        stroke: "#388e3c",
+        fill: "#c8e6c9",
+        labelColor: "success",
+        labelText: "Moderate Load",
+      };
     } else {
       return { stroke: "#1976d2", fill: "#bbdefb", labelColor: "info", labelText: "Low Load" };
     }
@@ -333,7 +352,6 @@ function LiveLoadGraph() {
               <MDBox p={3}>
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
-
                     {/* ── Searchable IMEI dropdown (filtered by selected account) ── */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
@@ -378,7 +396,11 @@ function LiveLoadGraph() {
                             boxShadow: "none",
                             "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
                           }),
-                          placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
+                          placeholder: (base) => ({
+                            ...base,
+                            fontSize: "0.875rem",
+                            color: "#adb5bd",
+                          }),
                           singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
                           menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                         }}
@@ -507,37 +529,15 @@ function LiveLoadGraph() {
           </Grid>
         </Grid>
 
-        {/* ── Graph Card ── */}
+        {/* ── Both Graphs Side by Side ── */}
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          {/* ── Load Cell Graph ── */}
+          <Grid item xs={12} md={6}>
             <Card>
-              <MDBox display="flex" justifyContent="space-between" alignItems="center" pt={3} px={3}>
+              <MDBox pt={3} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
                   Load Cell Graph with Averages
                 </MDTypography>
-
-                {chartData.length > 0 && (
-                  <MDBox display="flex" alignItems="center">
-                    <MDBox
-                      width="10px"
-                      height="10px"
-                      bgColor="success"
-                      borderRadius="50%"
-                      mr={1}
-                      sx={{
-                        animation: "pulse 1.5s infinite",
-                        "@keyframes pulse": {
-                          "0%": { opacity: 1, transform: "scale(1)" },
-                          "50%": { opacity: 0.4, transform: "scale(1.2)" },
-                          "100%": { opacity: 1, transform: "scale(1)" },
-                        },
-                      }}
-                    />
-                    <MDTypography variant="button" fontWeight="regular" color="text">
-                      Live: Updating every 30s
-                    </MDTypography>
-                  </MDBox>
-                )}
               </MDBox>
 
               <MDBox p={3}>
@@ -559,7 +559,7 @@ function LiveLoadGraph() {
                   </MDBox>
                 )}
 
-                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 550, md: 650, lg: 750 } }}>
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 500, md: 550 } }}>
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
                       Please select the date range for which you want to see the Load Cell Data.
@@ -593,6 +593,7 @@ function LiveLoadGraph() {
                         {showData && (
                           <>
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V1"
                               stroke="#8884d8"
@@ -603,6 +604,7 @@ function LiveLoadGraph() {
                               name="Load Cell 1"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V2"
                               stroke="#82ca9d"
@@ -613,6 +615,7 @@ function LiveLoadGraph() {
                               name="Load Cell 2"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V3"
                               stroke="#ffc658"
@@ -623,6 +626,7 @@ function LiveLoadGraph() {
                               name="Load Cell 3"
                             />
                             <Area
+                              yAxisId="left"
                               type="monotone"
                               dataKey="V4"
                               stroke="#ce7e00"
@@ -637,6 +641,7 @@ function LiveLoadGraph() {
 
                         {averageConfig && (
                           <Area
+                            yAxisId="left"
                             type="monotone"
                             dataKey="Average"
                             stroke={averageConfig.stroke}
@@ -649,6 +654,89 @@ function LiveLoadGraph() {
                             isAnimationActive={false}
                           />
                         )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </MDBox>
+              </MDBox>
+            </Card>
+          </Grid>
+
+          {/* ── Load Percent Graph ── */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <MDBox pt={3} px={3}>
+                <MDTypography variant="h6" fontWeight="medium">
+                  Load Percentage (%)
+                </MDTypography>
+              </MDBox>
+
+              <MDBox p={3}>
+                {dateRange && (
+                  <MDTypography variant="body2" fontWeight="bold" align="center" mb={2}>
+                    {dateRange}
+                  </MDTypography>
+                )}
+
+                {chartData.length > 0 && (
+                  <MDBox textAlign="center" mb={3}>
+                    <MDTypography variant="h5" fontWeight="bold" color="secondary">
+                      Latest Load %:{" "}
+                      {parseFloat(chartData[chartData.length - 1].LoadPercent).toFixed(1)}%
+                    </MDTypography>
+                    <MDTypography variant="caption" color="text.secondary">
+                      Range: 0% – 100%
+                    </MDTypography>
+                  </MDBox>
+                )}
+
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 500, md: 550 } }}>
+                  {chartData.length === 0 ? (
+                    <MDTypography textAlign="center" color="text.secondary" mt={8}>
+                      Please select the date range for which you want to see the Load Percentage.
+                    </MDTypography>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
+                          }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tickFormatter={(v) => `${v}%`}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`${Number(value).toFixed(1)}%`, "Load %"]}
+                          contentStyle={{
+                            backgroundColor: "#fff",
+                            border: "1px solid #ccc",
+                            borderRadius: 4,
+                          }}
+                          labelStyle={{ fontWeight: "bold" }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
+                        <Area
+                          type="monotone"
+                          dataKey="LoadPercent"
+                          stroke="#7b1fa2"
+                          fill="#e1bee7"
+                          fillOpacity={0.35}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 5 }}
+                          name="Load %"
+                          isAnimationActive={false}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   )}

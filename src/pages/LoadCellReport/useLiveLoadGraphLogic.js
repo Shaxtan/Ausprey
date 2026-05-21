@@ -122,6 +122,7 @@ export default function useLiveLoadGraphLogic() {
             V3: d.analog?.[2] || 0,
             V4: d.analog?.[3] || 0,
             Average: d.average,
+            LoadPercent: d.loadPercent ?? 0,
           }));
           setChartData(rows);
           setShowDownloadOptions(true);

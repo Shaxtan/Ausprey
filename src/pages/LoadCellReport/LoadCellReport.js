@@ -83,10 +83,28 @@ function LoadCellReport() {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1) {
         const mapped = res.data.data.map((acc) => ({
-          id: String(acc.accid ?? acc.id ?? ""),
-          name: acc.accountName ?? acc.name ?? String(acc.accid ?? acc.id),
+          id: String(acc.id ?? ""),
+          name: acc.name ?? String(acc.id),
         }));
         setAccounts(mapped);
+
+        // ✅ Read the logged-in user's accountId from localStorage
+        try {
+          const user = JSON.parse(localStorage.getItem("userDetails") || "{}");
+          const loggedInAccountId = String(user?.accountId || user?.accid || "");
+
+          // Check if that account exists in the dropdown list
+          const match = mapped.find((acc) => acc.id === loggedInAccountId);
+
+          if (match) {
+            setSelectedAccountId(match.id);
+          } else if (mapped.length > 0) {
+            // Fallback: select first account if no match found
+            setSelectedAccountId(mapped[0].id);
+          }
+        } catch {
+          if (mapped.length > 0) setSelectedAccountId(mapped[0].id);
+        }
       }
     });
   }, []);
