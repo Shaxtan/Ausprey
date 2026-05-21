@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useLoadCellReportLogic from "./useLiveLoadGraphLogic";
 import ReactSelect from "react-select";
@@ -42,6 +42,9 @@ import {
 // Export utils
 import { exportCSV, exportExcel, exportPDF } from "../../../src/pages/utils/exportUtils";
 
+// API Service
+import ApiService from "../../../src/services/ApiService";
+
 // Chatbot Icon
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
@@ -49,7 +52,7 @@ function LiveLoadGraph() {
   const {
     imei,
     setImei,
-    imeis,
+    imeis, // fallback list from the hook (used when no account is selected)
     showAverage,
     setShowAverage,
     showData,
@@ -63,9 +66,75 @@ function LiveLoadGraph() {
   } = useLoadCellReportLogic();
 
   const navigate = useNavigate();
+
+  // ─── Account & IMEI state ───────────────────────────────────────────────────
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+
+  // Local imeiOptions driven by selected account; falls back to hook's list
+  const [imeiOptions, setImeiOptions] = useState([]);
+
+  // ─── Fetch accounts on mount ────────────────────────────────────────────────
+  useEffect(() => {
+    ApiService.getAccountDropdown((res) => {
+      if (res?.data?.resultCode === 1) {
+        const mapped = res.data.data.map((acc) => ({
+          id: String(acc.accid ?? acc.id ?? ""),
+          name: acc.accountName ?? acc.name ?? String(acc.accid ?? acc.id),
+        }));
+        setAccounts(mapped);
+      }
+    });
+  }, []);
+
+  // ─── Sync fallback imeis from hook when no account is selected ──────────────
+  useEffect(() => {
+    if (!selectedAccountId) {
+      setImeiOptions(
+        (imeis || []).map((o) => ({ value: o.value, label: o.label }))
+      );
+    }
+  }, [imeis, selectedAccountId]);
+
+  // ─── Fetch IMEIs whenever the selected account changes ──────────────────────
+  useEffect(() => {
+    if (!selectedAccountId) return;
+
+    setImei(""); // reset previously selected IMEI
+    setImeiOptions([]); // clear while loading
+
+    ApiService.getImeiDropdown(selectedAccountId)
+      .then((res) => {
+        const vehicles = res?.data?.response?.vehicles || [];
+        setImeiOptions(
+          vehicles.map((v) => ({
+            value: v.imei,
+            label: v.vehnum ? `${v.vehnum} (${v.imei})` : v.imei,
+          }))
+        );
+      })
+      .catch(() => {
+        setImeiOptions([]);
+      });
+  }, [selectedAccountId]);
+
+  // ─── Navbar handlers ────────────────────────────────────────────────────────
+  const handleAccountChange = (e) => {
+    setSelectedAccountId(String(e.target.value));
+  };
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    setLastRefreshTime(Date.now());
+    setTimeout(() => setIsRefreshing(false), 1500);
+  };
+
+  // ─── Misc local state ───────────────────────────────────────────────────────
   const [downloading, setDownloading] = useState(false);
 
-  // CHATBOT LOGIC
+  // ─── Chatbot logic ──────────────────────────────────────────────────────────
   const CHAT_STEP = useMemo(
     () => ({
       ASK_IMEI: "ask_imei",
@@ -137,7 +206,7 @@ function LiveLoadGraph() {
     }, 1000);
   };
 
-  // CHATBOT STYLES
+  // ─── Chatbot styles ─────────────────────────────────────────────────────────
   const iconStyle = {
     position: "fixed",
     bottom: "30px",
@@ -222,63 +291,36 @@ function LiveLoadGraph() {
     borderBottomRightRadius: type === "user" ? "2px" : "18px",
   });
 
-  // ReactSelect options and styles
-  const imeiOptions = imeis.map((option) => ({
-    value: option.value,
-    label: option.label,
-  }));
-
-  const customSelectStyles = {
-    control: (base, state) => ({
-      ...base,
-      minHeight: 40,
-      borderRadius: 4,
-      borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
-      boxShadow: "none",
-      "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
-      fontSize: "0.875rem",
-    }),
-    placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
-    singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
-  };
-
-  // Average color config
+  // ─── Average colour config ──────────────────────────────────────────────────
   const getAverageColorConfig = () => {
     if (chartData.length === 0) return null;
-
     const latestAvg = parseFloat(chartData[chartData.length - 1].Average);
-
     if (latestAvg > 100) {
-      return {
-        stroke: "#d32f2f",
-        fill: "#ffcdd2",
-        labelColor: "error",
-        labelText: "High Load",
-      };
+      return { stroke: "#d32f2f", fill: "#ffcdd2", labelColor: "error", labelText: "High Load" };
     } else if (latestAvg > 50) {
-      return {
-        stroke: "#388e3c",
-        fill: "#c8e6c9",
-        labelColor: "success",
-        labelText: "Moderate Load",
-      };
+      return { stroke: "#388e3c", fill: "#c8e6c9", labelColor: "success", labelText: "Moderate Load" };
     } else {
-      return {
-        stroke: "#1976d2",
-        fill: "#bbdefb",
-        labelColor: "info",
-        labelText: "Low Load",
-      };
+      return { stroke: "#1976d2", fill: "#bbdefb", labelColor: "info", labelText: "Low Load" };
     }
   };
 
   const averageConfig = showAverage && chartData.length > 0 ? getAverageColorConfig() : null;
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
-      {/*<DashboardNavbar />*/}
+      {/* ── Navbar – now receives account props ── */}
+      <DashboardNavbar
+        handleAccountChange={handleAccountChange}
+        selectedAccountId={selectedAccountId}
+        accounts={accounts}
+        onManualRefresh={handleManualRefresh}
+        isRefreshing={isRefreshing}
+        lastRefreshTime={lastRefreshTime}
+      />
+
       <MDBox py={3}>
-        {/* --- Search + Format + Download in ONE row --- */}
+        {/* ── Search + Format + Download in ONE row ── */}
         <Grid container spacing={3} mb={4}>
           <Grid item xs={12}>
             <Card>
@@ -287,40 +329,68 @@ function LiveLoadGraph() {
                   Search Live Load Cell Data
                 </MDTypography>
               </MDBox>
+
               <MDBox p={3}>
                 <form onSubmit={handleSubmit}>
                   <Grid container spacing={3} alignItems="flex-end">
-                    {/* Select IMEI */}
+
+                    {/* ── Searchable IMEI dropdown (filtered by selected account) ── */}
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
                         <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
                           Select IMEI
+                          {!selectedAccountId && (
+                            <MDTypography
+                              component="span"
+                              variant="caption"
+                              color="text"
+                              fontWeight="regular"
+                              ml={0.5}
+                            >
+                              (select an account first)
+                            </MDTypography>
+                          )}
                         </MDTypography>
                       </MDBox>
+
                       <ReactSelect
                         options={imeiOptions}
                         value={imeiOptions.find((opt) => opt.value === imei) || null}
-                        onChange={(selected) => {
-                          setImei(selected ? selected.value : "");
-                        }}
-                        placeholder="Search IMEI..."
+                        onChange={(selected) => setImei(selected ? selected.value : "")}
+                        placeholder={
+                          selectedAccountId
+                            ? imeiOptions.length === 0
+                              ? "Loading IMEIs…"
+                              : "Search IMEI..."
+                            : "Select account first"
+                        }
                         isClearable
                         isSearchable
-                        styles={customSelectStyles}
+                        isDisabled={!selectedAccountId}
+                        menuPortalTarget={document.body}
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            minHeight: 40,
+                            borderRadius: 4,
+                            fontSize: "0.875rem",
+                            borderColor: state.isFocused ? "#1A73E8" : "#d2d6da",
+                            boxShadow: "none",
+                            "&:hover": { borderColor: state.isFocused ? "#1A73E8" : "#b3b3b3" },
+                          }),
+                          placeholder: (base) => ({ ...base, fontSize: "0.875rem", color: "#adb5bd" }),
+                          singleValue: (base) => ({ ...base, fontSize: "0.875rem" }),
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                        }}
                       />
                     </Grid>
 
-                    {/* Average, Data, Search */}
+                    {/* ── Average, Data, Search ── */}
                     <Grid
                       item
                       xs={12}
                       md={4}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        flexWrap: "wrap",
-                      }}
+                      sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}
                     >
                       <FormControlLabel
                         control={
@@ -353,7 +423,7 @@ function LiveLoadGraph() {
                       </MDButton>
                     </Grid>
 
-                    {/* Format + Download aligned to right end */}
+                    {/* ── Format + Download aligned to right end ── */}
                     <Grid
                       item
                       xs={12}
@@ -400,10 +470,8 @@ function LiveLoadGraph() {
                                 alert("No data to export.");
                                 return;
                               }
-
                               setDownloading(true);
                               const baseName = `LoadCellReport_${imei || "data"}_${Date.now()}`;
-
                               try {
                                 if (exportFormat === "csv") {
                                   exportCSV(chartData, `${baseName}.csv`);
@@ -439,16 +507,15 @@ function LiveLoadGraph() {
           </Grid>
         </Grid>
 
-        {/* --- Graph Card --- */}
+        {/* ── Graph Card ── */}
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
-              <MDBox display="flex" justifyContent="space-between" alignItems="center">
+              <MDBox display="flex" justifyContent="space-between" alignItems="center" pt={3} px={3}>
                 <MDTypography variant="h6" fontWeight="medium">
                   Load Cell Graph with Averages
                 </MDTypography>
 
-                {/* Show this only if a search is active */}
                 {chartData.length > 0 && (
                   <MDBox display="flex" alignItems="center">
                     <MDBox
@@ -492,12 +559,7 @@ function LiveLoadGraph() {
                   </MDBox>
                 )}
 
-                <MDBox
-                  sx={{
-                    width: "100%",
-                    height: { xs: 450, sm: 550, md: 650, lg: 750 },
-                  }}
-                >
+                <MDBox sx={{ width: "100%", height: { xs: 450, sm: 550, md: 650, lg: 750 } }}>
                   {chartData.length === 0 ? (
                     <MDTypography textAlign="center" color="text.secondary" mt={8}>
                       Please select the date range for which you want to see the Load Cell Data.
@@ -514,10 +576,7 @@ function LiveLoadGraph() {
                           tick={{ fontSize: 12 }}
                           tickFormatter={(value) => {
                             const date = new Date(value);
-                            return `${date.getHours()}:${String(date.getMinutes()).padStart(
-                              2,
-                              "0"
-                            )}`;
+                            return `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
                           }}
                         />
                         <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
@@ -600,7 +659,7 @@ function LiveLoadGraph() {
         </Grid>
       </MDBox>
 
-      {/* CHATBOT WIDGET */}
+      {/* ── Chatbot toggle icon ── */}
       <div style={iconStyle} onClick={toggleChatbot}>
         <img
           src={CHATBOT_ICON_PLACEHOLDER}
@@ -609,6 +668,7 @@ function LiveLoadGraph() {
         />
       </div>
 
+      {/* ── Chatbot widget ── */}
       <div style={widgetStyle}>
         <div style={headerStyle}>
           <MDTypography variant="h6" color="white" style={{ margin: 0 }}>
@@ -710,76 +770,3 @@ function LiveLoadGraph() {
 }
 
 export default LiveLoadGraph;
-
-// import React from "react";
-// import DashboardLayout from "../../../src/assets/components/examples/LayoutContainers/DashboardLayout";
-// import DashboardNavbar from "../../../src/assets/components/examples/Navbars/DashboardNavbar";
-// import MDBox from "../../../src/assets/components/MDBox";
-// import MDTypography from "../../../src/assets/components/MDTypography";
-// import Card from "@mui/material/Card";
-// import Grid from "@mui/material/Grid";
-// import ReactSelect from "react-select";
-// import {
-//   AreaChart,
-//   Area,
-//   XAxis,
-//   YAxis,
-//   CartesianGrid,
-//   Tooltip,
-//   ResponsiveContainer,
-// } from "recharts";
-// import useLiveLoadGraphLogic from "./useLiveLoadGraphLogic";
-
-// function LiveLoadGraph() {
-//   const { imeis, chartData, handleStartMonitor, loading } = useLiveLoadGraphLogic();
-
-//   return (
-//     <DashboardLayout>
-//       <DashboardNavbar />
-//       <MDBox py={3}>
-//         <Card sx={{ mb: 3, p: 3 }}>
-//           <MDTypography variant="h6" mb={2}>
-//             Live Load Monitoring
-//           </MDTypography>
-//           <Grid container spacing={2} alignItems="center">
-//             <Grid item xs={12} md={6}>
-//               <ReactSelect
-//                 options={imeis}
-//                 onChange={(opt) => handleStartMonitor(opt.value)}
-//                 placeholder="Select Vehicle to Start Live Tracking..."
-//               />
-//             </Grid>
-//             {loading && (
-//               <Grid item>
-//                 <MDTypography variant="caption">Updating...</MDTypography>
-//               </Grid>
-//             )}
-//           </Grid>
-//         </Card>
-
-//         <Card>
-//           <MDBox p={3} sx={{ height: 500 }}>
-//             <ResponsiveContainer width="100%" height="100%">
-//               <AreaChart data={chartData}>
-//                 <CartesianGrid strokeDasharray="3 3" />
-//                 <XAxis dataKey="time" />
-//                 <YAxis />
-//                 <Tooltip />
-//                 <Area
-//                   type="monotone"
-//                   dataKey="Average"
-//                   stroke="#1A73E8"
-//                   fill="#1A73E8"
-//                   fillOpacity={0.3}
-//                   isAnimationActive={false} // Smoother for live updates
-//                 />
-//               </AreaChart>
-//             </ResponsiveContainer>
-//           </MDBox>
-//         </Card>
-//       </MDBox>
-//     </DashboardLayout>
-//   );
-// }
-
-// export default LiveLoadGraph;

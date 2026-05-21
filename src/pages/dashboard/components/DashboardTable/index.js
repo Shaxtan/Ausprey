@@ -258,23 +258,6 @@ const getBackendStatus = (item) => {
   return "idle";
 };
 
-// helper for multi-select status filters
-const toggleStatus = (current, status) => {
-  if (status === "all") return ["all"];
-
-  let next = current.includes("all") ? [] : [...current];
-
-  if (next.includes(status)) {
-    next = next.filter((s) => s !== status);
-  } else {
-    next.push(status);
-  }
-
-  if (next.length === 0) return ["all"];
-
-  return next;
-};
-
 // --- Main Component ---
 
 function Projects({
@@ -289,7 +272,6 @@ function Projects({
 
   const [menu, setMenu] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  // const [loading, setLoading] = useState(true);
 
   // MAIN TABS: vts / elk / unreachable
   const [tripFilterType, setTripFilterType] = useState("vts");
@@ -300,18 +282,16 @@ function Projects({
   // pagination
   const [pageSize, setPageSize] = useState(10);
 
-  // status sub-tabs for VTS & ELK (multi-select)
-  const [vtsTabs, setVtsTabs] = useState(["all"]);
-  const [elkTabs, setElkTabs] = useState(["all"]);
+  // ─── CHANGED: single-select status filter (string, not array) ───────────────
+  // "all" | "motion" | "idle" | "stopped" | "offline"
+  const [vtsTab, setVtsTab] = useState("all");
+  const [elkTab, setElkTab] = useState("all");
+  // ────────────────────────────────────────────────────────────────────────────
 
   // rows mapped from props
   const [allVtsRows, setAllVtsRows] = useState([]);
   const [allElkRows, setAllElkRows] = useState([]);
   const [unreachableRows, setUnreachableRows] = useState([]);
-
-  // old local lastRefresh / loading (now managed by parent)
-  // const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
-  // const [isRefreshing, setIsRefreshing] = useState(false);
 
   // dialog for lock/unlock
   const [unlockDialog, setUnlockDialog] = useState({
@@ -343,63 +323,7 @@ function Projects({
     [navigate, accountId]
   );
 
-  // ========= OLD FETCH FUNCTIONS (commented out; now data comes from props) =========
-  /*
-  const fetchVtsData = useCallback(
-    (currentAccountId) => {
-      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
-        ...
-        setAllVtsRows(fetchedRows);
-      });
-    },
-    [handleImeiClick]
-  );
-
-  const fetchElkData = useCallback(
-    (currentAccountId) => {
-      ApiService.getDashboardData({ accid: currentAccountId }, (res) => {
-        ...
-        setAllElkRows(fetchedRows);
-      });
-    },
-    [handleImeiClick]
-  );
-
-  const fetchUnreachableData = useCallback(
-    (currentAccountId) => {
-      ApiService.getUnreachableDevices({ accid: currentAccountId }, (res) => {
-        ...
-        setUnreachableRows(fetchedRows);
-      });
-    },
-    [handleImeiClick]
-  );
-
-  useEffect(() => {
-    setLoading(true);
-    fetchVtsData(accountId);
-    fetchElkData(accountId);
-    fetchUnreachableData(accountId);
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, [accountId, lastRefreshTime, fetchVtsData, fetchElkData, fetchUnreachableData]);
-
-  if (loading) {
-    return (
-      <Card>
-        <MDBox p={3} display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-          <CircularProgress color="info" size={30} />
-          <MDTypography variant="h6" ml={2}>
-            Loading Dashboard...
-          </MDTypography>
-        </MDBox>
-      </Card>
-    );
-  }
-  */
-  // ========= END OLD FETCH/LOADING LOGIC =========
-
-  // NEW: map props (vtsData, elkData, unreachableData) to rows
+  // Map props to rows
   useEffect(() => {
     // VTS rows
     const vtsRows = (vtsData || []).map((item, index) => {
@@ -520,7 +444,7 @@ function Projects({
             elkType={elkTypeStatus}
           />
         ),
-        checkbox: null, // set in memo
+        checkbox: null,
         _imei: imei,
         _isLockedInitial: isLocked,
         _isOnline: isOnline,
@@ -583,20 +507,20 @@ function Projects({
       return fields.some((f) => String(f).toLowerCase().includes(term));
     };
 
-    const vtsFilteredByStatus = allVtsRows.filter((row) => {
-      if (vtsTabs.includes("all")) return true;
-      return vtsTabs.includes(row._status);
-    });
+    // ─── CHANGED: single-select filter — compare string directly ──────────────
+    const vtsFilteredByStatus = allVtsRows.filter((row) =>
+      vtsTab === "all" ? true : row._status === vtsTab
+    );
 
     const vts = vtsFilteredByStatus.filter(matchesSearch).map((row) => ({
       ...row,
       checkbox: null,
     }));
 
-    const elkFilteredByStatus = allElkRows.filter((row) => {
-      if (elkTabs.includes("all")) return true;
-      return elkTabs.includes(row._status);
-    });
+    const elkFilteredByStatus = allElkRows.filter((row) =>
+      elkTab === "all" ? true : row._status === elkTab
+    );
+    // ─────────────────────────────────────────────────────────────────────────
 
     const elk = elkFilteredByStatus.filter(matchesSearch).map((row) => ({
       ...row,
@@ -657,8 +581,8 @@ function Projects({
     searchTerm,
     selectedRows,
     handleToggleSelect,
-    vtsTabs,
-    elkTabs,
+    vtsTab,   // CHANGED: was vtsTabs
+    elkTab,   // CHANGED: was elkTabs
   ]);
 
   const handleBulkUnlockClick = () => {
@@ -703,10 +627,6 @@ function Projects({
     alert(`${command} command initiated for ${imeisToSend.length} device(s).`);
 
     if (isBulk) setSelectedRows({});
-
-    // OLD: re-fetching locally (now parent handles refresh)
-    // fetchVtsData(accountId);
-    // fetchElkData(accountId);
   };
 
   // EXPORT BASED ON ACTIVE MAIN TAB
@@ -773,7 +693,6 @@ function Projects({
     </>
   );
 
-  // pick active table rows/columns for main tab switcher
   const activeColumns =
     tripFilterType === "vts"
       ? VTS_COLUMNS
@@ -802,8 +721,8 @@ function Projects({
               onClick={() => {
                 setTripFilterType(type);
                 setSelectedRows({});
-                setVtsTabs(["all"]);
-                setElkTabs(["all"]);
+                setVtsTab("all");   // CHANGED: reset to string "all"
+                setElkTab("all");   // CHANGED: reset to string "all"
               }}
               sx={filterToggleButtonSx}
             >
@@ -830,7 +749,7 @@ function Projects({
           </MDTypography>
 
           <MDBox display="flex" gap={2} alignItems="center">
-            {/* STATUS FILTERS ON RIGHT SIDE */}
+            {/* STATUS FILTERS — single select */}
             {tripFilterType === "vts" && (
               <MDBox
                 display="flex"
@@ -845,46 +764,47 @@ function Projects({
                   overflowX: "auto",
                 }}
               >
+                {/* CHANGED: onClick sets a single string, active check is === */}
                 <MDButton
                   size="small"
-                  variant={vtsTabs.includes("all") ? "gradient" : "text"}
-                  color={vtsTabs.includes("all") ? "info" : "dark"}
-                  onClick={() => setVtsTabs(toggleStatus(vtsTabs, "all"))}
+                  variant={vtsTab === "all" ? "gradient" : "text"}
+                  color={vtsTab === "all" ? "info" : "dark"}
+                  onClick={() => setVtsTab("all")}
                 >
                   All ({vtsAllCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={vtsTabs.includes("motion") ? "gradient" : "text"}
-                  color={vtsTabs.includes("motion") ? "success" : "dark"}
-                  onClick={() => setVtsTabs(toggleStatus(vtsTabs, "motion"))}
+                  variant={vtsTab === "motion" ? "gradient" : "text"}
+                  color={vtsTab === "motion" ? "success" : "dark"}
+                  onClick={() => setVtsTab("motion")}
                 >
                   <Icon fontSize="small">directions_run</Icon>
                   Motion ({vtsMotionCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={vtsTabs.includes("idle") ? "gradient" : "text"}
-                  color={vtsTabs.includes("idle") ? "warning" : "dark"}
-                  onClick={() => setVtsTabs(toggleStatus(vtsTabs, "idle"))}
+                  variant={vtsTab === "idle" ? "gradient" : "text"}
+                  color={vtsTab === "idle" ? "warning" : "dark"}
+                  onClick={() => setVtsTab("idle")}
                 >
                   <Icon fontSize="small">hourglass_empty</Icon>
                   Idle ({vtsIdleCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={vtsTabs.includes("stopped") ? "gradient" : "text"}
-                  color={vtsTabs.includes("stopped") ? "error" : "dark"}
-                  onClick={() => setVtsTabs(toggleStatus(vtsTabs, "stopped"))}
+                  variant={vtsTab === "stopped" ? "gradient" : "text"}
+                  color={vtsTab === "stopped" ? "error" : "dark"}
+                  onClick={() => setVtsTab("stopped")}
                 >
                   <Icon fontSize="small">stop</Icon>
                   Stopped ({vtsStoppedCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={vtsTabs.includes("offline") ? "gradient" : "text"}
-                  color={vtsTabs.includes("offline") ? "error" : "dark"}
-                  onClick={() => setVtsTabs(toggleStatus(vtsTabs, "offline"))}
+                  variant={vtsTab === "offline" ? "gradient" : "text"}
+                  color={vtsTab === "offline" ? "error" : "dark"}
+                  onClick={() => setVtsTab("offline")}
                 >
                   <Icon fontSize="small">offline_bolt</Icon>
                   Offline ({vtsOfflineCount})
@@ -905,37 +825,38 @@ function Projects({
                   overflowX: "auto",
                 }}
               >
+                {/* CHANGED: same pattern for elk */}
                 <MDButton
                   size="small"
-                  variant={elkTabs.includes("all") ? "gradient" : "text"}
-                  color={elkTabs.includes("all") ? "warning" : "dark"}
-                  onClick={() => setElkTabs(toggleStatus(elkTabs, "all"))}
+                  variant={elkTab === "all" ? "gradient" : "text"}
+                  color={elkTab === "all" ? "warning" : "dark"}
+                  onClick={() => setElkTab("all")}
                 >
                   All ({elkAllCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={elkTabs.includes("motion") ? "gradient" : "text"}
-                  color={elkTabs.includes("motion") ? "success" : "dark"}
-                  onClick={() => setElkTabs(toggleStatus(elkTabs, "motion"))}
+                  variant={elkTab === "motion" ? "gradient" : "text"}
+                  color={elkTab === "motion" ? "success" : "dark"}
+                  onClick={() => setElkTab("motion")}
                 >
                   <Icon fontSize="small">directions_run</Icon>
                   Motion ({elkMotionCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={elkTabs.includes("idle") ? "gradient" : "text"}
-                  color={elkTabs.includes("idle") ? "warning" : "dark"}
-                  onClick={() => setElkTabs(toggleStatus(elkTabs, "idle"))}
+                  variant={elkTab === "idle" ? "gradient" : "text"}
+                  color={elkTab === "idle" ? "warning" : "dark"}
+                  onClick={() => setElkTab("idle")}
                 >
                   <Icon fontSize="small">hourglass_empty</Icon>
                   Idle ({elkIdleCount})
                 </MDButton>
                 <MDButton
                   size="small"
-                  variant={elkTabs.includes("offline") ? "gradient" : "text"}
-                  color={elkTabs.includes("offline") ? "error" : "dark"}
-                  onClick={() => setElkTabs(toggleStatus(elkTabs, "offline"))}
+                  variant={elkTab === "offline" ? "gradient" : "text"}
+                  color={elkTab === "offline" ? "error" : "dark"}
+                  onClick={() => setElkTab("offline")}
                 >
                   <Icon fontSize="small">offline_bolt</Icon>
                   Offline ({elkOfflineCount})

@@ -550,6 +550,9 @@ class ApiService {
       SERVICES.dashboard // process.env.REACT_APP_BASE_URL + "/usage"  (:8075)
     );
   }
+  getAllDevicesByAccount(header = true) {
+    return this.getRequest("/devices", null, header, SERVICES.mainn);
+  }
 }
 export { SERVICES };
 export default new ApiService();

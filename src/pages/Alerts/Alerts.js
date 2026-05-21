@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 
 // Components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
+import DashboardNavbar from "../../assets/components/examples/Navbars/DashboardNavbar"; // ← ADDED
 import MDBox from "../../assets/components/MDBox";
 import MDTypography from "../../assets/components/MDTypography";
 import MDButton from "../../assets/components/MDButton";
@@ -23,7 +24,6 @@ import Select from "@mui/material/Select";
 import ApiService from "services/ApiService";
 import "./Alerts.css";
 
-// 1. Define your Table Columns here
 const ALERT_COLUMNS = [
   { Header: "No", accessor: "no", width: "5%", align: "left" },
   { Header: "Vehicle No", accessor: "vehicleNo", width: "15%", align: "left" },
@@ -37,13 +37,10 @@ function Alerts() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
-  // State for the API response data
   const [alertLogs, setAlertLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedQuickRange, setSelectedQuickRange] = useState(null);
 
-  // Fetch Accounts on Mount
   useEffect(() => {
     ApiService.getAccountDropdown((res) => {
       if (res?.data?.resultCode === 1 && Array.isArray(res.data.data)) {
@@ -56,13 +53,11 @@ function Alerts() {
     });
   }, []);
 
-  // Format Date for API
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return "";
     return dateTimeString.replace("T", " ") + ":00";
   };
 
-  // Handle Search Submission
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -91,7 +86,6 @@ function Alerts() {
     });
   };
 
-  // Map API data to Table Rows
   const tableRows = useMemo(() => {
     return alertLogs.map((log, index) => ({
       no: <DataCell text={index + 1} fontWeight="bold" />,
@@ -103,8 +97,9 @@ function Alerts() {
   }, [alertLogs]);
 
   const inputStyleSx = { "& .MuiOutlinedInput-root": { borderRadius: "8px" } };
+
   const handleQuickSelect = (type) => {
-    setSelectedQuickRange(type); // ← remember which one is active
+    setSelectedQuickRange(type);
 
     const now = new Date();
     let start = new Date();
@@ -125,7 +120,6 @@ function Alerts() {
         break;
       case "week":
         start.setDate(now.getDate() - 7);
-        // end remains = now
         break;
       default:
         return;
@@ -144,6 +138,8 @@ function Alerts() {
 
   return (
     <DashboardLayout>
+      <DashboardNavbar /> {/* ← ADDED */}
+
       <MDBox py={3}>
         {/* Filter Section */}
         <Grid container spacing={3} justifyContent="center">
@@ -159,7 +155,6 @@ function Alerts() {
                 <form onSubmit={handleSubmit}>
                   <MDBox mb={2}>
                     <Grid container spacing={3} alignItems="center">
-                      {/* Account Selection */}
                       <Grid item xs={12} md={4}>
                         <FormControl variant="outlined" fullWidth sx={inputStyleSx}>
                           <InputLabel id="account-select-label">Account</InputLabel>
@@ -179,7 +174,6 @@ function Alerts() {
                         </FormControl>
                       </Grid>
 
-                      {/* From Date */}
                       <Grid item xs={12} md={4}>
                         <TextField
                           label="From Date"
@@ -193,7 +187,6 @@ function Alerts() {
                         />
                       </Grid>
 
-                      {/* To Date */}
                       <Grid item xs={12} md={4}>
                         <TextField
                           label="To Date"
@@ -206,7 +199,7 @@ function Alerts() {
                           InputLabelProps={{ shrink: true }}
                         />
                       </Grid>
-                      {/* Quick Select Buttons */}
+
                       <MDBox
                         mb={2}
                         display="flex"
@@ -217,14 +210,14 @@ function Alerts() {
                         ml={2}
                       >
                         <MDButton
-                          variant="contained" // ← changed from outlined
+                          variant="contained"
                           color={selectedQuickRange === "today" ? "info" : "secondary"}
                           size="small"
                           onClick={() => handleQuickSelect("today")}
                           sx={{
                             minWidth: "90px",
                             ...(selectedQuickRange === "today" && {
-                              backgroundColor: "#2196f3 !important", // MUI blue
+                              backgroundColor: "#2196f3 !important",
                               color: "white !important",
                             }),
                           }}
@@ -284,7 +277,6 @@ function Alerts() {
           </Grid>
         </Grid>
 
-        {/* Results Table Section using CustomTable */}
         <MDBox mt={4}>
           <CustomTable title="Alert Results" columns={ALERT_COLUMNS} rows={tableRows} />
         </MDBox>

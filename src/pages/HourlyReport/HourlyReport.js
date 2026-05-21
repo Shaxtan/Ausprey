@@ -185,7 +185,12 @@ StatCard.propTypes = {
   subValue: PropTypes.string,
 };
 
-const AccountSummaryDashboard = ({ accountId }) => {
+const AccountSummaryDashboard = ({
+  accountId,
+  selectedAccount,
+  accountDevices = [],
+  devicesLoading,
+}) => {
   const [summaryData, setSummaryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -246,13 +251,7 @@ const AccountSummaryDashboard = ({ accountId }) => {
     fetchSummary();
   }, [accountId]);
 
-  // // 1. Flatten the entire tree
-  // const allNestedAccounts = useMemo(() => {
-  //   return summaryData ? getAllAccounts(summaryData.childAccounts || []) : [];
-  // }, [summaryData]);
-
   // 2. Filter out "Folder" accounts that just aggregate data
-  // (We only want accounts that don't have children, or represent terminal units)
   const chartData = useMemo(() => {
     return allNestedAccounts.filter((acc) => !acc.childAccounts || acc.childAccounts.length === 0);
   }, [allNestedAccounts]);
@@ -601,12 +600,108 @@ const AccountSummaryDashboard = ({ accountId }) => {
           }}
         />
       </Box>
+      {/* ── NEW: Devices for Selected Account Section ── */}
+      {selectedAccount && (
+        <Box
+          sx={{
+            mt: 4,
+            background: "#fff",
+            borderRadius: 2.5,
+            border: "1px solid #e8eaf6",
+            overflow: "hidden",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          }}
+        >
+          <Box
+            sx={{
+              px: 2.5,
+              py: 2,
+              borderBottom: "1px solid #f0f2f5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <MDTypography
+              variant="button"
+              fontWeight="bold"
+              sx={{ fontSize: "0.8rem", color: "#344767" }}
+            >
+              Devices assigned to: {selectedAccount.accountName}
+              <Chip
+                label={accountDevices.length}
+                size="small"
+                sx={{ ml: 1, fontSize: "0.62rem", height: 18 }}
+              />
+            </MDTypography>
+            {devicesLoading && <CircularProgress size={18} />}
+          </Box>
+
+          <TableContainer>
+            <Table sx={{ tableLayout: "fixed", width: "100%" }}>
+              <TableHead sx={tableHeadSx}>
+                <TableRow>
+                  <TableCell>Device Name / Number</TableCell>
+                  <TableCell>IMEI</TableCell>
+                  <TableCell align="center">Sim No.</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Joined Date</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody sx={tableBodySx}>
+                {accountDevices.map((device) => (
+                  <TableRow key={device.imei}>
+                    <TableCell>
+                      <MDTypography variant="caption" fontWeight="bold" color="info">
+                        {device.vehicleNumber || device.name}
+                      </MDTypography>
+                    </TableCell>
+                    <TableCell>
+                      <MDTypography variant="caption" sx={{ fontFamily: "monospace" }}>
+                        {device.imei}
+                      </MDTypography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <MDTypography variant="caption">{device.simNo || "—"}</MDTypography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={device.status === "A" ? "Active" : "Inactive"}
+                        size="small"
+                        color={device.status === "A" ? "success" : "default"}
+                        sx={{ fontSize: "0.6rem", height: 20 }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <MDTypography variant="caption">
+                        {device.joiningDate ? device.joiningDate.split("T")[0] : "—"}
+                      </MDTypography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {accountDevices.length === 0 && !devicesLoading && (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      <MDTypography variant="caption" color="text">
+                        No specific devices found for this account.
+                      </MDTypography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
     </Box>
   );
 };
 
 AccountSummaryDashboard.propTypes = {
   accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  selectedAccount: PropTypes.object,
+  accountDevices: PropTypes.array, // Add this
+  devicesLoading: PropTypes.bool, // Add this
 };
 
 // ─── Session Detail Modal ─────────────────────────────────────────────────────
@@ -899,6 +994,11 @@ const DateFilterBar = ({
   imeiList,
   imeiLoading,
   onQuickSelect,
+  // NEW: account-related props
+  accountList,
+  accountLoading,
+  selectedAccount,
+  onAccountChange,
 }) => {
   const [selectedQuickDate, setSelectedQuickDate] = useState(null);
 
@@ -911,15 +1011,67 @@ const DateFilterBar = ({
     <Box
       sx={{ p: 2.5, mb: 3, background: "#f7f7fb", borderRadius: 2, border: "1px solid #e3e7ef" }}
     >
+      {/* ── Row 1: Account + Vehicle + Dates + Button ── */}
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "2.4fr 1.8fr 1.8fr 1.2fr" },
+          gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "2fr 2.4fr 1.8fr 1.8fr 1.2fr" },
           gap: 2,
           alignItems: "end",
           width: "100%",
         }}
       >
+        {/* Account Dropdown — NEW */}
+        <Autocomplete
+          fullWidth
+          options={accountList}
+          loading={accountLoading}
+          // This handles the text shown in the box once selected
+          getOptionLabel={(option) =>
+            option.accountName ? `${option.accountName} (${option.id})` : String(option.id)
+          }
+          value={selectedAccount}
+          onChange={(_, newValue) => onAccountChange(newValue)}
+          // This makes the dropdown list show Name on top and ID below
+          renderOption={(props, option) => (
+            <Box component="li" {...props} sx={{ display: "flex", flexDirection: "column", py: 1 }}>
+              <MDTypography
+                variant="button"
+                fontWeight="bold"
+                sx={{ fontSize: "0.8rem", color: "#344767" }}
+              >
+                {option.accountName}
+              </MDTypography>
+              <MDTypography variant="caption" sx={{ color: "#7b809a", fontSize: "0.65rem" }}>
+                Account ID: {option.id} • Type: {option.type}
+              </MDTypography>
+            </Box>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Select Account"
+              placeholder="Search by name or ID..."
+              size="small"
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <>
+                    <InputAdornment position="start">
+                      <Icon sx={{ fontSize: 16, color: "#7b809a" }}>account_circle</Icon>
+                    </InputAdornment>
+                    {params.InputProps.startAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+          clearOnEscape
+          isOptionEqualToValue={(option, value) => option.id === value?.id}
+        />
+
+        {/* Vehicle / IMEI Dropdown */}
         <Autocomplete
           fullWidth
           options={imeiList}
@@ -939,6 +1091,7 @@ const DateFilterBar = ({
             />
           )}
         />
+
         <TextField
           fullWidth
           label="Start Date"
@@ -975,6 +1128,7 @@ const DateFilterBar = ({
         </MDButton>
       </Box>
 
+      {/* ── Row 2: Quick date chips ── */}
       <Box
         sx={{
           display: "flex",
@@ -1013,6 +1167,37 @@ const DateFilterBar = ({
           />
         ))}
       </Box>
+
+      {/* ── Selected account indicator ── */}
+      {selectedAccount && (
+        <Box
+          sx={{
+            mt: 1.5,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.5,
+            py: 0.75,
+            background: "#e3f0ff",
+            borderRadius: 1.5,
+            border: "1px solid #bbdefb",
+            width: "fit-content",
+          }}
+        >
+          <Icon sx={{ fontSize: 14, color: "#1A73E8" }}>info</Icon>
+          <MDTypography variant="caption" sx={{ fontSize: "0.68rem", color: "#1A73E8" }}>
+            Dashboard will show summary for:{" "}
+            <strong>{selectedAccount.accountName || selectedAccount.id}</strong>
+          </MDTypography>
+          <IconButton
+            size="small"
+            onClick={() => onAccountChange(null)}
+            sx={{ p: 0.2, ml: 0.5, color: "#1A73E8" }}
+          >
+            <Icon sx={{ fontSize: 14 }}>close</Icon>
+          </IconButton>
+        </Box>
+      )}
     </Box>
   );
 };
@@ -1029,6 +1214,11 @@ DateFilterBar.propTypes = {
   imeiList: PropTypes.array.isRequired,
   imeiLoading: PropTypes.bool.isRequired,
   onQuickSelect: PropTypes.func.isRequired,
+  // NEW
+  accountList: PropTypes.array.isRequired,
+  accountLoading: PropTypes.bool.isRequired,
+  selectedAccount: PropTypes.object,
+  onAccountChange: PropTypes.func.isRequired,
 };
 
 // ─── Quick date helper ────────────────────────────────────────────────────────
@@ -1055,9 +1245,7 @@ const getQuickDateRange = (type) => {
 const getAllAccounts = (accounts) => {
   let flatList = [];
   accounts.forEach((acc) => {
-    // Add the current account to our list
     flatList.push(acc);
-    // If this account has its own children, get them too
     if (acc.childAccounts && acc.childAccounts.length > 0) {
       flatList = [...flatList, ...getAllAccounts(acc.childAccounts)];
     }
@@ -1071,7 +1259,7 @@ function HourlyReport({ accountId }) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
   const [imei, setImei] = useState("");
-  const [startDate, setStartDate] = useState(yesterday);
+  const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -1085,22 +1273,102 @@ function HourlyReport({ accountId }) {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [reportFetched, setReportFetched] = useState(false);
 
+  // ── NEW: account dropdown state ──────────────────────────────────────────
+  const [accountList, setAccountList] = useState([]);
+  const [accountLoading, setAccountLoading] = useState(false);
+  // The currently selected account object (null = none selected → use default accountId)
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [accountDevices, setAccountDevices] = useState([]); //devices based on selected account
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  // Resolved account ID used for the summary dashboard
+  const resolvedAccountId = selectedAccount?.id ?? accountId;
+
+  // Fetch account list on mount
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      setAccountLoading(true);
+      try {
+        const res = await ApiService.getAccountDropdown();
+        // getAccountDropdown returns filtered (status === "A") accounts
+        const accounts = res?.data?.data || [];
+        // Normalise: ensure each entry has an `id` field
+        // Inside HourlyReport -> fetchAccounts
+        const normalised = accounts.map((a) => ({
+          ...a,
+          id: a.id ?? a.accountId ?? a.accid,
+          // Map the API "name" field to the "accountName" property used in your UI
+          accountName: a.name || "Unnamed Account",
+        }));
+        setAccountList(normalised);
+      } catch (err) {
+        console.error("Failed to fetch account list:", err);
+      } finally {
+        setAccountLoading(false);
+      }
+    };
+    fetchAccounts();
+  }, []);
+
+  // Inside HourlyReport function
   useEffect(() => {
     const fetchImeis = async () => {
       setImeiLoading(true);
       try {
-        const res = await ApiService.getImeiDropdown(accountId);
+        // Use selectedAccount.id if available, else fallback to the default prop accountId
+        const targetId = selectedAccount?.id || accountId;
+
+        const res = await ApiService.getImeiDropdown(targetId);
         const vehicles = res?.data?.response?.vehicles || [];
+
         setImeiList(vehicles);
-        if (vehicles.length > 0 && !imei) setImei(vehicles[0].imei);
+
+        // Reset IMEI selection if the current one isn't in the new list
+        if (vehicles.length > 0) {
+          // Optional: auto-select first vehicle
+          // setImei(vehicles[0].imei);
+        } else {
+          setImei("");
+        }
       } catch (err) {
         console.error("Failed to fetch IMEI list:", err);
       } finally {
         setImeiLoading(false);
       }
     };
+
     fetchImeis();
-  }, [accountId]);
+  }, [selectedAccount, accountId]); // Triggered whenever the account dropdown changes
+
+  // 2. Effect to fetch and filter devices based on selection
+  useEffect(() => {
+    const syncDevices = async () => {
+      // If no account is selected, clear the list
+      if (!selectedAccount) {
+        setAccountDevices([]);
+        return;
+      }
+
+      setDevicesLoading(true);
+      try {
+        // Calls http://103.178.113.129:8071/devices via ApiService
+        const res = await ApiService.getAllDevicesByAccount();
+        const allDevices = res?.data?.data || [];
+
+        // Filter: only keep devices where accountId matches selectedAccount.id
+        const filtered = allDevices.filter(
+          (dev) => Number(dev.accountId) === Number(selectedAccount.id)
+        );
+
+        setAccountDevices(filtered);
+      } catch (err) {
+        console.error("Error syncing devices:", err);
+      } finally {
+        setDevicesLoading(false);
+      }
+    };
+
+    syncDevices();
+  }, [selectedAccount]);
 
   const handleQuickSelect = (type) => {
     const { start, end } = getQuickDateRange(type);
@@ -1196,9 +1464,7 @@ function HourlyReport({ accountId }) {
             </MDBox>
 
             <MDBox p={3}>
-              {/* ── Account Summary Dashboard (always shown at top) ── */}
-
-              {/* ── Vehicle Report Filter ── */}
+              {/* ── Vehicle Report Filter (now includes account dropdown) ── */}
               <DateFilterBar
                 imei={imei}
                 onImei={setImei}
@@ -1211,6 +1477,11 @@ function HourlyReport({ accountId }) {
                 imeiList={imeiList}
                 imeiLoading={imeiLoading}
                 onQuickSelect={handleQuickSelect}
+                // NEW account props
+                accountList={accountList}
+                accountLoading={accountLoading}
+                selectedAccount={selectedAccount}
+                onAccountChange={setSelectedAccount}
               />
 
               {/* Only show the table section after a report has been fetched */}
@@ -1410,8 +1681,20 @@ function HourlyReport({ accountId }) {
                   </MDTypography>
                 </Box>
               )}
+
               <Divider sx={{ my: 4, borderStyle: "dashed" }} />
-              <AccountSummaryDashboard accountId={accountId} />
+
+              {/*
+               * AccountSummaryDashboard:
+               * - If an account is selected in the dropdown → use that account's id
+               * - Otherwise → fall back to the prop accountId (original behaviour)
+               */}
+              <AccountSummaryDashboard
+                accountId={resolvedAccountId}
+                selectedAccount={selectedAccount}
+                accountDevices={accountDevices} // Add this line
+                devicesLoading={devicesLoading} // Useful for showing a spinner in the table
+              />
             </MDBox>
           </Card>
         </Grid>
@@ -1428,18 +1711,6 @@ function HourlyReport({ accountId }) {
 
 HourlyReport.propTypes = {
   accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-};
-// Ensure these exist at the bottom of your file as well
-AccountSummaryDashboard.propTypes = {
-  accountId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-};
-
-StatCard.propTypes = {
-  icon: PropTypes.string.isRequired,
-  label: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  color: PropTypes.string.isRequired,
-  subValue: PropTypes.string,
 };
 
 export default HourlyReport;
