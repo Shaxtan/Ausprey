@@ -351,7 +351,7 @@ function LoadCellReport() {
         end.setHours(23, 59, 59, 999);
         break;
       case "week":
-        start.setDate(now.getDate() - 7);
+        start.setDate(now.getDate() - 3);
         break;
       default:
         return;
@@ -398,7 +398,7 @@ function LoadCellReport() {
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
                         <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
-                          Select IMEI
+                          Select IMEI <span style={{ color: "red" }}>*</span>
                           {!selectedAccountId && (
                             <MDTypography
                               component="span"
@@ -473,7 +473,28 @@ function LoadCellReport() {
                         type="datetime-local"
                         fullWidth
                         value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
+                        onChange={(e) => {
+                          if (fromDate) {
+                            const maxAllowed = new Date(fromDate);
+                            maxAllowed.setDate(maxAllowed.getDate() + 3);
+                            if (new Date(e.target.value) > maxAllowed) {
+                              callAlert(
+                                "Error",
+                                "To date cannot be more than 3 days after the From date."
+                              );
+                              return;
+                            }
+                          }
+                          setToDate(e.target.value);
+                        }}
+                        inputProps={{
+                          max: (() => {
+                            if (!fromDate) return undefined;
+                            const maxD = new Date(fromDate);
+                            maxD.setDate(maxD.getDate() + 3);
+                            return maxD.toISOString().slice(0, 16);
+                          })(),
+                        }}
                         required
                         InputLabelProps={{ shrink: true }}
                         variant="outlined"
@@ -579,7 +600,7 @@ function LoadCellReport() {
                             }),
                           }}
                         >
-                          Last 7 Days
+                          Last 3 Days
                         </MDButton>
                       </MDBox>
                     </MDBox>

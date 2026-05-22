@@ -154,7 +154,7 @@ export default function useLiveLoadGraphLogic() {
     if (e) e.preventDefault();
 
     if (!imei.trim()) {
-      callAlert("Error", "Select an IMEI");
+      callAlert( "Select an IMEI");
       return;
     }
 

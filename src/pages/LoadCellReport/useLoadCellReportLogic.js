@@ -109,10 +109,8 @@ export default function useLoadCellReportLogic() {
     setDateRange(
       `Data from: ${formatDateTimeDisplay(startTime)} to ${formatDateTimeDisplay(endTime)}`
     );
-   
 
     const payload = {
-      
       imei: imeiValue,
       startDate: toLocalString(startTime),
       endDate: toLocalString(endTime),
@@ -150,7 +148,7 @@ export default function useLoadCellReportLogic() {
     e.preventDefault();
 
     if (!imei.trim()) {
-      callAlert("Error", "Select an IMEI");
+      callAlert("Select an IMEI");
       return;
     }
     if (!fromDate || !toDate) {
@@ -158,7 +156,13 @@ export default function useLoadCellReportLogic() {
       return;
     }
     if (new Date(fromDate) > new Date(toDate)) {
-      callAlert("Error", "From Date cannot be after To Date");
+      callAlert("From Date cannot be after To Date");
+      return;
+    }
+    const diffMs = new Date(toDate) - new Date(fromDate);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays > 3) {
+      callAlert("Error", "Date range cannot exceed 3 days. Please adjust your selection.");
       return;
     }
     if (!showAverage && !showData) {

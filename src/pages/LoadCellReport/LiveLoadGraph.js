@@ -356,7 +356,7 @@ function LiveLoadGraph() {
                     <Grid item xs={12} md={3}>
                       <MDBox mb={0.5}>
                         <MDTypography variant="caption" display="block" mb={0.5} fontWeight="bold">
-                          Select IMEI
+                          Select IMEI <span style={{ color: "red" }}>*</span>
                           {!selectedAccountId && (
                             <MDTypography
                               component="span"
