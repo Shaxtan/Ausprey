@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 
 // Components
 import DashboardLayout from "../../assets/components/examples/LayoutContainers/DashboardLayout";
@@ -33,6 +34,9 @@ const ALERT_COLUMNS = [
 ];
 
 function Alerts() {
+  const [searchParams] = useSearchParams();
+  const imeiFromChatbot = searchParams.get("imei") || "";
+
   const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -40,6 +44,7 @@ function Alerts() {
   const [alertLogs, setAlertLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedQuickRange, setSelectedQuickRange] = useState(null);
+  const [imeiFilter, setImeiFilter] = useState(imeiFromChatbot);
 
   useEffect(() => {
     ApiService.getAccountDropdown((res) => {
@@ -87,14 +92,23 @@ function Alerts() {
   };
 
   const tableRows = useMemo(() => {
-    return alertLogs.map((log, index) => ({
+    const filtered = imeiFilter.trim()
+      ? alertLogs.filter((log) =>
+          (log.imei || log.deviceId || log.vehicleNumber || "")
+            .toString()
+            .toLowerCase()
+            .includes(imeiFilter.trim().toLowerCase())
+        )
+      : alertLogs;
+
+    return filtered.map((log, index) => ({
       no: <DataCell text={index + 1} fontWeight="bold" />,
       vehicleNo: <DataCell text={log.vehicleNumber || "N/A"} fontWeight="bold" />,
       type: <DataCell text={log.type || "General Alert"} />,
       time: <DataCell text={log.deviceTime || "N/A"} />,
       message: <DataCell text={log.message || "No details"} />,
     }));
-  }, [alertLogs]);
+  }, [alertLogs, imeiFilter]);
 
   const inputStyleSx = { "& .MuiOutlinedInput-root": { borderRadius: "8px" } };
 
@@ -139,7 +153,6 @@ function Alerts() {
   return (
     <DashboardLayout>
       <DashboardNavbar /> {/* ← ADDED */}
-
       <MDBox py={3}>
         {/* Filter Section */}
         <Grid container spacing={3} justifyContent="center">
@@ -152,10 +165,40 @@ function Alerts() {
               </MDBox>
 
               <MDBox p={2}>
+                {imeiFromChatbot && (
+                  <MDBox
+                    mb={2}
+                    p={1.5}
+                    sx={{
+                      background: "linear-gradient(90deg, #e3f2fd 0%, #bbdefb 100%)",
+                      borderLeft: "4px solid #1976d2",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <MDTypography variant="button" fontWeight="bold" color="info">
+                      📡 Chatbot Filter Active:
+                    </MDTypography>
+                    <MDTypography variant="button" fontWeight="regular" color="dark">
+                      Showing alerts for IMEI <strong>{imeiFromChatbot}</strong>
+                    </MDTypography>
+                    <MDButton
+                      size="small"
+                      variant="text"
+                      color="error"
+                      sx={{ ml: "auto", minWidth: "auto", p: 0.5 }}
+                      onClick={() => setImeiFilter("")}
+                    >
+                      ✕ Clear
+                    </MDButton>
+                  </MDBox>
+                )}
                 <form onSubmit={handleSubmit}>
                   <MDBox mb={2}>
                     <Grid container spacing={3} alignItems="center">
-                      <Grid item xs={12} md={4}>
+                      <Grid item xs={12} md={3}>
                         <FormControl variant="outlined" fullWidth sx={inputStyleSx}>
                           <InputLabel id="account-select-label">Account</InputLabel>
                           <Select
@@ -174,7 +217,7 @@ function Alerts() {
                         </FormControl>
                       </Grid>
 
-                      <Grid item xs={12} md={4}>
+                      <Grid item xs={12} md={3}>
                         <TextField
                           label="From Date"
                           type="datetime-local"
@@ -187,7 +230,7 @@ function Alerts() {
                         />
                       </Grid>
 
-                      <Grid item xs={12} md={4}>
+                      <Grid item xs={12} md={3}>
                         <TextField
                           label="To Date"
                           type="datetime-local"
@@ -196,6 +239,20 @@ function Alerts() {
                           onChange={(e) => setToDate(e.target.value)}
                           variant="outlined"
                           sx={inputStyleSx}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} md={3}>
+                        <TextField
+                          label="Filter by IMEI / Vehicle No"
+                          type="text"
+                          fullWidth
+                          value={imeiFilter}
+                          onChange={(e) => setImeiFilter(e.target.value)}
+                          variant="outlined"
+                          sx={inputStyleSx}
+                          placeholder="e.g. 356938035643809"
                           InputLabelProps={{ shrink: true }}
                         />
                       </Grid>
@@ -281,7 +338,6 @@ function Alerts() {
           <CustomTable title="Alert Results" columns={ALERT_COLUMNS} rows={tableRows} />
         </MDBox>
       </MDBox>
-
       <Chatbot />
     </DashboardLayout>
   );

@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import PropTypes from "prop-types"; 
+import PropTypes from "prop-types";
 import Icon from "@mui/material/Icon";
 import SendIcon from "@mui/icons-material/Send";
-import MDBox from "../../../src/assets/components/MDBox"; 
-import MDButton from "../../../src/assets/components/MDButton"; 
-import MDTypography from "../../../src/assets/components/MDTypography"; 
-import MDInput from "../../../src/assets/components/MDInput"; 
+import MDBox from "../../../src/assets/components/MDBox";
+import MDButton from "../../../src/assets/components/MDButton";
+import MDTypography from "../../../src/assets/components/MDTypography";
+import MDInput from "../../../src/assets/components/MDInput";
 import {
   chatbotIconStyle,
   getWidgetStyle,
@@ -15,7 +15,7 @@ import {
   bodyStyle,
   footerStyle,
   getMessageStyle,
-} from "./DashboardStyles"; 
+} from "./DashboardStyles";
 
 const CHATBOT_ICON_PLACEHOLDER = "https://cdn-icons-png.flaticon.com/512/4712/4712001.png";
 
@@ -50,7 +50,6 @@ const Chatbot = ({ devices }) => {
     setMessages((prev) => [...prev, newUserMessage]);
     setImeiInput("");
 
-   
     const safeDevices = devices || [];
     const foundDevice = safeDevices.find((d) => d.imei === enteredImei);
 
@@ -88,15 +87,14 @@ const Chatbot = ({ devices }) => {
       let botResponseText = "";
       let targetPath = null;
 
-      if (option === "Alert Logs") {
-        botResponseText = `You selected **Alert Logs** for IMEI **${activeImei}**. Redirecting you now.`;
-        targetPath = `/alerts?imei=${activeImei}`;
+      if (option === "Distance Report") {
+        targetPath = `/distance-report?imei=${activeImei}`;
       } else if (option === "Track/Play") {
         botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
         targetPath = `/live-track?imei=${activeImei}`;
       } else if (option === "Trip Report") {
-        botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Reports section.`;
-        targetPath = `/reports/trip?imei=${activeImei}`;
+        botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Trip Dashboard.`;
+        targetPath = `/trip-dashboard?imei=${activeImei}`;
       } else {
         botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
       }
@@ -174,9 +172,9 @@ const Chatbot = ({ devices }) => {
                 color="info"
                 fullWidth
                 sx={{ mb: 1.5 }}
-                onClick={() => handleOptionSelect("Alert Logs")}
+                onClick={() => handleOptionSelect("Distance Report")}
               >
-                Alert Logs
+                Distance Report
               </MDButton>
               <MDButton
                 variant="outlined"
@@ -234,7 +232,7 @@ const Chatbot = ({ devices }) => {
 };
 
 Chatbot.propTypes = {
-  devices: PropTypes.array.isRequired, 
+  devices: PropTypes.array.isRequired,
 };
 
 export default Chatbot;

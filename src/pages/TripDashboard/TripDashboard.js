@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 
 import Card from "@mui/material/Card";
@@ -448,8 +448,11 @@ function TripDashboard({ accountId }) {
   // );
 
   const navigate = useNavigate();
+  const [searchParamsUrl] = useSearchParams();
+  const imeiFromChatbot = searchParamsUrl.get("imei") || "";
+
   const [menu, setMenu] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(imeiFromChatbot);
 
   const [trips, setTrips] = useState([]);
   const [expandedTripId, setExpandedTripId] = useState(null);
@@ -909,6 +912,36 @@ function TripDashboard({ accountId }) {
 
   return (
     <MDBox pt={6} pb={3} ml={11}>
+      {imeiFromChatbot && (
+        <MDBox
+          mb={2}
+          p={1.5}
+          sx={{
+            background: "linear-gradient(90deg, #e3f2fd 0%, #bbdefb 100%)",
+            borderLeft: "4px solid #1976d2",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <MDTypography variant="button" fontWeight="bold" color="info">
+            📡 Chatbot Filter Active:
+          </MDTypography>
+          <MDTypography variant="button" fontWeight="regular" color="dark">
+            Showing trips for IMEI <strong>{imeiFromChatbot}</strong>
+          </MDTypography>
+          <MDButton
+            size="small"
+            variant="text"
+            color="error"
+            sx={{ ml: "auto", minWidth: "auto", p: 0.5 }}
+            onClick={() => setSearchTerm("")}
+          >
+            ✕ Clear
+          </MDButton>
+        </MDBox>
+      )}
       <Grid container spacing={3}>
         {/* QUICK VIEW container */}
         <Grid item xs={12}>

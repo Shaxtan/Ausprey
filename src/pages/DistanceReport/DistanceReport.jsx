@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PropTypes from "prop-types";
 import ApiService from "../../services/ApiService";
 
@@ -57,13 +57,15 @@ const fuelTrendData = [
 
 function DistanceReport() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const imeiFromUrl = searchParams.get("imei") || "";
   const [imeiList, setImeiList] = useState([]);
-  const [selectedImei, setSelectedImei] = useState("");
+  const [selectedImei, setSelectedImei] = useState(imeiFromUrl);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const getTodayDate = () => new Date().toISOString().split("T")[0];
   const [committedStartDate, setCommittedStartDate] = useState(getTodayDate());
-const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
+  const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
 
   // Date Selection States
   const [startDate, setStartDate] = useState(getTodayDate());
@@ -73,7 +75,7 @@ const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
     ApiService.getImeiDropdown(1).then((res) => {
       const vehicles = res?.data?.response?.vehicles || [];
       setImeiList(vehicles);
-      if (vehicles.length > 0) setSelectedImei(vehicles[0].imei);
+      if (!imeiFromUrl && vehicles.length > 0) setSelectedImei(vehicles[0].imei);
     });
   }, []);
 
@@ -85,9 +87,8 @@ const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
   const fetchReport = (imei) => {
     if (!imei) return;
     setLoading(true);
-    setCommittedStartDate(startDate);  // ← lock in the dates
-  setCommittedEndDate(endDate);      // ← lock in the dates
-
+    setCommittedStartDate(startDate); // ← lock in the dates
+    setCommittedEndDate(endDate); // ← lock in the dates
 
     const formatDateForPayload = (dateStr) => {
       const d = new Date(dateStr);
@@ -115,9 +116,9 @@ const [committedEndDate, setCommittedEndDate] = useState(getTodayDate());
   // ---- DYNAMIC CHART LOGIC ----
 
   const isSingleDay = useMemo(() => {
-  if (!committedStartDate || !committedEndDate) return false;
-  return committedStartDate.split("T")[0] === committedEndDate.split("T")[0];
-}, [committedStartDate, committedEndDate]);
+    if (!committedStartDate || !committedEndDate) return false;
+    return committedStartDate.split("T")[0] === committedEndDate.split("T")[0];
+  }, [committedStartDate, committedEndDate]);
 
   const xAxisKey = isSingleDay ? "hr" : "repDate";
 
