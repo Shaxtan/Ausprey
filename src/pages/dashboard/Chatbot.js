@@ -92,9 +92,9 @@ const Chatbot = ({ devices }) => {
       } else if (option === "Track/Play") {
         botResponseText = `You selected **Track/Play** for IMEI **${activeImei}**. Redirecting you to the Live Track map.`;
         targetPath = `/live-track?imei=${activeImei}`;
-      } else if (option === "Trip Report") {
-        botResponseText = `You selected **Trip Report** for IMEI **${activeImei}**. Redirecting you to the Trip Dashboard.`;
-        targetPath = `/trip-dashboard?imei=${activeImei}`;
+      } else if (option === "Load Graph") {
+        botResponseText = `You selected **Load Graph** for IMEI **${activeImei}**. Redirecting you to the Load Graph.`;
+        targetPath = `/load-cell-report?imei=${activeImei}`;
       } else {
         botResponseText = `You selected **${option}** for IMEI **${activeImei}**. This conversation is now complete. You can close the widget.`;
       }
@@ -180,9 +180,9 @@ const Chatbot = ({ devices }) => {
                 variant="outlined"
                 color="info"
                 fullWidth
-                onClick={() => handleOptionSelect("Trip Report")}
+                onClick={() => handleOptionSelect("Load Graph")}
               >
-                Trip Report
+                Load Graph
               </MDButton>
             </MDBox>
           )}

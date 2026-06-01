@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import useLoadCellReportLogic from "./useLoadCellReportLogic";
 import ReactSelect from "react-select";
 
@@ -70,6 +70,8 @@ function LoadCellReport() {
   } = useLoadCellReportLogic();
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const imeiFromUrl = searchParams.get("imei") || "";
 
   // ─── Account & IMEI state ───────────────────────────────────────────────────
   const [accounts, setAccounts] = useState([]);
@@ -137,6 +139,15 @@ function LoadCellReport() {
         setImeiOptions([]);
       });
   }, [selectedAccountId]);
+
+  // ─── Auto-select IMEI from chatbot URL param ────────────────────────────────
+  useEffect(() => {
+    if (!imeiFromUrl || imeiOptions.length === 0) return;
+    const match = imeiOptions.find((opt) => opt.value === imeiFromUrl);
+    if (match) {
+      setImei(match.value);
+    }
+  }, [imeiFromUrl, imeiOptions]);
 
   // ─── Navbar handlers ────────────────────────────────────────────────────────
   const handleAccountChange = (e) => {
@@ -379,6 +390,47 @@ function LoadCellReport() {
         isRefreshing={isRefreshing}
         lastRefreshTime={lastRefreshTime}
       />
+
+      {/* ── IMEI Pre-selection Banner (shown when redirected from Chatbot) ── */}
+      {imeiFromUrl && (
+        <MDBox
+          mx={0}
+          mt={1}
+          mb={-1}
+          px={2}
+          py={1.5}
+          borderRadius="lg"
+          sx={{
+            background: "linear-gradient(90deg, #1a73e8 0%, #0d47a1 100%)",
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            flexWrap: "wrap",
+          }}
+        >
+          <MDTypography variant="body2" color="white" fontWeight="medium">
+            🔍 IMEI auto-selected from Assistant:
+          </MDTypography>
+          <MDTypography
+            variant="body2"
+            color="white"
+            fontWeight="bold"
+            sx={{
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: "6px",
+              px: 1.5,
+              py: 0.3,
+              fontFamily: "monospace",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {imeiFromUrl}
+          </MDTypography>
+          <MDTypography variant="caption" color="white" sx={{ opacity: 0.8 }}>
+            — Set a date range and click Fetch to load the report.
+          </MDTypography>
+        </MDBox>
+      )}
 
       <MDBox py={3}>
         {/* ── Search Form Card ── */}
